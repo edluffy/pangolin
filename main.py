@@ -18,13 +18,13 @@ COLORS = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231',
 
 app = QApplication([])
 
-global toMaskPath
+global to_mask_path
 global img2px
 global px2img
-global quickOverlay
+global quick_overlay
 
 
-def toMaskPath(path):
+def to_mask_path(path):
     fn = "M_"+os.path.basename(os.path.splitext(path)[0]+".png")
     return os.path.join(os.path.dirname(path), "Masks", fn)
 
@@ -38,7 +38,7 @@ def img2px(img):
         tmp.setMask(px.createMaskFromColor(QColor.fromRgb(i, i, i),
                                            QtCore.Qt.MaskOutColor))
         layers.append(tmp)
-    return quickOverlay(layers, [1 for _ in layers])
+    return quick_overlay(layers, [1 for _ in layers])
 
 
 def px2img(px):
@@ -49,11 +49,11 @@ def px2img(px):
         tmp.setMask(px.createMaskFromColor(QColor(int(color[1:], 16)),
                                            QtCore.Qt.MaskOutColor))
         layers.append(tmp)
-    px = quickOverlay(layers, [1 for _ in layers])
+    px = quick_overlay(layers, [1 for _ in layers])
     return px.toImage().convertToFormat(QImage.Format_Grayscale8)
 
 
-def quickOverlay(layers, opacities=[]):
+def quick_overlay(layers, opacities=[]):
     res = QPixmap(layers[0].size())
     qp = QPainter(res)
     for layer, op in zip(layers, opacities):
@@ -69,13 +69,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("KitPainter")
         self.setGeometry(50, 50, 1000, 600)
         self.setUnifiedTitleAndToolBarOnMac(True)
-        self.initKeys()
+        self.init_keys()
 
-        self.menubar = MenuBar("Menu Bar")
-        self.addToolBar(self.menubar)
+        self.menu_bar = MenuBar("Menu Bar")
+        self.addToolBar(self.menu_bar)
 
-        self.labelbar = LabelBar(self.menubar, "Label Bar")
-        self.addToolBar(QtCore.Qt.BottomToolBarArea, self.labelbar)
+        self.label_bar = LabelBar(self.menu_bar, "Label Bar")
+        self.addToolBar(QtCore.Qt.BottomToolBarArea, self.label_bar)
 
         self.bg = QLabel()
         self.setCentralWidget(self.bg)
@@ -84,49 +84,49 @@ class MainWindow(QMainWindow):
         self.bglayout.setSpacing(0)
         self.bg.setLayout(self.bglayout)
 
-        self.filebar = FileBar(self.menubar)
-        self.canvas = Canvas(self.menubar, self.labelbar, self.filebar)
+        self.file_bar = FileBar(self.menu_bar)
+        self.canvas = Canvas(self.menu_bar, self.label_bar, self.file_bar)
 
         self.bglayout.addLayout(self.canvas, 85)
-        self.bglayout.addLayout(self.filebar, 15)
+        self.bglayout.addLayout(self.file_bar, 15)
 
-    def initKeys(self):
+    def init_keys(self):
         mv = 20
         z = 0.4
 
         self.zin_shortcut = QShortcut(QKeySequence('q'), self)
-        self.zin_shortcut.activated.connect(lambda: self.canvas.zoomCanvas(z))
+        self.zin_shortcut.activated.connect(lambda: self.canvas.zoom_canvas(z))
 
         self.zout_shortcut = QShortcut(QKeySequence('e'), self)
         self.zout_shortcut.activated.connect(
-            lambda: self.canvas.zoomCanvas(-z))
+            lambda: self.canvas.zoom_canvas(-z))
 
         self.up_shortcut = QShortcut(QKeySequence('w'), self)
         self.up_shortcut.activated.connect(
-            lambda: self.canvas.panCanvas(0, mv))
+            lambda: self.canvas.pan_canvas(0, mv))
 
         self.left_shortcut = QShortcut(QKeySequence('a'), self)
         self.left_shortcut.activated.connect(
-            lambda: self.canvas.panCanvas(mv, 0))
+            lambda: self.canvas.pan_canvas(mv, 0))
 
         self.down_shortcut = QShortcut(QKeySequence('s'), self)
         self.down_shortcut.activated.connect(
-            lambda: self.canvas.panCanvas(0, -mv))
+            lambda: self.canvas.pan_canvas(0, -mv))
 
         self.right_shortcut = QShortcut(QKeySequence('d'), self)
         self.right_shortcut.activated.connect(
-            lambda: self.canvas.panCanvas(-mv, 0))
+            lambda: self.canvas.pan_canvas(-mv, 0))
 
         self.fill_shortcut = QShortcut(QKeySequence('f'), self)
-        self.fill_shortcut.activated.connect(lambda: self.canvas.modeCanvas())
+        self.fill_shortcut.activated.connect(lambda: self.canvas.mode_canvas())
 
         self.next_label_shortcut = QShortcut(QKeySequence('right'), self)
         self.next_label_shortcut.activated.connect(
-            lambda: self.labelbar.switchLabel(1))
+            lambda: self.label_bar.switch_label(1))
 
         self.prev_label_shortcut = QShortcut(QKeySequence('left'), self)
         self.prev_label_shortcut.activated.connect(
-            lambda: self.labelbar.switchLabel(-1))
+            lambda: self.label_bar.switch_label(-1))
 
 
 class MenuBar(QToolBar):
@@ -135,21 +135,15 @@ class MenuBar(QToolBar):
     def __init__(self, *args, **kwargs):
         super(QToolBar, self).__init__(*args, **kwargs)
 
-        self.saveAction = QAction("Save Mask(s)", self)
-        self.addAction(self.saveAction)
-
         self.importAction = QAction("Import Labels", self)
-        self.importAction.triggered.connect(self.onImport)
+        self.importAction.triggered.connect(self.on_import)
         self.addAction(self.importAction)
 
         self.inferenceAction = QAction("Run Inference", self)
-        self.inferenceAction.triggered.connect(self.onInference)
+        self.inferenceAction.triggered.connect(self.on_inference)
         self.addAction(self.inferenceAction)
 
-    def onSave(self, s):
-        print("save clicked")
-
-    def onImport(self, s):
+    def on_import(self, s):
         path = QFileDialog.getOpenFileName(
             self, "Open Label text file", "Text files (*.txt)")
 
@@ -157,28 +151,28 @@ class MenuBar(QToolBar):
             labels = open(str(path[0])).read().split('\n')[:MAX_CODES]
             self.addLabelSignal.emit(labels)
 
-    def onInference(self, s):
+    def on_inference(self, s):
         print("inference clicked")
 
 
 class LabelBar(QToolBar):
     labelCanvasSignal = QtCore.pyqtSignal(int)
 
-    def __init__(self, menubar, *args, **kwargs):
+    def __init__(self, menu_bar, *args, **kwargs):
         super(QToolBar, self).__init__(*args, **kwargs)
 
-        self.menubar = menubar
-        self.menubar.addLabelSignal.connect(self.addLabels)
+        self.menu_bar = menu_bar
+        self.menu_bar.addLabelSignal.connect(self.add_labels)
 
         # self.setMovable(False)
 
-        self.labelActions = QActionGroup(self)
-        self.labelActions.setExclusive(True)
+        self.label_actions = QActionGroup(self)
+        self.label_actions.setExclusive(True)
 
-    def addLabels(self, labels):
+    def add_labels(self, labels):
         self.clear()
-        for lact in self.labelActions.actions():
-            self.labelActions.removeAction(lact)
+        for action in self.label_actions.actions():
+            self.label_actions.removeAction(action)
 
         for i, label in enumerate(labels, 0):
             box = QLabel()
@@ -187,19 +181,19 @@ class LabelBar(QToolBar):
             box.setMaximumWidth(5)
             self.addWidget(box)
 
-            lact = QAction(label)
-            lact.setCheckable(True)
-            lact.toggled.connect(
+            action = QAction(label)
+            action.setCheckable(True)
+            action.toggled.connect(
                 lambda state, _=i: self.labelCanvasSignal.emit(_))
 
-            self.labelActions.addAction(lact)
-            self.addAction(lact)
+            self.label_actions.addAction(action)
+            self.addAction(action)
 
-    def switchLabel(self, inc):
+    def switch_label(self, inc):
         try:
-            pos = self.labelActions.actions().index(self.labelActions.checkedAction())
-            pos = (pos+inc) % len(self.labelActions.actions())
-            self.labelActions.actions()[pos].setChecked(True)
+            pos = self.label_actions.actions().index(self.label_actions.checkedAction())
+            pos = (pos+inc) % len(self.label_actions.actions())
+            self.label_actions.actions()[pos].setChecked(True)
         except:
             pass
 
@@ -208,14 +202,14 @@ class FileBar(QVBoxLayout):
     addToCanvasSignal = QtCore.pyqtSignal(list, int)
     saveCanvasSignal = QtCore.pyqtSignal(object, bool)
 
-    def __init__(self, menubar, *args, **kwargs):
+    def __init__(self, menu_bar, *args, **kwargs):
         super(QVBoxLayout, self).__init__(*args, **kwargs)
         self.setSpacing(0)
 
-        self.filelist = QListWidget()
-        self.filelist.setViewMode(1)
-        self.filelist.horizontalScrollBar().setEnabled(False)
-        self.addWidget(self.filelist)
+        self.file_list = QListWidget()
+        self.file_list.setViewMode(1)
+        self.file_list.horizontalScrollBar().setEnabled(False)
+        self.addWidget(self.file_list)
 
         self.buttonlayout = QHBoxLayout()
         self.addLayout(self.buttonlayout)
@@ -224,104 +218,104 @@ class FileBar(QVBoxLayout):
         self.addPathsButton = QPushButton()
         self.addPathsButton.setIcon(
             QApplication.style().standardIcon(QStyle.SP_FileDialogNewFolder))
-        self.addPathsButton.clicked.connect(self.addPaths)
+        self.addPathsButton.clicked.connect(self.add_paths)
         self.buttonlayout.addWidget(self.addPathsButton)
 
         self.removePathButton = QPushButton()
         self.removePathButton.setIcon(
             QApplication.style().standardIcon(QStyle.SP_DialogCancelButton))
-        self.removePathButton.clicked.connect(self.removePath)
+        self.removePathButton.clicked.connect(self.remove_path)
         self.buttonlayout.addWidget(self.removePathButton)
 
         self.savePathsButton = QPushButton()
         self.savePathsButton.setIcon(
             QApplication.style().standardIcon(QStyle.SP_DriveHDIcon))
         self.savePathsButton.clicked.connect(
-            lambda: self.saveCanvasSignal.emit(self.filelist.currentItem(), False))
+            lambda: self.saveCanvasSignal.emit(self.file_list.currentItem(), False))
         self.buttonlayout.addWidget(self.savePathsButton)
 
-    def addPaths(self):
+    def add_paths(self):
         paths = QFileDialog.getOpenFileNames(
-            self.filelist, "Open image file(s)", "Images (*.png *.jpg)")[0]
+            self.file_list, "Open image file(s)", "Images (*.png *.jpg)")[0]
         mask_paths = []
 
-        self.filelist.setIconSize(self.filelist.size() * 0.9)
+        self.file_list.setIconSize(self.file_list.size() * 0.9)
         for path in paths:
-            item = QListWidgetItem(path.split("/")[-1], self.filelist)
+            item = QListWidgetItem(path.split("/")[-1], self.file_list)
             item.setToolTip(path)
             item.setIcon(QIcon(QPixmap(path)))
 
-            if os.path.exists(toMaskPath(path)):
-                mask_paths.append(toMaskPath(path))
+            if os.path.exists(to_mask_path(path)):
+                mask_paths.append(to_mask_path(path))
 
         self.addToCanvasSignal.emit(paths, 0)
         self.addToCanvasSignal.emit(mask_paths, 1)
 
-    def removePath(self):
-        self.filelist.takeItem(self.filelist.currentRow())
+    def remove_path(self):
+        self.file_list.takeItem(self.file_list.currentRow())
 
 
 class Canvas(QStackedLayout):
-    def __init__(self, menubar, labelbar, filebar, *args, **kwargs):
+    def __init__(self, menu_bar, label_bar, file_bar, *args, **kwargs):
         super(QStackedLayout, self).__init__(*args, **kwargs)
-        self.labelbar = labelbar
-        self.labelbar.labelCanvasSignal.connect(self.labelCanvas)
+        self.label_bar = label_bar
+        self.label_bar.labelCanvasSignal.connect(self.label_canvas)
 
-        self.filebar = filebar
-        self.filebar.filelist.currentItemChanged.connect(self.cycleCanvas)
-        self.filebar.addToCanvasSignal.connect(self.addToCanvas)
-        self.filebar.saveCanvasSignal.connect(self.saveCanvas)
+        self.file_bar = file_bar
+        self.file_bar.file_list.currentItemChanged.connect(self.cycle_canvas)
+        self.file_bar.addToCanvasSignal.connect(self.add_to_canvas)
+        self.file_bar.saveCanvasSignal.connect(self.save_canvas)
 
         self.setStackingMode(QStackedLayout.StackAll)
-        self.shapemode = False
+        self.shape_mode = False
 
-        self.imagelayer = Layer()
-        self.masklayer = DrawLayer()
-        self.hintlayer = DrawLayer()
+        self.image_layer = Layer()
+        self.mask_layer = DrawLayer()
+        self.hint_layer = DrawLayer()
 
-        self.layers = [self.imagelayer, self.masklayer, self.hintlayer]
+        self.layers = [self.image_layer, self.mask_layer, self.hint_layer]
         for layer in self.layers:
             self.addWidget(layer)
 
         self.layers[-1].setMouseTracking(True)
         self.layers[-1].installEventFilter(self)
 
-    def zoomCanvas(self, z):
+    def zoom_canvas(self, z):
         for layer in self.layers:
             layer.zoom += z
             layer.update()
 
-    def panCanvas(self, x, y):
+    def pan_canvas(self, x, y):
         for layer in self.layers:
             layer.pan.setX(layer.pan.x()+x)
             layer.pan.setY(layer.pan.y()+y)
             layer.update()
 
-    def labelCanvas(self, n):
+    def label_canvas(self, n):
         for layer in self.layers:
             if hasattr(layer, 'current_label'):
                 layer.current_label = n
 
-    def addToCanvas(self, paths, n):
+    def add_to_canvas(self, paths, n):
         for path in paths:
-            if n is self.layers.index(self.masklayer):
-                self.layers[n].storedpx.update({path: img2px(QImage(path))})
+            if n is self.layers.index(self.mask_layer):
+                self.layers[n].stored_px.update({path: img2px(QImage(path))})
             else:
-                self.layers[n].storedpx.update({path: QPixmap(path)})
+                self.layers[n].stored_px.update({path: QPixmap(path)})
 
-    def saveCanvas(self, current, all=False):
-        maskdir = os.path.dirname(list(self.masklayer.storedpx)[0])
-        if not os.path.exists(maskdir):
-            os.mkdir(maskdir)
+    def save_canvas(self, current, all=False):
+        mask_folder = os.path.dirname(list(self.mask_layer.stored_px)[0])
+        if not os.path.exists(mask_folder):
+            os.mkdir(mask_folder)
 
         if current:
-            self.masklayer.storedpx.update(
-                {toMaskPath(current.toolTip()): self.masklayer.px})
-            px = self.masklayer.storedpx.get(toMaskPath(current.toolTip()))
-            px2img(px).save(toMaskPath(current.toolTip()), "PNG")
+            self.mask_layer.stored_px.update(
+                {to_mask_path(current.toolTip()): self.mask_layer.px})
+            px = self.mask_layer.stored_px.get(to_mask_path(current.toolTip()))
+            px2img(px).save(to_mask_path(current.toolTip()), "PNG")
             current.setText(current.text().replace(" (unsaved)", ""))
 
-       #    for path, px in self.masklayer.storedpx.items():
+       #    for path, px in self.mask_layer.stored_px.items():
        #        if os.path.exists(path):
        #            existing_paths.append(path)
        #        else:
@@ -339,69 +333,69 @@ class Canvas(QStackedLayout):
         #             px2img(px).save(path, "PNG")
         #             current.setText(current.text().replace(" (unsaved)", ""))
 
-    def cycleCanvas(self, current, previous):
+    def cycle_canvas(self, current, previous):
         if previous:
-            if self.masklayer.written:
-                self.masklayer.storedpx.update(
-                    {toMaskPath(previous.toolTip()): self.masklayer.px})
+            if self.mask_layer.written:
+                self.mask_layer.stored_px.update(
+                    {to_mask_path(previous.toolTip()): self.mask_layer.px})
                 previous.setText(previous.text() + " (unsaved)")
-                self.masklayer.written = False
-            previous.setIcon(QIcon(quickOverlay(
-                [QPixmap(previous.toolTip()), self.masklayer.px], [1, 0.3])))
+                self.mask_layer.written = False
+            previous.setIcon(QIcon(quick_overlay(
+                [QPixmap(previous.toolTip()), self.mask_layer.px], [1, 0.3])))
 
         if current:
-            self.imagelayer.px = self.imagelayer.storedpx[current.toolTip()]
-            size = self.imagelayer.px.size()
+            self.image_layer.px = self.image_layer.stored_px[current.toolTip()]
+            size = self.image_layer.px.size()
 
             try:
-                self.masklayer.px = self.masklayer.storedpx[toMaskPath(
+                self.mask_layer.px = self.mask_layer.stored_px[to_mask_path(
                     current.toolTip())]
             except:
-                self.masklayer.px = QPixmap(size)
-                self.masklayer.px.fill(QtCore.Qt.transparent)
+                self.mask_layer.px = QPixmap(size)
+                self.mask_layer.px.fill(QtCore.Qt.transparent)
 
-            self.hintlayer.px = QPixmap(size)
-            self.hintlayer.px.fill(QtCore.Qt.transparent)
+            self.hint_layer.px = QPixmap(size)
+            self.hint_layer.px.fill(QtCore.Qt.transparent)
 
         for layer in self.layers:
             layer.reset()
 
-    def modeCanvas(self):
-        self.hintlayer.px.fill(QtCore.Qt.transparent)
-        self.hintlayer.points.clear()
-        self.hintlayer.update()
-        self.shapemode = not self.shapemode
+    def mode_canvas(self):
+        self.hint_layer.px.fill(QtCore.Qt.transparent)
+        self.hint_layer.points.clear()
+        self.hint_layer.update()
+        self.shape_mode = not self.shape_mode
 
     def eventFilter(self, obj, event):
-        if self.shapemode:
+        if self.shape_mode:
             if event.type() == QtCore.QEvent.MouseButtonPress:
                 if (event.button() == QtCore.Qt.LeftButton):
-                    self.hintlayer.drawPolygon(
-                        self.hintlayer.scale(event.pos()), fill=False)
-                    self.masklayer.points.append(
-                        self.masklayer.scale(event.pos()))
+                    self.hint_layer.draw_polygon(
+                        self.hint_layer.scale(event.pos()), fill=False)
+                    self.mask_layer.points.append(
+                        self.mask_layer.scale(event.pos()))
                 if (event.button() == QtCore.Qt.RightButton):
-                    self.masklayer.points = self.hintlayer.points
-                    self.masklayer.drawPolygon(pos=None, fill=True)
+                    self.mask_layer.points = self.hint_layer.points
+                    self.mask_layer.draw_polygon(pos=None, fill=True)
                     return True
         else:
             if event.type() == QtCore.QEvent.MouseButtonPress:
                 if (event.button() == QtCore.Qt.LeftButton):
-                    self.masklayer.drawCircle(
-                        self.masklayer.scale(event.pos()))
+                    self.mask_layer.draw_circle(
+                        self.mask_layer.scale(event.pos()))
                     return True
             if (event.type() == QtCore.QEvent.MouseMove):
                 if event.buttons() & QtCore.Qt.LeftButton:
-                    self.masklayer.drawCircle(
-                        self.masklayer.scale(event.pos()))
-                self.hintlayer.drawCircle(
-                    self.hintlayer.scale(event.pos()), shadow=False)
+                    self.mask_layer.draw_circle(
+                        self.mask_layer.scale(event.pos()))
+                self.hint_layer.draw_circle(
+                    self.hint_layer.scale(event.pos()), shadow=False)
                 return True
             if (event.type() == QtCore.QEvent.Wheel):
-                self.masklayer.sizeTool(event.angleDelta().y())
-                self.hintlayer.sizeTool(event.angleDelta().y())
-                self.hintlayer.drawCircle(
-                    self.hintlayer.scale(event.pos()), shadow=False)
+                self.mask_layer.size_tool(event.angleDelta().y())
+                self.hint_layer.size_tool(event.angleDelta().y())
+                self.hint_layer.draw_circle(
+                    self.hint_layer.scale(event.pos()), shadow=False)
                 return True
 
         return False
@@ -411,7 +405,7 @@ class Layer(QLabel):
     def __init__(self, *args, **kwargs):
         super(QLabel, self).__init__(*args, **kwargs)
 
-        self.storedpx = {}
+        self.stored_px = {}
         self.px = QPixmap()
 
         self.factor = QtCore.QPointF()
@@ -461,16 +455,16 @@ class DrawLayer(Layer):
         self.opacity = 0.3
         self.written = False
         self.current_label = 0
-        self.toolrad = 25
+        self.tool_rad = 25
         self.points = []
 
-    def sizeTool(self, delta):
+    def size_tool(self, delta):
         if delta > 0:
             self.toolrad += 3
         elif delta < 1:
             self.toolrad -= 3
 
-    def drawCircle(self, pos, shadow=True):
+    def draw_circle(self, pos, shadow=True):
         self.written = True
 
         if self.px.isNull():
@@ -484,10 +478,10 @@ class DrawLayer(Layer):
         qp.setBrush(
             QBrush(QColor(COLORS[self.current_label]), QtCore.Qt.SolidPattern))
 
-        qp.drawEllipse(pos, self.toolrad, self.toolrad)
+        qp.drawEllipse(pos, self.tool_rad, self.tool_rad)
         self.update()
 
-    def drawPolygon(self, pos=None, fill=False):
+    def draw_polygon(self, pos=None, fill=False):
         self.written = True
 
         qp = QPainter(self.px)
