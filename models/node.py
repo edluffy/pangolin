@@ -1,12 +1,13 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt, QPointF
+from PyQt5.QtCore import QPointF, Qt
 from PyQt5.QtGui import (QColor, QIcon, QPainter, QPixmap, QPolygonF,
                          QStandardItem)
-from PyQt5.QtWidgets import (QApplication, QColorDialog, QHBoxLayout,
-                             QLineEdit, QMessageBox, QPushButton, QStyle,
-                             QTreeView, QVBoxLayout, QAbstractItemView)
-
+from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QColorDialog,
+                             QGraphicsItemGroup, QGraphicsPixmapItem,
+                             QGraphicsPolygonItem, QGraphicsRectItem,
+                             QHBoxLayout, QLineEdit, QMessageBox, QPushButton,
+                             QStyle, QTreeView, QVBoxLayout, QGraphicsItem)
 
 PALETTE = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
            QColor('#4363d8'), QColor('#f58231'), QColor('#911eb4'),
@@ -18,39 +19,36 @@ PALETTE = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
 
 
 class NodeModel(QtCore.QAbstractItemModel):
-    def __init__(self, root=None):
-        super(NodeModel, self).__init__()
+    def __init__(self, root, parent=None):
+        super().__init__(parent)
         self._root_node = root
 
-    def data(self, idx, role):
+    def data(self, idx, role=Qt.DisplayRole):
         node = self.node_from_index(idx)
         if (role == Qt.DisplayRole or role == Qt.EditRole) and idx.column() == 0:
-            if node.type_info() == "Label":
-                return node.name()
-            else:
-                n = node.siblings(same_type=True).index(node)
-                return node.type_info() + str(n)
+            return node.name()
+
         elif role == Qt.DecorationRole and idx.column() == 0:
             return node.icon()
-
         elif role == Qt.DecorationRole and idx.column() == 1:
             return node.color()
 
         elif role == Qt.CheckStateRole and idx.column() == 2:
-            return Qt.Checked if node.visible() else Qt.Unchecked
+            return Qt.Checked if node.isVisible() else Qt.Unchecked
 
-    def setData(self, idx, value, role):
+    def setData(self, idx, value, role=Qt.DisplayRole):
         node = self.node_from_index(idx)
         if role == Qt.EditRole:
             node._name = value
             node.set_name(value)
+            self.dataChanged.emit(idx, idx)
             return True
         elif role == Qt.CheckStateRole:
             state = True if value == Qt.Checked else False
-            node.set_visible(state)
+            node.setVisible(state)
             for child_node in node.children():
-                child_node.set_visible(state)
-            self.layoutChanged.emit()
+                child_node.setVisible(state)
+            self.dataChanged.emit(idx, idx)
             return True
         return False
 
@@ -83,30 +81,39 @@ class NodeModel(QtCore.QAbstractItemModel):
 
     def node_from_index(self, idx):
         return idx.internalPointer() if idx.isValid() else self._root_node
-
     def flags(self, idx):
         node = self.node_from_index(idx)
-        if node.type_info() == "LabelNode":
-            return (Qt.ItemIsEnabled | Qt.ItemIsSelectable
-                    | Qt.ItemIsEditable | Qt.ItemIsUserCheckable)
-        else:
-            return (Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable)
+        #if node.type_info()=="Group" and idx.column()==0:
+        return (Qt.ItemIsEnabled | Qt.ItemIsSelectable
+                | Qt.ItemIsEditable | Qt.ItemIsUserCheckable)
+        #else:
+        #    return (Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable)
 
 
-class Node(object):
-    def __init__(self, item=None, parent=None, color=None):
+class Node(QGraphicsItem):
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
-        self._item = item
-        self._color = color
-        self._visible = True
+        self._name = ""
+        self._color = None
         self._icon = None
         self._children = []
         
         if parent is not None:
             self._parent = parent
             parent.add_child(self)
+
             if parent._color is not None:
                 self._color = parent._color
+
+            siblings = self.siblings(same_type=True)
+            self._name = self.type_info()+" "+str(siblings.index(self)) 
+
+    def name(self):
+        return self._name
+
+    def set_name(self, name):
+        self._name = name
 
     def color(self):
         return self._color
@@ -116,12 +123,6 @@ class Node(object):
 
     def icon(self):
         return self._icon
-
-    def visible(self):
-        return self._visible
-
-    def set_visible(self, state):
-        self._visible = state
 
     def child(self, row):
         return self._children[row]
@@ -155,40 +156,41 @@ class Node(object):
     def type_info(self):
         return "Node"
 
-class LabelNode(Node):
-    def __init__(self, name, parent=None, color=None):
-        super(LabelNode, self).__init__(name, parent, color)
-        self._name = name
-        self._item = None
+class GroupNode(Node):
+    def __init__(self, name, color, parent=None):
+        super().__init__(parent)
 
-    def name(self):
-        return self._name
-
-    def set_name(self, name):
         self._name = name
+        self._color = color
 
     def type_info(self):
-        return "Label"
+        return "Group"
 
-class PolygonNode(Node):
-    def __init__(self, item, parent=None):
-        super(PolygonNode, self).__init__(item, parent)
+
+class PolygonNode(QGraphicsPolygonItem, Node):
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self._icon = QApplication.style().standardIcon(QStyle.SP_TrashIcon)
+
+        test_poly1 = QPolygonF([QPointF(10, 10), QPointF(
+            20, 10), QPointF(20, 20), QPointF(10, 20)])
+        self.setPolygon(test_poly1)
+
 
     def type_info(self):
         return "Polygon"
 
 class PixmapNode(Node):
-    def __init__(self, item, parent=None):
-        super(PixmapNode, self).__init__(item, parent)
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self._icon = QApplication.style().standardIcon(QStyle.SP_ComputerIcon)
 
     def type_info(self):
         return "Pixmap"
 
 class RectangleNode(Node):
-    def __init__(self, item, parent=None):
-        super(RectangleNode, self).__init__(item, parent)
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self._icon = QApplication.style().standardIcon(QStyle.SP_DriveDVDIcon)
 
     def type_info(self):

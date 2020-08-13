@@ -6,8 +6,8 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QVBoxLayout, QListView, QFileDialog, QPushButton
 
 class FileModel(QtCore.QAbstractListModel):
-    def __init__(self, files, *args, **kwargs):
-        super(FileModel, self).__init__(*args, **kwargs)
+    def __init__(self, files, parent=None):
+        super().__init__(parent)
 
         self.files = files or []
         self.pxs = []

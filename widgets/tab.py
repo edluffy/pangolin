@@ -1,19 +1,20 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt, QPointF
+from PyQt5.QtCore import QPointF, Qt
 from PyQt5.QtGui import QPainter, QPixmap, QPolygonF
-from PyQt5.QtWidgets import (QApplication, QGraphicsScene, QLabel,
-                             QStackedLayout, QStyle, QTabWidget, QAbstractItemView)
+from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QGraphicsScene,
+                             QGraphicsView, QLabel, QStackedLayout, QStyle,
+                             QTabWidget, QGraphicsPolygonItem)
 
-from widgets.dock import PangoDockWidget
 
 class PangoCanvasWidget(QTabWidget):
-    def __init__(self, *args, **kwargs):
-        super(PangoCanvasWidget, self).__init__(*args, **kwargs)
-
-        # Test Data
+    def __init__(self, model, parent=None):
+        super().__init__(parent)
 
         # Model and Views
-        self.view = CanvasView()
+        self.model = model
+
+        self.scene = CanvasScene(model)
+        self.view = QGraphicsView(self.scene)
 
         # Toolbars and menus
         self.setDocumentMode(True)
@@ -34,11 +35,12 @@ class PangoCanvasWidget(QTabWidget):
         self.addTab(example_label2, QApplication.style().standardIcon(
             QStyle.SP_ComputerIcon), "002.jpg")
 
-class CanvasView(QAbstractItemView):
-    def __init__(self, *args, **kwargs):
-        super(CanvasView, self).__init__(*args, **kwargs)
+class CanvasScene(QGraphicsScene):
+    def __init__(self, model, parent=None):
+        super().__init__(parent)
+        self._model = model
 
-        test_poly = QPolygonF([QPointF(10, 10), QPointF(
-            20, 10), QPointF(20, 20), QPointF(10, 20)])
+        self._model.dataChanged.connect(self.data_changed)
 
-        self.Shape
+    def data_changed(self, top_left, bottom_right, role):
+        self.addItem(self._model.node_from_index(top_left))

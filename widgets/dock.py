@@ -1,46 +1,31 @@
+from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QDockWidget, QWidget
+from PyQt5.QtWidgets import (QDockWidget, QHBoxLayout, QLineEdit, QPushButton,
+                             QTreeView, QVBoxLayout, QWidget, QListView, QFileDialog)
+
+from models.node import PALETTE
+
 
 class PangoDockWidget(QDockWidget):
-    def __init__(self, title):
-        super(PangoDockWidget, self).__init__(title)
+    def __init__(self, model, title, parent=None):
+        super().__init__(title, parent)
 
-        self.setFloating(True)
         self.setWindowTitle(title)
+        self.model = model
+        self.setFloating(True)
 
         self.bg = QWidget()
         self.setWidget(self.bg)
 
 class PangoLabelWidget(PangoDockWidget):
-    def __init__(self, *args, **kwargs):
-        super(PangoLabelWidget, self).__init__(*args, **kwargs)
-
-        # Test Data
-        test_poly = QPolygonF([QPointF(10, 10), QPointF(
-            20, 10), QPointF(20, 20), QPointF(10, 20)])
-
-        root_node = Node("this is the root")
-
-        label0   = LabelNode("breadboard", root_node, PALETTE[0])
-        label0_0 = PolygonNode(test_poly, label0)
-        label0_1 = PolygonNode(None, label0)
-
-        label1   = LabelNode("wire",  root_node, PALETTE[1])
-        label1_0 = PolygonNode(None, label1)
-
-        label2   = LabelNode("push button", root_node, PALETTE[2])
-        label2_0 = PolygonNode(None, label2)
-        label2_1 = PolygonNode(None, label2)
-        label2_2 = PolygonNode(None, label2)
+    def __init__(self, model, title, parent=None):
+        super().__init__(model, title, parent)
 
         # Model and Views
-        self.model = NodeModel(root_node)
-
         self.view = QTreeView()
         self.view.setModel(self.model)
         for i in range(0, 2):
             self.view.resizeColumnToContents(i)
-
 
         # Toolbars and menus
 
@@ -72,6 +57,7 @@ class PangoLabelWidget(PangoDockWidget):
             self.model.data.append((text, color))
             self.model.layoutChanged.emit()
         self.line_edit.clear()
+
     def delete(self):
         idxs = self.view.selectedIndexes()
         if idxs:
@@ -82,23 +68,10 @@ class PangoLabelWidget(PangoDockWidget):
                 self.view.clearSelection()
 
 class PangoFileWidget(PangoDockWidget):
-    def __init__(self, *args, **kwargs):
-        super(PangoFileWidget, self).__init__(*args, **kwargs)
-
-        # Data
-        test_files = ['/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/001.jpg',
-                      '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/002.jpg',
-                      '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/003.jpg',
-                      '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/004.jpg',
-                      '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/005.jpg',
-                      '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/006.jpg',
-                      '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/007.jpg',
-                      '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/008.jpg',
-                      '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/009.jpg',
-                      '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/010.jpg']
+    def __init__(self, model, title, parent=None):
+        super().__init__(model, title, parent)
 
         # Model and Views
-        self.model = FileModel(test_files)
         self.view = QListView()
         self.view.setViewMode(QListView.IconMode)
         self.view.setIconSize(QtCore.QSize(150, 150))
@@ -112,7 +85,6 @@ class PangoFileWidget(PangoDockWidget):
 
         # Layouts
         self.layout = QVBoxLayout(self.bg)
-
         self.layout.addWidget(self.import_button)
         self.layout.addWidget(self.view)
 
