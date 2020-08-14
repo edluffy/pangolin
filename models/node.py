@@ -1,13 +1,14 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import QPointF, Qt
-from PyQt5.QtGui import (QColor, QIcon, QPainter, QPixmap, QPolygonF,
-                         QStandardItem)
+from PyQt5.QtCore import QPointF, QRectF, Qt
+from PyQt5.QtGui import (QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap,
+                         QPolygonF, QStandardItem)
 from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QColorDialog,
-                             QGraphicsItemGroup, QGraphicsPixmapItem,
+                             QGraphicsItem, QGraphicsItemGroup,
+                             QGraphicsPathItem, QGraphicsPixmapItem,
                              QGraphicsPolygonItem, QGraphicsRectItem,
                              QHBoxLayout, QLineEdit, QMessageBox, QPushButton,
-                             QStyle, QTreeView, QVBoxLayout, QGraphicsItem)
+                             QStyle, QTreeView, QVBoxLayout)
 
 PALETTE = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
            QColor('#4363d8'), QColor('#f58231'), QColor('#911eb4'),
@@ -35,6 +36,8 @@ class NodeModel(QtCore.QAbstractItemModel):
 
         elif role == Qt.CheckStateRole and idx.column() == 2:
             return Qt.Checked if node.isVisible() else Qt.Unchecked
+        elif role == Qt.DisplayRole and idx.column() == 2:
+            return str(node.x()) 
 
     def setData(self, idx, value, role=Qt.DisplayRole):
         node = self.node_from_index(idx)
@@ -81,6 +84,7 @@ class NodeModel(QtCore.QAbstractItemModel):
 
     def node_from_index(self, idx):
         return idx.internalPointer() if idx.isValid() else self._root_node
+
     def flags(self, idx):
         node = self.node_from_index(idx)
         #if node.type_info()=="Group" and idx.column()==0:
@@ -93,6 +97,7 @@ class NodeModel(QtCore.QAbstractItemModel):
 class Node(QGraphicsItem):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setCacheMode(QGraphicsItem.ItemCoordinateCache)
 
         self._name = ""
         self._color = None
@@ -116,7 +121,10 @@ class Node(QGraphicsItem):
         self._name = name
 
     def color(self):
-        return self._color
+        if self._color is None:
+            return self._parent._color
+        else:
+            return self._color
 
     def set_color(self, color):
         self._color = color
@@ -130,8 +138,11 @@ class Node(QGraphicsItem):
     def children(self):
             return self._children
 
-    def add_child(self, child):
+    def add_child(self, child, pos=QtCore.QPointF(0, 0)):
         self._children.append(child)
+        if self.scene() is not None:
+            self.scene().addItem(child)
+            child.setPos(pos)
 
     def siblings(self, same_type=False):
         if same_type == False:
@@ -166,20 +177,6 @@ class GroupNode(Node):
     def type_info(self):
         return "Group"
 
-
-class PolygonNode(QGraphicsPolygonItem, Node):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._icon = QApplication.style().standardIcon(QStyle.SP_TrashIcon)
-
-        test_poly1 = QPolygonF([QPointF(10, 10), QPointF(
-            20, 10), QPointF(20, 20), QPointF(10, 20)])
-        self.setPolygon(test_poly1)
-
-
-    def type_info(self):
-        return "Polygon"
-
 class PixmapNode(Node):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -188,6 +185,7 @@ class PixmapNode(Node):
     def type_info(self):
         return "Pixmap"
 
+
 class RectangleNode(Node):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -195,3 +193,54 @@ class RectangleNode(Node):
 
     def type_info(self):
         return "Rectangle"
+
+
+class PolygonNode(QGraphicsPolygonItem, Node):
+    def __init__(self, polygon, parent=None):
+        super().__init__(parent)
+        self._icon = QApplication.style().standardIcon(QStyle.SP_TrashIcon)
+
+        self.setAcceptHoverEvents(True)
+        self.setCursor(QtGui.QCursor(Qt.PointingHandCursor))
+        self.setFlags(QGraphicsItem.ItemIsSelectable |
+            QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemSendsGeometryChanges)
+
+        self._dots = []
+
+    def type_info(self):
+        return "Polygon"
+
+
+class DotNode(QGraphicsPathItem, Node):
+    def __init__(self, index, parent=None):
+        super().__init__(parent)
+        self.setZValue(-1)
+        self.setAcceptHoverEvents(True)
+        self.setCursor(QtGui.QCursor(Qt.PointingHandCursor))
+        self.setFlags(QGraphicsItem.ItemIsSelectable |
+            QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemSendsGeometryChanges)
+
+        self._index = index
+
+        self._circle = QPainterPath()
+        self._circle.addEllipse(QtCore.QRectF(-4, -4, 8, 8))
+        self._square = QPainterPath()
+        self._square.addRect(QRectF(-5, -5, 10, 10))
+
+        self.setPath(self._circle)
+        self.setBrush(QColor(self.color()))
+        self.setPen(QPen(QtCore.Qt.NoPen))
+
+    def hoverEnterEvent(self, event):
+        self.setBrush(QColor("black"))
+
+    def hoverLeaveEvent(self, event):
+        self.setBrush(QColor(self.color()))
+
+    def mouseReleaseEvent(self, event):
+        self.setSelected(False)
+
+    #def itemChange(self, change, value):
+    #    if change == QtWidgets.QGraphicsItem.ItemPositionChange and self.isEnabled():
+    #        self.m_annotation_item.movePoint(self.m_index, value)
+    #    return super(GripItem, self).itemChange(change, value)

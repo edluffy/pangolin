@@ -32,30 +32,17 @@ class MainWindow(QMainWindow):
         root_node = Node()
 
         label0   = GroupNode("breadboard", PALETTE[0], root_node)
-        label0_0 = PolygonNode(label0)
-        label0_1 = PolygonNode(label0)
+        label0_0 = PolygonNode(test_poly1, label0)
+        label0_1 = PolygonNode(test_poly2, label0)
+
 
         label1   = GroupNode("wire", PALETTE[1], root_node)
-        label1_0 = PolygonNode(label1)
+        label1_0 = PolygonNode(test_poly3, label1)
 
         label2   = GroupNode("push button", PALETTE[2], root_node)
-        label2_0 = PolygonNode(label2)
+        label2_0 = PolygonNode(test_poly4, label2)
         label2_1 = PixmapNode(label2)
-        label2_2 = PolygonNode(label2)
-
-        #label0   = GroupNode("breadboard", PALETTE[0], root_node)
-
-        #label0   = GroupNode("breadboard", PALETTE[0], root_node)
-        #label0_0 = PolygonNode(test_poly1, None, label0)
-        #label0_1 = PolygonNode(test_poly2, None, label0)
-
-        #label1   = GroupNode("wire", PALETTE[1], root_node)
-        #label1_0 = PolygonNode(test_poly3, None, label1)
-
-        #label2   = GroupNode("push button", PALETTE[2], root_node)
-        #label2_0 = PolygonNode(test_poly4, None, label2)
-        #label2_1 = PixmapNode(test_poly1, None, label2)
-        #label2_2 = PolygonNode(test_poly2, None, label2)
+        label2_2 = PolygonNode(test_poly1, label2)
 
         test_files = [
             '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/001.jpg',
@@ -78,7 +65,7 @@ class MainWindow(QMainWindow):
         # Widgets
         self.label_widget = PangoLabelWidget(self.node_model, "Labels")
         self.file_widget = PangoFileWidget(self.file_model, "Files")
-        self.canvas_widget = PangoCanvasWidget(self.node_model)
+        self.canvas_widget = PangoCanvasWidget(self.node_model, self)
 
         # Layouts
         self.addDockWidget(Qt.RightDockWidgetArea,  self.label_widget)
