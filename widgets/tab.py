@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QPointF, Qt
-from PyQt5.QtGui import QPainter, QPixmap, QPolygonF
+from PyQt5.QtGui import QPainter, QPixmap, QPolygonF, QPainterPath, QPen
 from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QGraphicsScene,
                              QGraphicsView, QLabel, QStackedLayout, QStyle,
                              QTabWidget, QGraphicsPolygonItem)
@@ -8,17 +8,19 @@ from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QGraphicsScene,
 from widgets.bar import PangoToolBarWidget
 
 class PangoCanvasWidget(QTabWidget):
-    def __init__(self, model, parent=None):
+    def __init__(self, selection, parent=None):
         super().__init__(parent)
 
         # Model and Views
-        self.model = model
-        self.scene = CanvasScene(model)
-        self.view = QGraphicsView(self.scene)
+        self.selection = selection
+        self.model = selection.model()
+        self.view = CanvasView()
+        self.view.setModel(self.model)
+        self.view.setSelectionModel(self.selection)
 
         # Toolbars and menus
         self.tool_bar = PangoToolBarWidget()
-        self.tool_bar.action_group.triggered.connect(self.scene.change_tool)
+        self.tool_bar.action_group.triggered.connect(self.view.change_tool)
         self.parentWidget().addToolBar(Qt.LeftToolBarArea, self.tool_bar)
 
         self.setDocumentMode(True)
@@ -41,24 +43,73 @@ class PangoCanvasWidget(QTabWidget):
             QStyle.SP_ComputerIcon), "002.jpg")
 
 
-class CanvasScene(QGraphicsScene):
-    def __init__(self, model, parent=None):
+class CanvasView(QAbstractItemView):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self._model = model
-        self._tool = None
+        self.tool = None
 
-        self._model.dataChanged.connect(self.data_changed)
+        self.s_idx = QtCore.QModelIndex()
 
-    def data_changed(self, top_left, bottom_right, role):
-        #self.addItem(self._model.node_from_index(top_left))
-        self._polygon = self._model.node_from_index(top_left)
-        self.addItem(self._polygon)
+
+    def selectionChanged(self, selected, deselected):
+        if selected.indexes() != []:
+            self.s_idx = selected.indexes()[0]
 
     def mousePressEvent(self, event):
-        if self._tool == "Poly":
-            self._polygon.add_dot(event.scenePos())
+        if self.tool == "Brush":
+            self.sub_path = QPainterPath()
+            self.sub_path.moveTo(event.pos())
+
+    def mouseMoveEvent(self, event):
+        if self.tool == "Brush" and self.sub_path is not None:
+            #self.sub_path.lineTo(event.pos())
+            self.sub_path.addEllipse(event.pos(), 10, 10)
+
+            self.model().setData(self.s_idx, self.sub_path, Qt.UserRole)
+            self.viewport().update()
+
+    def mouseReleaseEvent(self, event):
+        if self.tool == "Brush" and self.sub_path is not None:
+            self.model().setData(self.s_idx, self.sub_path, Qt.UserRole)
+            self.viewport().update()
+
+            self.sub_path.closeSubpath()
+            self.sub_path = None
+
+   # def paintEvent(self, event):
+   #     qp = QPainter(self.viewport())
+   #     for row in range(0, self.model().rowCount()):
+   #         idx = self.model().index(row)
+   #
+   #         path = self.model().data(idx, Qt.UserRole)
+   #         color = self.model().data(idx, Qt.DecorationRole)
+   #
+   #         pen = QPen()
+   #         pen.setWidth(10)
+   #         pen.setColor(color)
+   #
+   #         qp.setPen(pen)
+   #         qp.drawPath(path)
+
+    def dataChanged(self, top_left, bottom_right, role):
+        if role == Qt.DecorationRole:
+            pass
+        elif role == Qt.CheckStateRole:
+            pass
+        elif role == Qt.UserRole:
+            path = self._layers[top_left.row()][3]
+            color = self._layers[top_left.row()][0]
+
+            qp = QPainter(self.viewport())
+            pen = QPen()
+            pen.setWidth(10)
+            pen.setColor(color)
+
+            qp.setPen(pen)
+            qp.drawPath(path)
+            self.viewport().update()
+         
+
 
     def change_tool(self, action):
-        self._tool = action.text()
-
-
+        self.tool = action.text()

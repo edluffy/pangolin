@@ -1,31 +1,39 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QDockWidget, QHBoxLayout, QLineEdit, QPushButton,
-                             QTreeView, QVBoxLayout, QWidget, QListView, QFileDialog)
+from PyQt5.QtGui import QColor, QPainterPath
+from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QHBoxLayout, QLineEdit,
+                             QListView, QPushButton, QTreeView,
+                             QVBoxLayout, QWidget)
 
-from models.node import PALETTE
+PALETTE = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
+           QColor('#4363d8'), QColor('#f58231'), QColor('#911eb4'),
+           QColor('#46f0f0'), QColor('#f032e6'), QColor('#bcf60c'),
+           QColor('#fabebe'), QColor('#008080'), QColor('#e6beff'),
+           QColor('#9a6324'), QColor('#fffac8'), QColor('#800000'),
+           QColor('#aaffc3'), QColor('#808000'), QColor('#ffd8b1'),
+           QColor('#000075'), QColor('#808080')]
 
 
 class PangoDockWidget(QDockWidget):
-    def __init__(self, model, title, parent=None):
+    def __init__(self, title, parent=None):
         super().__init__(title, parent)
 
         self.setWindowTitle(title)
-        self.model = model
         self.setFloating(True)
 
         self.bg = QWidget()
         self.setWidget(self.bg)
 
 class PangoLabelWidget(PangoDockWidget):
-    def __init__(self, model, title, parent=None):
-        super().__init__(model, title, parent)
+    def __init__(self, selection, title, parent=None):
+        super().__init__(title, parent)
 
         # Model and Views
-        self.view = QTreeView()
+        self.selection = selection
+        self.model = selection.model()
+        self.view = QListView()
         self.view.setModel(self.model)
-        for i in range(0, 2):
-            self.view.resizeColumnToContents(i)
+        self.view.setSelectionModel(self.selection)
 
         # Toolbars and menus
 
@@ -51,27 +59,28 @@ class PangoLabelWidget(PangoDockWidget):
         self.button_layout.addWidget(self.add_button)
     
     def add(self):
-        text = self.line_edit.text()
-        if not text == '':
-            color = QtGui.QColor(PALETTE[(len(self.model.data)+1)%len(PALETTE)])
-            self.model.data.append((text, color))
+        name = self.line_edit.text()
+        if name != '':
+            color = QtGui.QColor(PALETTE[(self.model.rowCount()+1)%len(PALETTE)])
+            self.model._layers.append([color, name, True, QPainterPath()])
             self.model.layoutChanged.emit()
         self.line_edit.clear()
 
     def delete(self):
         idxs = self.view.selectedIndexes()
         if idxs:
-            if idxs[0].row() < len(self.model.data):
-                del self.model.data[idxs[0].row()]
+            if idxs[0].row() < len(self.model._layers):
+                del self.model._layers[idxs[0].row()]
                 self.model.layoutChanged.emit()
             else:
                 self.view.clearSelection()
 
 class PangoFileWidget(PangoDockWidget):
     def __init__(self, model, title, parent=None):
-        super().__init__(model, title, parent)
+        super().__init__(title, parent)
 
         # Model and Views
+        self.model = model
         self.view = QListView()
         self.view.setViewMode(QListView.IconMode)
         self.view.setIconSize(QtCore.QSize(150, 150))

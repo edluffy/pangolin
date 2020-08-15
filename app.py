@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPainter
+from PyQt5.QtGui import QPainter, QPainterPath
 from PyQt5.QtWidgets import (QApplication, QLabel, QLineEdit, QListView,
                              QMainWindow, QPushButton, QStatusBar, QVBoxLayout)
 
@@ -20,30 +20,6 @@ class MainWindow(QMainWindow):
         self.setGeometry(50, 50, 1000, 675)
 
         # Test Data
-        test_poly1 = QPolygonF([QPointF(10, 10), QPointF(
-            20, 10), QPointF(20, 20), QPointF(10, 20)])
-        test_poly2 = QPolygonF([QPointF(30, 30), QPointF(
-            40, 30), QPointF(40, 40), QPointF(30, 40)])
-        test_poly3 = QPolygonF([QPointF(50, 50), QPointF(
-            60, 50), QPointF(60, 60), QPointF(50, 60)])
-        test_poly4 = QPolygonF([QPointF(70, 70), QPointF(
-            80, 70), QPointF(80, 80), QPointF(70, 80)])
-
-        root_node = Node()
-
-        label0   = GroupNode("breadboard", PALETTE[0], root_node)
-        label0_0 = PolygonNode(test_poly1, label0)
-        label0_1 = PolygonNode(test_poly2, label0)
-
-
-        label1   = GroupNode("wire", PALETTE[1], root_node)
-        label1_0 = PolygonNode(test_poly3, label1)
-
-        label2   = GroupNode("push button", PALETTE[2], root_node)
-        label2_0 = PolygonNode(test_poly4, label2)
-        label2_1 = PixmapNode(label2)
-        label2_2 = PolygonNode(test_poly1, label2)
-
         test_files = [
             '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/001.jpg',
             '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/002.jpg',
@@ -56,16 +32,26 @@ class MainWindow(QMainWindow):
             '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/009.jpg',
             '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/010.jpg']
 
+        test_layers = [
+                (QColor("green"), 'breaboard', True, QPainterPath()), 
+                (QColor("red"), 'resistor', True, QPainterPath()), 
+                (QColor("yellow"), 'capacitor', False, QPainterPath()), 
+                (QColor("blue"), 'chip', True, QPainterPath()), 
+                ]
+
         # Toolbars and menus
 
         # Model and Views
-        self.node_model = NodeModel(root_node)
+        self.layer_model = LayerModel(test_layers)
+        self.layer_selection = QtCore.QItemSelectionModel(self.layer_model)
+
         self.file_model = FileModel(test_files)
 
         # Widgets
-        self.label_widget = PangoLabelWidget(self.node_model, "Labels")
+        self.label_widget = PangoLabelWidget(self.layer_selection, "Labels")
+        self.canvas_widget = PangoCanvasWidget(self.layer_selection, self)
+
         self.file_widget = PangoFileWidget(self.file_model, "Files")
-        self.canvas_widget = PangoCanvasWidget(self.node_model, self)
 
         # Layouts
         self.addDockWidget(Qt.RightDockWidgetArea,  self.label_widget)
