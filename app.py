@@ -32,26 +32,21 @@ class MainWindow(QMainWindow):
             '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/009.jpg',
             '/Users/edluffy/Downloads/drive-download-20200728T084549Z-001/010.jpg']
 
-        test_layers = [
-                (QColor("green"), 'breaboard', True, QPainterPath()), 
-                (QColor("red"), 'resistor', True, QPainterPath()), 
-                (QColor("yellow"), 'capacitor', False, QPainterPath()), 
-                (QColor("blue"), 'chip', True, QPainterPath()), 
-                ]
-
         # Toolbars and menus
 
         # Model and Views
-        self.layer_model = LayerModel(test_layers)
-        self.layer_selection = QtCore.QItemSelectionModel(self.layer_model)
+        self.layer_model = LayerModel()
+        self.label_selection = QtCore.QItemSelectionModel(self.layer_model)
 
         self.file_model = FileModel(test_files)
+        self.file_selection = QtCore.QItemSelectionModel(self.file_model)
 
         # Widgets
-        self.label_widget = PangoLabelWidget(self.layer_selection, "Labels")
-        self.canvas_widget = PangoCanvasWidget(self.layer_selection, self)
+        self.label_widget = PangoLabelWidget(self.label_selection, "Labels")
+        self.canvas_widget = PangoCanvasWidget(self.label_selection, self.file_selection, self)
 
         self.file_widget = PangoFileWidget(self.file_model, "Files")
+        self.file_widget.view.doubleClicked.connect(self.canvas_widget.new_tab)
 
         # Layouts
         self.addDockWidget(Qt.RightDockWidgetArea,  self.label_widget)

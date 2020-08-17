@@ -1,7 +1,18 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPainter
-from PyQt5.QtWidgets import QToolBar, QActionGroup, QAction
+from PyQt5.QtWidgets import (QAction, QActionGroup, QDockWidget, QToolBar,
+                             QWidget)
+
+
+class PangoDockWidget(QDockWidget):
+    def __init__(self, title, parent=None):
+        super().__init__(title, parent)
+
+        self.setWindowTitle(title)
+        self.setFloating(True)
+
+        self.bg = QWidget()
+        self.setWidget(self.bg)
 
 class PangoToolBarWidget(QToolBar):
     def __init__(self, parent=None):
@@ -24,4 +35,3 @@ class PangoToolBarWidget(QToolBar):
         self.addActions(actions)
         for action in actions:
             action.setCheckable(True)
-        
