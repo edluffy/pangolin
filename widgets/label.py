@@ -4,24 +4,19 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (QHBoxLayout, QLineEdit, QListView, QPushButton,
                              QVBoxLayout)
 
-PALETTE = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
-           QColor('#4363d8'), QColor('#f58231'), QColor('#911eb4'),
-           QColor('#46f0f0'), QColor('#f032e6'), QColor('#bcf60c'),
-           QColor('#fabebe'), QColor('#008080'), QColor('#e6beff'),
-           QColor('#9a6324'), QColor('#fffac8'), QColor('#800000'),
-           QColor('#aaffc3'), QColor('#808000'), QColor('#ffd8b1'),
-           QColor('#000075'), QColor('#808080')]
+from widgets.utils import PangoDockWidget, PangoPalette
 
 class PangoLabelWidget(PangoDockWidget):
-    def __init__(self, selection, title, parent=None):
+    def __init__(self, title, parent=None):
         super().__init__(title, parent)
 
         # Model and Views
-        self.selection = selection
-        self.model = selection.model()
+        self.model = LabelModel()
+        self.s_model = QtCore.QItemSelectionModel(self.model)
+        
         self.view = QListView()
         self.view.setModel(self.model)
-        self.view.setSelectionModel(self.selection)
+        self.view.setSelectionModel(self.s_model)
 
         # Toolbars and menus
 
@@ -49,7 +44,7 @@ class PangoLabelWidget(PangoDockWidget):
     def add(self):
         end = self.model.rowCount()+1
         idx = self.model.index(end)
-        color = QtGui.QColor(PALETTE[(end)%len(PALETTE)])
+        color = QtGui.QColor(PangoPalette[(end)%len(PangoPalette)])
         name = self.line_edit.text()
 
         self.model.insertRows(end, 1)
@@ -68,16 +63,17 @@ class PangoLabelWidget(PangoDockWidget):
             else:
                 self.view.clearSelection()
 
-class LayerModel(QtCore.QAbstractListModel):
+class LabelModel(QtCore.QAbstractListModel):
     def __init__(self, layers=None):
         super().__init__()
         self._layers = layers or []
+        # Layer  = [color, name, visible, [paths]]
 
     def data(self, idx, role):
         if role == Qt.DecorationRole:
             color = self._layers[idx.row()][0]
             return color
-        elif role == Qt.DisplayRole:
+        elif role == Qt.DisplayRole or role == Qt.EditRole:
             name = self._layers[idx.row()][1]
             return name
         elif role == Qt.CheckStateRole:
@@ -96,6 +92,10 @@ class LayerModel(QtCore.QAbstractListModel):
             self.dataChanged.emit(idx, idx)
             return True
         elif role == Qt.DisplayRole:
+            self._layers[idx.row()][1] = value
+            self.dataChanged.emit(idx, idx)
+            return True
+        elif role == Qt.EditRole:
             self._layers[idx.row()][1] = value
             self.dataChanged.emit(idx, idx)
             return True
@@ -133,3 +133,4 @@ class LayerModel(QtCore.QAbstractListModel):
     def flags(self, idx):
         return (Qt.ItemIsEnabled | Qt.ItemIsSelectable |
                 Qt.ItemIsEditable | Qt.ItemIsUserCheckable)
+

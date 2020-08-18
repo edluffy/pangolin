@@ -5,58 +5,63 @@ from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QGraphicsScene,
                              QGraphicsView, QLabel, QStackedLayout, QStyle,
                              QTabWidget, QGraphicsPolygonItem)
 
-from widgets.bar import PangoToolBarWidget
+from widgets.utils import PangoToolBarWidget
 
 class PangoCanvasWidget(QTabWidget):
-    def __init__(self, label_selection, file_selection, parent=None):
+    def __init__(self, file_s_model, label_s_model, parent=None):
         super().__init__(parent)
-        self.label_selection = label_selection
-        self.file_selection = file_selection
 
-        # Model and Views
+        # Models and Views
+        self.file_s_model = file_s_model
+        self.label_s_model = label_s_model
+
+        self.file_model = file_s_model.model()
+        self.label_model = label_s_model.model()
 
         # Toolbars and menus
         self.tool_bar = PangoToolBarWidget()
-        #self.tool_bar.action_group.triggered.connect(self.view.change_tool)
-        #self.parentWidget().addToolBar(Qt.LeftToolBarArea, self.tool_bar)
+        self.parentWidget().addToolBar(Qt.LeftToolBarArea, self.tool_bar)
 
         self.setDocumentMode(True)
         self.setTabsClosable(True)
         self.setMovable(True)
 
-
         # Widgets
-        example_label = QLabel("hey")
-        example_label2 = QLabel("lol")
 
         # Layouts
-        #self.addTab(self.view, QApplication.style().standardIcon(
-        #    QStyle.SP_ComputerIcon), "003.jpg")
-
-        self.addTab(example_label, QApplication.style().standardIcon(
-            QStyle.SP_FileDialogNewFolder), "001.jpg")
-
-        self.addTab(example_label2, QApplication.style().standardIcon(
-            QStyle.SP_ComputerIcon), "002.jpg")
         
-
     def new_tab(self, idx):
-        model = self.file_selection.model()
-        fn = model.data(idx, Qt.DisplayRole)
-        path = model.data(idx, Qt.ToolTipRole)
+        title = self.file_model.data(idx, Qt.DisplayRole)
+        path = self.file_model.data(idx, Qt.ToolTipRole)
+        opened = self.file_model.data(idx, Qt.UserRole+1)
 
-        self.view = CanvasView(path)
-        self.view.setModel(self.label_selection.model())
-        self.view.setSelectionModel(self.label_selection)
+        if opened:
+            for i in range(0, self.count()):
+                view = self.widget(i)
+                if view.path == path:
+                    self.setCurrentIndex(self.indexOf(view))
+                    return
 
-        self.addTab(self.view, QApplication.style().standardIcon(
-            QStyle.SP_ComputerIcon), fn)
+
+        view = CanvasView(path)
+        view.setModel(self.label_model)
+        view.setSelectionModel(self.label_s_model)
+
+        self.file_model.setData(idx, True, Qt.UserRole+1)
+
+        self.tool_bar.action_group.triggered.connect(view.change_tool)
+
+        self.addTab(view, QApplication.style().standardIcon(
+            QStyle.SP_ComputerIcon), title)
+        self.setCurrentIndex(self.indexOf(view))
 
 
 class CanvasView(QAbstractItemView):
     def __init__(self, path, parent=None):
         super().__init__(parent)
         self.s_idx = QtCore.QModelIndex()
+
+        self.path = path
         self.px_img = QPixmap(path)
         self.px_stack = QPixmap(self.px_img.size())
 
@@ -110,7 +115,23 @@ class CanvasView(QAbstractItemView):
 
         for path in paths:
             qp.drawPath(path)
+
         self.viewport().update()
         
     def change_tool(self, action):
         self.tool = action.text()
+
+    def horizontalOffset(self):
+        return self.horizontalScrollBar().value()
+
+    def verticalOffset(self):
+        return self.verticalScrollBar().value()
+
+    def moveCursor(self, action, modifiers):
+        return QtCore.QModelIndex()
+    def indexAt(self, point):
+        return QtCore.QModelIndex()
+    def visualRect(self, idx):
+        return QtCore.QRect()
+    def scrollTo(self, idx, hint):
+        pass
