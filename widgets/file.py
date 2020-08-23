@@ -48,11 +48,11 @@ class FileModel(QtCore.QAbstractListModel):
     def __init__(self, files=None):
         super().__init__()
         self._files = files or []
-        # Files = [fpath, saved, opened, [paths]]
+        # Files = [fpath, saved, opened, [mask]]
 
     def data(self, idx, role):
         if role == Qt.DisplayRole:
-            title = os.path.basename(self._files[idx.row()][0]) 
+            title = os.path.basename(self._files[idx.row()][0])
             saved = self._files[idx.row()][1]
             opened = self._files[idx.row()][2]
 

@@ -1,22 +1,17 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QPointF, Qt
-from PyQt5.QtGui import QPainter, QPixmap, QPolygonF, QPainterPath, QPen
+from PyQt5.QtGui import QPainter, QPixmap, QPolygonF, QPainterPath, QPen, QStandardItem
 from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QGraphicsScene,
                              QGraphicsView, QLabel, QStackedLayout, QStyle,
-                             QTabWidget, QGraphicsPolygonItem)
+                             QTabWidget, QGraphicsPolygonItem, QSizePolicy, QGraphicsPathItem, QGraphicsItem)
 
 from widgets.utils import PangoToolBarWidget
+from item import PangoStandardItem, PangoGraphicsPathItem
 
 class PangoCanvasWidget(QTabWidget):
-    def __init__(self, file_s_model, label_s_model, parent=None):
+    def __init__(self, item_map, parent=None):
         super().__init__(parent)
-
-        # Models and Views
-        self.file_s_model = file_s_model
-        self.label_s_model = label_s_model
-
-        self.file_model = file_s_model.model()
-        self.label_model = label_s_model.model()
+        self.item_map = item_map
 
         # Toolbars and menus
         self.tool_bar = PangoToolBarWidget()
@@ -26,112 +21,90 @@ class PangoCanvasWidget(QTabWidget):
         self.setTabsClosable(True)
         self.setMovable(True)
 
-        # Widgets
 
-        # Layouts
-        
     def new_tab(self, idx):
-        title = self.file_model.data(idx, Qt.DisplayRole)
-        path = self.file_model.data(idx, Qt.ToolTipRole)
-        opened = self.file_model.data(idx, Qt.UserRole+1)
+        title = idx.data(Qt.DisplayRole)
+        path = idx.data(Qt.ToolTipRole)
+        #opened = self.file_model.data(idx, Qt.UserRole+1)
 
-        if opened:
-            for i in range(0, self.count()):
-                view = self.widget(i)
-                if view.path == path:
-                    self.setCurrentIndex(self.indexOf(view))
-                    return
+        self.canvas = Canvas(self.item_map)
+        self.canvas.addPixmap(QPixmap(path))
+        self.view = MyQGraphicsView(self.canvas)
+        self.view.setInteractive(True)
 
-
-        view = CanvasView(path)
-        view.setModel(self.label_model)
-        view.setSelectionModel(self.label_s_model)
-
-        self.file_model.setData(idx, True, Qt.UserRole+1)
-
-        self.tool_bar.action_group.triggered.connect(view.change_tool)
-
-        self.addTab(view, QApplication.style().standardIcon(
+        self.addTab(self.view, QApplication.style().standardIcon(
             QStyle.SP_ComputerIcon), title)
-        self.setCurrentIndex(self.indexOf(view))
+
+        self.tool_bar.action_group.triggered.connect(self.canvas.tool_changed)
+
+    def label_changed(self, label_std_item):
+        self.canvas.label_std_item = label_std_item
+        self.canvas.label_gfx_item = self.item_map[label_std_item.map_index()]
+
+    def data_changed(self, top_left, bottom_right, role):
+        pass
 
 
-class CanvasView(QAbstractItemView):
-    def __init__(self, path, parent=None):
+class Canvas(QGraphicsScene):
+    def __init__(self, item_map, parent=None):
         super().__init__(parent)
-        self.s_idx = QtCore.QModelIndex()
+        self.item_map = item_map
+        self.label_std_item = None
+        self.label_gfx_item = None
 
-        self.path = path
-        self.px_img = QPixmap(path)
-        self.px_stack = QPixmap(self.px_img.size())
-
-        self.sub_path = None
         self.tool = None
+        self.current_gfx_item = None
 
-        self.pen = QPen()
-        self.pen.setWidth(10)
-        self.pen.setCapStyle(Qt.RoundCap)
+    def create_gfx_path(self):
+        std_item = PangoStandardItem("Path", self.label_std_item)
+        gfx_item = PangoGraphicsPathItem(self.label_gfx_item)
+        self.item_map[std_item.map_index()] = gfx_item
+
+        gfx_item.pen().setColor(std_item.data(Qt.DecorationRole))
+
+        self.addItem(gfx_item)
+        self.current_gfx_item = gfx_item
 
     def mousePressEvent(self, event):
+        if self.label_std_item is None:
+            return
+
         if self.tool == "Brush":
-            self.sub_path = QPainterPath()
-            self.sub_path.moveTo(event.pos())
+            self.create_gfx_path()
+            path = QPainterPath(event.scenePos())
+            self.current_gfx_item.setPath(path)
 
     def mouseMoveEvent(self, event):
-        if self.tool == "Brush" and self.sub_path is not None:
-            self.sub_path.lineTo(event.pos())
-
-            self.viewport().update()
+        if self.tool == "Brush" and self.current_gfx_item is not None:
+            path = self.current_gfx_item.path()
+            path.lineTo(event.scenePos())
+            self.current_gfx_item.setPath(path)
 
     def mouseReleaseEvent(self, event):
-        if self.tool == "Brush" and self.sub_path is not None:
-            self.model().setData(self.s_idx, self.sub_path, Qt.UserRole)
-            self.sub_path = None
-            self.viewport().update()
+        if self.tool == "Brush" and self.current_gfx_item is not None:
+            self.current_gfx_item.setOpacity(0.4)
+            self.current_gfx_item = None
 
-    def paintEvent(self, event):
-        qp = QPainter(self.viewport())
-        qp.setPen(self.pen)
-        qp.drawPixmap(QPointF(0, 0), self.px_img)
-        qp.setOpacity(0.4)
-        qp.drawPixmap(QPointF(0, 0), self.px_stack)
-        if self.sub_path is not None:
-            qp.drawPath(self.sub_path)
-
-    def selectionChanged(self, selected, deselected):
-        if selected.indexes() != []:
-            self.s_idx = selected.indexes()[0]
-            self.pen.setColor(self.model().data(self.s_idx, Qt.DecorationRole))
-
-    def dataChanged(self, top_left, bottom_right, role):
-        self.pen.setColor(self.model().data(top_left, Qt.DecorationRole))
-        visible = self.model().data(top_left, Qt.CheckStateRole)
-        paths = self.model().data(top_left, Qt.UserRole)
-
-        qp = QPainter(self.px_stack)
-        qp.setPen(self.pen)
-        if not visible:
-            qp.setCompositionMode(QPainter.CompositionMode_Clear)
-
-        for path in paths:
-            qp.drawPath(path)
-
-        self.viewport().update()
-        
-    def change_tool(self, action):
+    def tool_changed(self, action):
         self.tool = action.text()
 
-    def horizontalOffset(self):
-        return self.horizontalScrollBar().value()
 
-    def verticalOffset(self):
-        return self.verticalScrollBar().value()
+class MyQGraphicsView(QGraphicsView):
+    def __init__ (self, parent=None):
+        super(MyQGraphicsView, self).__init__ (parent)
 
-    def moveCursor(self, action, modifiers):
-        return QtCore.QModelIndex()
-    def indexAt(self, point):
-        return QtCore.QModelIndex()
-    def visualRect(self, idx):
-        return QtCore.QRect()
-    def scrollTo(self, idx, hint):
-        pass
+    def wheelEvent(self, event):
+        self.setTransformationAnchor(QGraphicsView.NoAnchor)
+        self.setResizeAnchor(QGraphicsView.NoAnchor)
+        zoom = 1.05
+
+        old_pos = self.mapToScene(event.pos())
+        if event.angleDelta().y() > 0:
+            self.scale(zoom, zoom)
+        else:
+            self.scale(1/zoom, 1/zoom)
+        new_pos = self.mapToScene(event.pos())
+
+        delta = new_pos - old_pos
+        self.translate(delta.x(), delta.y())
+

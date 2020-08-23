@@ -12,7 +12,6 @@ PangoPalette = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
                 QColor('#aaffc3'), QColor('#808000'), QColor('#ffd8b1'),
                 QColor('#000075'), QColor('#808080')]
 
-
 class PangoDockWidget(QDockWidget):
     def __init__(self, title, parent=None):
         super().__init__(title, parent)
@@ -23,7 +22,7 @@ class PangoDockWidget(QDockWidget):
         self.bg = QWidget()
         self.setWidget(self.bg)
 
-        self.setTitleBarWidget(QWidget())
+        #self.setTitleBarWidget(QWidget())
 
 
 class PangoToolBarWidget(QToolBar):

@@ -1,22 +1,29 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QColor, QStandardItemModel, QStandardItem, QPen
 from PyQt5.QtWidgets import (QHBoxLayout, QLineEdit, QListView, QPushButton,
-                             QVBoxLayout)
+                             QVBoxLayout, QTreeView, QGraphicsItemGroup, QGraphicsPathItem)
 
-from widgets.utils import PangoDockWidget, PangoPalette
+from widgets.utils import PangoDockWidget
+from widgets.utils import PangoPalette
+
+from item import PangoStandardItem
 
 class PangoLabelWidget(PangoDockWidget):
-    def __init__(self, title, parent=None):
+    labelChanged = pyqtSignal(PangoStandardItem)
+    def __init__(self, title, item_map, parent=None):
         super().__init__(title, parent)
 
+        self.item_map = item_map
+
         # Model and Views
-        self.model = LabelModel()
-        self.s_model = QtCore.QItemSelectionModel(self.model)
-        
-        self.view = QListView()
+        self.model = QStandardItemModel()
+
+        self.view = QTreeView()
         self.view.setModel(self.model)
-        self.view.setSelectionModel(self.s_model)
+
+        self.view.selectionModel().selectionChanged.connect(self.get_label)
+        self.model.dataChanged.connect(self.data_changed)
 
         # Toolbars and menus
 
@@ -40,97 +47,49 @@ class PangoLabelWidget(PangoDockWidget):
 
         self.button_layout.addWidget(self.delete_button)
         self.button_layout.addWidget(self.add_button)
-    
+
+    def data_changed(self, top_left, bottom_right, role):
+        std_item = self.model.itemFromIndex(top_left)
+
+        try:
+            gfx_item = self.item_map[QtCore.QPersistentModelIndex(top_left)]
+        except KeyError:
+            return
+
+        check_state = std_item.data(Qt.CheckStateRole)
+        visible = True if check_state == Qt.Checked else False
+        gfx_item.setVisible(visible)
+
+    def get_label(self, selected, deselected):
+        if selected.indexes() != []:
+            s_idx = selected.indexes()[0]
+
+            parent_idx = s_idx.parent()
+            while parent_idx.isValid():
+                s_idx = parent_idx
+                parent_idx = s_idx.parent()
+
+            label_item = self.model.itemFromIndex(s_idx)
+            self.labelChanged.emit(label_item)
+
     def add(self):
-        end = self.model.rowCount()+1
-        idx = self.model.index(end)
-        color = QtGui.QColor(PangoPalette[(end)%len(PangoPalette)])
-        name = self.line_edit.text()
+        root = self.model.invisibleRootItem()
 
-        self.model.insertRows(end, 1)
-        self.model.setData(idx, color, Qt.DecorationRole)
+        std_item = PangoStandardItem("Group", root)
+        gfx_item = QGraphicsItemGroup()
+        self.item_map[std_item.map_index()] = gfx_item
 
-        if name != '':
-            self.model.setData(idx, name, Qt.DisplayRole)
-            self.line_edit.clear()
+        text = self.line_edit.text()
+        std_item.setText(text)
+        self.line_edit.clear()
 
     def delete(self):
-        idxs = self.view.selectedIndexes()
-        if idxs:
-            if idxs[0].row() < len(self.model._layers):
-                del self.model._layers[idxs[0].row()]
-                self.model.layoutChanged.emit()
-            else:
-                self.view.clearSelection()
-
-class LabelModel(QtCore.QAbstractListModel):
-    def __init__(self, layers=None):
-        super().__init__()
-        self._layers = layers or []
-        # Layer  = [color, name, visible, [paths]]
-
-    def data(self, idx, role):
-        if role == Qt.DecorationRole:
-            color = self._layers[idx.row()][0]
-            return color
-        elif role == Qt.DisplayRole or role == Qt.EditRole:
-            name = self._layers[idx.row()][1]
-            return name
-        elif role == Qt.CheckStateRole:
-            visible = self._layers[idx.row()][2]
-            return Qt.Checked if visible else Qt.Unchecked
-        elif role == Qt.UserRole:
-            paths = self._layers[idx.row()][3]
-            return paths
-
-    def setData(self, idx, value, role):
-        if self._layers == []:
-            return True
-
-        if role == Qt.DecorationRole:
-            self._layers[idx.row()][0] = value
-            self.dataChanged.emit(idx, idx)
-            return True
-        elif role == Qt.DisplayRole:
-            self._layers[idx.row()][1] = value
-            self.dataChanged.emit(idx, idx)
-            return True
-        elif role == Qt.EditRole:
-            self._layers[idx.row()][1] = value
-            self.dataChanged.emit(idx, idx)
-            return True
-        elif role == Qt.CheckStateRole:
-            if value == Qt.Checked:
-                self._layers[idx.row()][2] = True
-            else:
-                self._layers[idx.row()][2] = False
-            self.dataChanged.emit(idx, idx)
-            return True
-        elif role == Qt.UserRole:
-            paths = self._layers[idx.row()][3]
-            paths.append(value)
-            self.dataChanged.emit(idx, idx)
-            return True
-        return False
-
-    def insertRows(self, pos, rows, parent=QtCore.QModelIndex()):
-        self.beginInsertRows(parent, pos, pos+rows-1)
-        for _ in range(rows):
-            self._layers.insert(pos, [QColor("grey"), "Empty Label", True, []])
-        self.endInsertRows()
-        return True
-
-    def removeRows(self, pos, rows, parent=QtCore.QModelIndex()):
-        self.beginRemoveRows(parent, pos, pos+rows-1)
-        for _ in range(rows):
-            del self._layers[pos]
-        self.endRemoveRows()
-        return True
-
-    def rowCount(self, idx=None):
-        return len(self._layers) 
-
-    def flags(self, idx):
-        return (Qt.ItemIsEnabled | Qt.ItemIsSelectable |
-                Qt.ItemIsEditable | Qt.ItemIsUserCheckable)
+        pass
+        #idxs = self.view.selectedIndexes()
+        #if idxs:
+        #    if idxs[0].row() < len(self.model._layers):
+        #        del self.model._layers[idxs[0].row()]
+        #        self.model.layoutChanged.emit()
+        #    else:
+        #        self.view.clearSelection()
 
