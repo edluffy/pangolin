@@ -33,7 +33,7 @@ class PangoStandardItem(QStandardItem):
         return QtCore.QPersistentModelIndex(self.index())
 
 class PangoGraphicsPathItem(QGraphicsPathItem):
-    def __init__(self, group=QGraphicsItemGroup()):
+    def __init__(self, parent=QGraphicsItemGroup()):
         super().__init__()
 
         pen = QPen()
@@ -41,5 +41,5 @@ class PangoGraphicsPathItem(QGraphicsPathItem):
         pen.setCapStyle(Qt.RoundCap)
         self.setPen(pen)
 
-        group.addToGroup(self)
+        parent.addToGroup(self)
 
