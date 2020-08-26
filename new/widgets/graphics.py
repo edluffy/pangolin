@@ -1,21 +1,21 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import (QPainter, QPainterPath, QStandardItem,
-                         QStandardItemModel)
+                         QStandardItemModel, QPixmap)
 from PyQt5.QtWidgets import (QAbstractItemView, QApplication,
                              QGraphicsItemGroup, QGraphicsPathItem,
                              QGraphicsScene, QGraphicsView, QHBoxLayout,
                              QLabel, QMainWindow,
-                             QTreeView)
+                             QTreeView, QGraphicsPixmapItem)
 
 from item import PangoHybridItem
 
-# Model/View changes ----> Scene/View
+# Model/View changes (item) ----> Scene/View (gfx)
 class PangoGraphicsView(QAbstractItemView):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.scene = GraphicsScene()
+        self.scene = GraphicsScene(self)
         self.view = GraphicsView(self.scene)
 
     def selectionChanged(self, selected, deselected):
@@ -33,23 +33,13 @@ class PangoGraphicsView(QAbstractItemView):
             ds_gfx = ds_idx.data(Qt.UserRole)
             ds_gfx.setSelected(False)
 
-            #if hasattr(ds_gfx, 'pen'):
-            #    pen = ds_gfx.pen()
-            #    color = pen.color()
-            #    color.setAlphaF(1)
-            #    pen.setColor(color)
-            #    ds_gfx.setPen(pen)
-
-
     def dataChanged(self, top_left, bottom_right, roles):
         idx = top_left
         for gfx in self.scene.items():
             if gfx.data(0) == idx:
                 if roles[0] == Qt.DecorationRole:
-                    if hasattr(gfx, 'pen'):
-                        pen = gfx.pen()
-                        pen.setColor(idx.data(Qt.DecorationRole))
-                        gfx.setPen(pen)
+                    if hasattr(gfx, 'set_pen'):
+                        gfx.set_pen(color=idx.data(Qt.DecorationRole))
 
                 elif roles[0] == Qt.CheckStateRole:
                     visible = True if idx.data(
@@ -72,9 +62,17 @@ class PangoGraphicsView(QAbstractItemView):
         self.scene.removeItem(gfx)
         del gfx
 
+    def new(self, idx):
+        path = idx.model().filePath(idx)
+
+        for item in self.scene.items():
+            if item.type == QGraphicsPixmapItem():
+                self.scene.removeItem(item)
+        new_item = self.scene.addPixmap(QPixmap(path))
+        new_item.setZValue(-1)
 
 
-# Scene/View changes ----> Model/View
+# Scene/View changes (gfx) ----> Model/View (item)
 class GraphicsScene(QGraphicsScene):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -83,30 +81,46 @@ class GraphicsScene(QGraphicsScene):
 
         self.selectionChanged.connect(self.selection_changed)
 
-
     def selection_changed(self):
         if self.selectedItems() == []:
+            self.parent().clearSelection()
             return
 
+        s_idx = QtCore.QModelIndex(self.selectedItems()[0].data(0))
+        self.parent().setCurrentIndex(s_idx)
+
+
     def mousePressEvent(self, event):
+        super().mousePressEvent(event)
         if self.label_item is None:
             return
         pos = event.scenePos()
 
-        self.current_item = PangoHybridItem("Path", self.label_item)
-        path = QPainterPath(pos)
-        self.current_item.data(Qt.UserRole).setPath(path)
 
     def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+        if not event.buttons() & Qt.LeftButton:
+            return
+
         pos = event.scenePos()
 
-        if self.current_item is not None:
+        if self.current_item is None:
+            self.current_item = PangoHybridItem("Path", self.label_item)
+            path = QPainterPath(pos)
+            self.current_item.data(Qt.UserRole).setPath(path)
+        else:
             path = self.current_item.data(Qt.UserRole).path()
             path.lineTo(pos)
             self.current_item.data(Qt.UserRole).setPath(path)
 
     def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+
         if self.current_item is not None:
+            length = self.current_item.data(Qt.UserRole).path().length()
+            if length == 0:
+                idx = self.current_item.index()
+                self.current_item.model().removeRow(0, idx)
             self.current_item = None
 
 class GraphicsView(QGraphicsView):
@@ -116,3 +130,17 @@ class GraphicsView(QGraphicsView):
         self.setInteractive(True)
         self.setMouseTracking(True)
 
+    def wheelEvent(self, event):
+        self.setTransformationAnchor(QGraphicsView.NoAnchor)
+        self.setResizeAnchor(QGraphicsView.NoAnchor)
+        zoom = 1.05
+
+        old_pos = self.mapToScene(event.pos())
+        if event.angleDelta().y() > 0:
+            self.scale(zoom, zoom)
+        else:
+            self.scale(1/zoom, 1/zoom)
+        new_pos = self.mapToScene(event.pos())
+
+        delta = new_pos - old_pos
+        self.translate(delta.x(), delta.y())

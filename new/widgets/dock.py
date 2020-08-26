@@ -1,18 +1,21 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QStandardItem
-from PyQt5.QtWidgets import (QDockWidget, QGraphicsItemGroup,
-                             QHBoxLayout, QLineEdit, QPushButton, QVBoxLayout,
-                             QWidget, QFileSystemModel, QListView, QFileDialog, QFileIconProvider)
+from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QFileIconProvider,
+                             QFileSystemModel, QGraphicsItemGroup, QHBoxLayout,
+                             QLineEdit, QListView, QPushButton, QVBoxLayout,
+                             QWidget)
 
 from item import PangoHybridItem
+
 
 class PangoDockWidget(QDockWidget):
     def __init__(self, title, parent=None):
         super().__init__(title, parent)
 
         self.setWindowTitle(title)
-        self.setFloating(True)
+        self.setFixedWidth(200)
+        self.setContentsMargins(0, 0, 0, 0)
 
         self.bg = QWidget()
         self.setWidget(self.bg)
@@ -37,6 +40,8 @@ class PangoLabelWidget(PangoDockWidget):
         # Layouts
         self.layout = QVBoxLayout(self.bg)
         self.button_layout = QHBoxLayout()
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.button_layout.setContentsMargins(0, 0, 0, 0)
 
         self.layout.addWidget(self.line_edit)
         self.layout.addWidget(self.view)
@@ -47,7 +52,7 @@ class PangoLabelWidget(PangoDockWidget):
 
     def add(self):
         root = self.view.model().invisibleRootItem()
-        item = PangoHybridItem("Path", root)
+        item = PangoHybridItem("Label", root)
 
         text = self.line_edit.text()
         if text:
@@ -59,6 +64,7 @@ class PangoLabelWidget(PangoDockWidget):
             idx = self.view.selectedIndexes()[0]
             self.view.model().removeRow(idx.row())
 
+
 class PangoFileWidget(PangoDockWidget):
     def __init__(self, title, parent=None):
         super().__init__(title, parent)
@@ -69,7 +75,7 @@ class PangoFileWidget(PangoDockWidget):
 
         self.file_view = QListView()
         self.file_view.setModel(self.file_model)
-        #self.file_view.setViewMode(QListView.IconMode)
+        self.file_view.setViewMode(QListView.IconMode)
         self.file_view.setIconSize(QtCore.QSize(200, 200))
 
         # Widgets
@@ -77,7 +83,7 @@ class PangoFileWidget(PangoDockWidget):
 
         # Layouts
 
-    def open_images(self):
+    def open(self):
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.DirectoryOnly)
         dialog.exec()
@@ -99,4 +105,3 @@ class ThumbnailProvider(QFileIconProvider):
             return QtGui.QIcon(a)
         else:
             return super().icon(type)
-

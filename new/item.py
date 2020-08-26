@@ -1,7 +1,8 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QStandardItem, QColor
-from PyQt5.QtWidgets import QWidget, QGraphicsItem, QGraphicsPathItem, QGraphicsItemGroup
+from PyQt5.QtGui import QColor, QStandardItem
+from PyQt5.QtWidgets import (QGraphicsItem, QGraphicsItemGroup,
+                             QGraphicsPathItem, QStyle, QWidget)
 
 PangoPalette = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
                 QColor('#4363d8'), QColor('#f58231'), QColor('#911eb4'),
@@ -17,11 +18,9 @@ class PangoHybridItem(QStandardItem):
         self.type = type
 
         if self.type == "Label":
-            self.gfx = QGraphicsItemGroup()
+            self.gfx = QGraphicsPathItem()
         elif self.type == "Path":
-            self.gfx = PangoPathItem()
-        else:
-            self.gfx = QGraphicsItem()
+            self.gfx = PangoPathGraphic()
         self.setData(self.gfx, Qt.UserRole)
 
         parent.appendRow(self)
@@ -40,24 +39,34 @@ class PangoHybridItem(QStandardItem):
         self.setData(Qt.Checked, Qt.CheckStateRole)
         self.setCheckable(True)
 
-        self.gfx.setFlag(QGraphicsItem.ItemIsSelectable)
-
-class PangoPathItem(QGraphicsPathItem):
+class PangoPathGraphic(QGraphicsPathItem):
     def __init__ (self, parent=None):
         super().__init__()
+        self.setFlag(QGraphicsItem.ItemIsSelectable)
+        self.setAcceptHoverEvents(True)
+        self.setOpacity(0.8)
+        self.set_pen(width=10)
 
+    def set_pen(self, color=None, width=None):
         pen = self.pen()
-        pen.setWidth(10)
+        
+        if color is not None:
+            pen.setColor(color)
+        if width is not None:
+            pen.setWidth(width)
+
         pen.setCapStyle(Qt.RoundCap)
         self.setPen(pen)
 
+    def paint(self, painter, option, widget):
+        if option.state & QStyle.State_Selected:
+            self.setOpacity(1)
+        elif option.state & QStyle.State_MouseOver:
+            self.setOpacity(0.5)
+        else:
+            self.setOpacity(0.8)
 
-    def mouseMoveEvent(self, event):
-        pen = self.pen()
-        color = pen.color()
-        color.setAlphaF(0.5)
-        pen.setColor(color)
-        self.setPen(pen)
-
-
+        option.state &= ~QStyle.State_Selected
+        option.state &= ~QStyle.State_MouseOver
+        super().paint(painter, option, widget)
 
