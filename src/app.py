@@ -1,14 +1,16 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import (QPainter, QPainterPath, QStandardItem,
-                         QStandardItemModel)
+                         QStandardItemModel, QIcon)
 from PyQt5.QtWidgets import (QAction, QApplication, QMainWindow, QSizePolicy,
-                             QTreeView, QWidget, QToolBar, QStatusBar, QLabel)
+                             QTreeView, QWidget, QToolBar, QStatusBar, QLabel, QActionGroup)
 
+from resources import icons_rc
 from widgets.dock import PangoFileWidget, PangoLabelWidget
 from widgets.graphics import PangoGraphicsView
 
 app = QApplication([])
+QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
@@ -23,6 +25,11 @@ class MainWindow(QMainWindow):
 
         self.tree_view = QTreeView()
         self.tree_view.setModel(self.model)
+        self.tree_view.setStyleSheet(
+                "QTreeView::indicator:checked:enabled{ image: url(:black/eye_on.png)} \
+                        QTreeView::indicator:unchecked{ image: url(:black/eye_off.png)}")
+        
+
 
         self.graphics_view = PangoGraphicsView()
         self.graphics_view.setModel(self.model)
@@ -36,58 +43,66 @@ class MainWindow(QMainWindow):
         self.menu_bar = PangoMenuBarWidget()
         self.addToolBar(Qt.TopToolBarArea, self.menu_bar)
 
+        self.tool_bar = PangoToolBarWidget()
+        self.addToolBar(Qt.LeftToolBarArea, self.tool_bar)
+
         self.status_bar = PangoStatusBarWidget()
         self.setStatusBar(self.status_bar)
         self.status_bar.view.setModel(self.model)
 
         # Signals and Slots
-        self.file_widget.file_view.activated.connect(self.graphics_view.new)
+        self.file_widget.file_view.activated.connect(self.graphics_view.new_image)
         self.menu_bar.open_images_action.triggered.connect(
             self.file_widget.open)
+        self.tool_bar.action_group.triggered.connect(
+            self.graphics_view.new_tool)
 
 
         # Layouts
         self.addDockWidget(Qt.RightDockWidgetArea, self.label_widget)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.file_widget)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.file_widget)
+        self.setTabShape(QtWidgets.QTabWidget.Triangular)
         self.setCentralWidget(self.graphics_view.view)
 
 class PangoMenuBarWidget(QToolBar):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMovable(False)
+        self.setIconSize(QtCore.QSize(16, 16))
+        self.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         
         self.prefs_action = QAction("Preferences")
+        self.prefs_action.setIcon(QIcon(":/black/prefs.png"))
+
         self.open_images_action = QAction("Open Image Folder")
+        self.open_images_action.setIcon(QIcon(":/black/add_images.png"))
+
         self.import_labels_action = QAction("Import Labels")
+        self.import_labels_action.setIcon(QIcon(":/black/add_label.png"))
+
         self.save_action = QAction("Save Masks")
-        self.run_action = QAction("Run Inference")
+        self.save_action.setIcon(QIcon(":/black/save.png"))
+
+        self.run_action = QAction("PyTorch")
+        self.run_action.setIcon(QIcon(":/black/torch.png"))
+
         self.filebar_action = QAction("FileBar")
+
         self.labelbar_action = QAction("LabelBar")
 
-        self.test1 = QAction("Pan")
-        self.test2 = QAction("Select")
-        self.test3 = QAction("Path")
-        self.test4 = QAction("Rect")
-        self.test5 = QAction("Poly")
-
-
+     
         spacer_left = QWidget()
         spacer_right = QWidget()
         spacer_left.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         spacer_right.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
         self.addAction(self.prefs_action)
+
+        self.addWidget(spacer_left)
         self.addAction(self.open_images_action)
         self.addAction(self.import_labels_action)
         self.addAction(self.save_action)
         self.addAction(self.run_action)
-
-        self.addWidget(spacer_left)
-        self.addAction(self.test1)
-        self.addAction(self.test2)
-        self.addAction(self.test3)
-        self.addAction(self.test4)
-        self.addAction(self.test5)
         self.addWidget(spacer_right)
 
         self.addAction(self.filebar_action)
@@ -96,26 +111,36 @@ class PangoMenuBarWidget(QToolBar):
 class PangoToolBarWidget(QToolBar):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setMovable(False)
+        self.setIconSize(QtCore.QSize(16, 16))
 
-        # Widgets
-        self.pan_button = QPushButton("Pan")
-        self.select_button = QPushButton("Select")
-        self.path_button = QPushButton("Path")
-        self.rect_button = QPushButton("Rect")
-        self.poly_button = QPushButton("Poly")
+        self.pan_action = QAction("Pan")
+        self.pan_action.setIcon(QIcon(":/black/pan.png"))
+
+        self.select_action = QAction("Select")
+        self.select_action.setIcon(QIcon(":/black/select.png"))
+
+        self.path_action = QAction("Path")
+        self.path_action.setIcon(QIcon(":/black/brush.png"))
+
+        self.rect_action = QAction("Rect")
+        self.rect_action.setIcon(QIcon(":/black/rect.png"))
+
+        self.poly_action = QAction("Poly")
+        self.poly_action.setIcon(QIcon(":/black/poly.png"))
 
 
-        # Layouts
-        self.layout = QGridLayout(self.bg)
-        self.layout.addWidget(self.pan_button, 0, 0)
-        self.layout.addWidget(self.select_button, 0, 1)
-        self.layout.addWidget(self.path_button, 1, 0)
-        self.layout.addWidget(self.rect_button, 1, 1)
-        self.layout.addWidget(self.poly_button, 2, 0)
+        self.action_group = QActionGroup(self)
+        self.action_group.setExclusive(True)
+        self.action_group.addAction(self.pan_action)
+        self.action_group.addAction(self.select_action)
+        self.action_group.addAction(self.path_action)
+        self.action_group.addAction(self.rect_action)
+        self.action_group.addAction(self.poly_action)
 
-        self.button_group = QButtonGroup()
-        for button in self.layout.children():
-            self.button_group.addButton(button)
+        for action in self.action_group.actions():
+            action.setCheckable(True)
+        self.addActions(self.action_group.actions())
 
 class PangoStatusBarWidget(QStatusBar):
     def __init__(self, parent=None):

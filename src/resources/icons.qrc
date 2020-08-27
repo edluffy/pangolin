@@ -1,0 +1,30 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+	<file>white/add_label.png</file>
+	<file>white/add_images.png</file>
+	<file>white/brush.png</file>
+	<file>white/eye_off.png</file>
+	<file>white/eye_on.png</file>
+	<file>white/pan.png</file>
+	<file>white/poly.png</file>
+	<file>white/prefs.png</file>
+	<file>white/rect.png</file>
+	<file>white/save.png</file>
+	<file>white/select.png</file>
+	<file>white/torch.png</file>
+
+	<file>black/add_label.png</file>
+	<file>black/add_images.png</file>
+	<file>black/brush.png</file>
+	<file>black/eye_off.png</file>
+	<file>black/eye_on.png</file>
+	<file>black/pan.png</file>
+	<file>black/poly.png</file>
+	<file>black/prefs.png</file>
+	<file>black/rect.png</file>
+	<file>black/save.png</file>
+	<file>black/select.png</file>
+	<file>black/torch.png</file>
+
+</qresource>
+</RCC>

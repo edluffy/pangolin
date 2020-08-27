@@ -12,9 +12,7 @@ from item import PangoHybridItem
 class PangoDockWidget(QDockWidget):
     def __init__(self, title, parent=None):
         super().__init__(title, parent)
-
         self.setWindowTitle(title)
-        self.setFixedWidth(200)
         self.setContentsMargins(0, 0, 0, 0)
 
         self.bg = QWidget()
@@ -26,6 +24,7 @@ class PangoLabelWidget(PangoDockWidget):
     def __init__(self, title, view, parent=None):
         super().__init__(title, parent)
         self.view = view
+        self.setFixedWidth(200)
 
         # Widgets
         self.line_edit = QLineEdit()
@@ -68,6 +67,7 @@ class PangoLabelWidget(PangoDockWidget):
 class PangoFileWidget(PangoDockWidget):
     def __init__(self, title, parent=None):
         super().__init__(title, parent)
+        self.setFixedWidth(160)
 
         self.file_model = QFileSystemModel()
         self.thumbnail_provider = ThumbnailProvider()
@@ -76,7 +76,8 @@ class PangoFileWidget(PangoDockWidget):
         self.file_view = QListView()
         self.file_view.setModel(self.file_model)
         self.file_view.setViewMode(QListView.IconMode)
-        self.file_view.setIconSize(QtCore.QSize(200, 200))
+        self.file_view.setFlow(QListView.LeftToRight)
+        self.file_view.setIconSize(QtCore.QSize(150, 150))
 
         # Widgets
         self.setWidget(self.file_view)
@@ -91,6 +92,7 @@ class PangoFileWidget(PangoDockWidget):
         self.file_model.setRootPath(dialog.directory().absolutePath())
         self.file_view.setRootIndex(self.file_model.index(self.file_model.rootPath()))
 
+
 class ThumbnailProvider(QFileIconProvider):
     def __init__(self):
         super().__init__()
@@ -101,6 +103,7 @@ class ThumbnailProvider(QFileIconProvider):
 
         if fn.endswith(".jpg"):
             a = QtGui.QPixmap(QtCore.QSize(100, 100))
+            a = a.scaledToHeight(125, Qt.FastTransformation)
             a.load(fn)
             return QtGui.QIcon(a)
         else:
