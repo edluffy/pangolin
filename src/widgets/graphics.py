@@ -36,10 +36,11 @@ class PangoGraphicsView(QAbstractItemView):
     def dataChanged(self, top_left, bottom_right, roles):
         idx = top_left
         for gfx in self.scene.items():
-            if gfx.data(0) == idx:
+            if not hasattr(gfx, "p_index"):
+                return
+            if gfx.p_index() == idx:
                 if roles[0] == Qt.DecorationRole:
-                    if hasattr(gfx, 'set_pen'):
-                        gfx.set_pen(color=idx.data(Qt.DecorationRole))
+                    gfx.set_decoration(color=idx.data(Qt.DecorationRole))
 
                 elif roles[0] == Qt.CheckStateRole:
                     visible = True if idx.data(
@@ -90,7 +91,7 @@ class GraphicsScene(QGraphicsScene):
             self.parent().clearSelection()
             return
 
-        s_idx = QtCore.QModelIndex(self.selectedItems()[0].data(0))
+        s_idx = QtCore.QModelIndex(self.selectedItems()[0].p_index())
         self.parent().setCurrentIndex(s_idx)
 
 

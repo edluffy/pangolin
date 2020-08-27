@@ -28,8 +28,6 @@ class MainWindow(QMainWindow):
         self.tree_view.setStyleSheet(
                 "QTreeView::indicator:checked:enabled{ image: url(:black/eye_on.png)} \
                         QTreeView::indicator:unchecked{ image: url(:black/eye_off.png)}")
-        
-
 
         self.graphics_view = PangoGraphicsView()
         self.graphics_view.setModel(self.model)
