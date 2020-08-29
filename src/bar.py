@@ -1,77 +1,92 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QIcon, QPixmap, QColor, QFont
 from PyQt5.QtWidgets import (QAction, QActionGroup, QLabel, QSizePolicy,
                              QStatusBar, QToolBar, QWidget)
 
 
-class PangoMenuBarWidget(QToolBar):
+class PangoBarMixin(object):
+    def get_icon(self, text, color):
+        fn = ":/icons/"+text.lower().replace(" ", "_")+".png"
+        px = QPixmap(fn)
+        mask = px.createMaskFromColor(QColor('white'), Qt.MaskOutColor)
+        px.fill(color)
+        px.setMask(mask)
+
+        return QIcon(px)
+
+
+class PangoMenuBarWidget(PangoBarMixin, QToolBar):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMovable(False)
-        self.setIconSize(QtCore.QSize(16, 16))
-        self.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        
-        self.prefs_action = QAction("Preferences")
-        self.prefs_action.setIcon(QIcon(":/black/prefs.png"))
+        self.setIconSize(QtCore.QSize(24, 24))
+        self.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
 
-        self.open_images_action = QAction("Open Image Folder")
-        self.open_images_action.setIcon(QIcon(":/black/add_images.png"))
-
-        self.import_labels_action = QAction("Import Labels")
-        self.import_labels_action.setIcon(QIcon(":/black/add_label.png"))
-
-        self.save_action = QAction("Save Masks")
-        self.save_action.setIcon(QIcon(":/black/save.png"))
-
-        self.run_action = QAction("PyTorch")
-        self.run_action.setIcon(QIcon(":/black/torch.png"))
-
-        self.filebar_action = QAction("FileBar")
-
-        self.labelbar_action = QAction("LabelBar")
-
-     
+        # Widgets
         spacer_left = QWidget()
-        spacer_right = QWidget()
         spacer_left.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        spacer_right = QWidget()
+        spacer_right.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        
+        # Actions
+        self.prefs_action = QAction("Prefs")
+        self.open_images_action = QAction("Open Images")
+        self.import_labels_action = QAction("Import Labels")
+        self.save_action = QAction("Save Masks")
+        self.run_action = QAction("PyTorch")
+
+        self.action_group = QActionGroup(self)
+        self.action_group.addAction(self.prefs_action)
+        self.action_group.addAction(self.open_images_action)
+        self.action_group.addAction(self.import_labels_action)
+        self.action_group.addAction(self.save_action)
+        self.action_group.addAction(self.run_action)
+
+        for action in self.action_group.actions():
+            icon = self.get_icon(action.text(), QColor("grey"))
+            action.setIcon(icon)
+
+        self.addAction(self.action_group.actions()[0])
+        self.addWidget(spacer_left)
+        self.addActions(self.action_group.actions()[1:-1])
+        self.addWidget(spacer_right)
+        self.addAction(self.action_group.actions()[-1])
+
+
+class PangoToolBarWidget(PangoBarMixin, QToolBar):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setIconSize(QtCore.QSize(16, 16))
+        
+        # Widgets
+        spacer_left = QWidget()
+        spacer_left.setFixedWidth(10)
+        spacer_right = QWidget()
         spacer_right.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
-        self.addAction(self.prefs_action)
+        self.color_display = QLabel()
+        self.color_display.setFixedWidth(50)
+        self.color_display.setFixedSize(QSize(50, 20))
 
-        self.addWidget(spacer_left)
-        self.addAction(self.open_images_action)
-        self.addAction(self.import_labels_action)
-        self.addAction(self.save_action)
-        self.addAction(self.run_action)
-        self.addWidget(spacer_right)
+        self.label_view = QtWidgets.QComboBox()
+        self.label_view.setFixedWidth(150)
+        self.label_view.setEditable(False)
+        self.label_view.currentIndexChanged.connect(self.set_color)
 
-        self.addAction(self.filebar_action)
-        self.addAction(self.labelbar_action)
+        self.coord_display = QLabel()
+        self.coord_display.setFixedWidth(40)
+        #self.coord_display.setAlignment(Qt.AlignVCenter|Qt.AlignRight)
+        font = QFont("Arial", 10)
+        self.coord_display.setFont(font)
 
-class PangoToolBarWidget(QToolBar):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setMovable(False)
-        self.setIconSize(QtCore.QSize(16, 16))
-
+        # Actions
         self.pan_action = QAction("Pan")
-        self.pan_action.setIcon(QIcon(":/black/pan.png"))
-
         self.select_action = QAction("Select")
-        self.select_action.setIcon(QIcon(":/black/select.png"))
-
         self.path_action = QAction("Path")
-        self.path_action.setIcon(QIcon(":/black/brush.png"))
-        
         self.filled_path_action = QAction("Filled Path")
-
         self.rect_action = QAction("Rect")
-        self.rect_action.setIcon(QIcon(":/black/rect.png"))
-
         self.poly_action = QAction("Poly")
-        self.poly_action.setIcon(QIcon(":/black/poly.png"))
-
 
         self.action_group = QActionGroup(self)
         self.action_group.setExclusive(True)
@@ -83,31 +98,39 @@ class PangoToolBarWidget(QToolBar):
         self.action_group.addAction(self.rect_action)
         self.action_group.addAction(self.poly_action)
 
+        # Layouts
+        self.addWidget(spacer_left)
+        self.addWidget(self.color_display)
+        self.addWidget(self.label_view)
+
         for action in self.action_group.actions():
+            icon = self.get_icon(action.text(), QColor("grey"))
+            action.setIcon(icon)
             action.setCheckable(True)
         self.addActions(self.action_group.actions())
+
+        self.addWidget(spacer_right)
+        self.addWidget(self.coord_display)
+
 
     def reset_tool(self):
         self.select_action.setChecked(True)
         self.action_group.triggered.emit(self.select_action)
 
-class PangoStatusBarWidget(QStatusBar):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setContentsMargins(0, 0, 0, 0)
-
-        self.view = QtWidgets.QComboBox()
-        self.view.setFixedWidth(150)
-        self.view.currentIndexChanged.connect(self.set_color)
-
-        self.color_display = QLabel()
-        self.color_display.setFixedWidth(150)
-
-        self.addWidget(self.color_display)
-        self.addWidget(self.view)
-
     def set_color(self, idx):
-        color = self.view.itemData(idx, Qt.DecorationRole)
+        color = self.label_view.itemData(idx, Qt.DecorationRole)
         if color is not None:
             self.color_display.setStyleSheet(
                 "QLabel { background-color : "+color.name()+"}")
+
+    def update_coords(self, scene_pos):
+        coords = "x: "+str(scene_pos.x())+"\ny: "+str(scene_pos.y())
+        self.coord_display.setText(coords)
+
+class PangoStatusBarWidget(PangoBarMixin, QStatusBar):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setFixedHeight(30)
+
+        self.addPermanentWidget(self.coord_display)

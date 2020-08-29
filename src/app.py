@@ -4,7 +4,7 @@ from PyQt5.QtGui import (QIcon, QPainter, QPainterPath, QStandardItem,
                          QStandardItemModel)
 from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QLabel,
                              QMainWindow, QSizePolicy, QStatusBar, QToolBar,
-                             QTreeView, QWidget)
+                             QTreeView, QVBoxLayout, QWidget)
 
 from bar import PangoMenuBarWidget, PangoStatusBarWidget, PangoToolBarWidget
 from dock import PangoFileWidget, PangoLabelWidget
@@ -13,6 +13,8 @@ from resources import icons_rc
 
 app = QApplication([])
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+
+#QApplication.setStyle("Fusion")
 
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
@@ -42,9 +44,7 @@ class MainWindow(QMainWindow):
         # Menu and toolbars
         self.menu_bar = PangoMenuBarWidget()
         self.tool_bar = PangoToolBarWidget()
-        self.status_bar = PangoStatusBarWidget()
-        self.status_bar.view.setModel(self.model)
-
+        self.tool_bar.label_view.setModel(self.model)
 
         # Signals and Slots
         self.file_widget.file_view.activated.connect(
@@ -55,17 +55,21 @@ class MainWindow(QMainWindow):
         self.tool_bar.action_group.triggered.connect(
             self.graphics_view.scene.change_tool)
         self.graphics_view.scene.tool_reset.connect(self.tool_bar.reset_tool)
+        self.graphics_view.view.cursor_moved.connect(self.tool_bar.update_coords)
 
         # Layouts
-        self.addToolBar(Qt.TopToolBarArea, self.menu_bar)
-        self.addToolBar(Qt.LeftToolBarArea, self.tool_bar)
-        self.setStatusBar(self.status_bar)
+        self.bg = QWidget()
+        self.setCentralWidget(self.bg)
+        self.layout = QVBoxLayout(self.bg)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(0)
+        self.layout.addWidget(self.tool_bar)
+        self.layout.addWidget(self.graphics_view.view)
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.label_widget)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.file_widget)
-        self.setTabShape(QtWidgets.QTabWidget.Triangular)
-        self.setCentralWidget(self.graphics_view.view)
 
+        self.addToolBar(Qt.TopToolBarArea, self.menu_bar)
 
 window = MainWindow()
 window.show()

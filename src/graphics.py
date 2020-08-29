@@ -13,7 +13,6 @@ from item import PangoHybridItem
 # Model/View changes (item) ----> Scene/View (gfx)
 class PangoGraphicsView(QAbstractItemView):
     tool_reset = pyqtSignal()
-    
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -175,6 +174,7 @@ class GraphicsScene(QGraphicsScene):
             super().mouseReleaseEvent(event)
 
 class GraphicsView(QGraphicsView):
+    cursor_moved = pyqtSignal(QtCore.QPoint)
     def __init__ (self, parent=None):
         super().__init__(parent)
 
@@ -195,3 +195,10 @@ class GraphicsView(QGraphicsView):
 
         delta = new_pos - old_pos
         self.translate(delta.x(), delta.y())
+
+    def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+
+        scene_pos = self.mapToScene(event.pos()).toPoint()
+        self.cursor_moved.emit(scene_pos)
+
