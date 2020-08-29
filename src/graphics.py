@@ -1,17 +1,19 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import (QPainter, QPainterPath, QStandardItem,
                          QStandardItemModel, QPixmap, QPolygonF)
 from PyQt5.QtWidgets import (QAbstractItemView, QApplication,
                              QGraphicsItemGroup, QGraphicsPathItem,
                              QGraphicsScene, QGraphicsView, QHBoxLayout,
                              QLabel, QMainWindow,
-                             QTreeView, QGraphicsPixmapItem)
+                             QTreeView, QGraphicsPixmapItem, QApplication)
 
 from item import PangoHybridItem
 
 # Model/View changes (item) ----> Scene/View (gfx)
 class PangoGraphicsView(QAbstractItemView):
+    tool_reset = pyqtSignal()
+    
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -72,12 +74,9 @@ class PangoGraphicsView(QAbstractItemView):
         new_item = self.scene.addPixmap(QPixmap(path))
         new_item.setZValue(-1)
 
-    def new_tool(self, action):
-        self.scene.current_tool = action.text()
-
-
 # Scene/View changes (gfx) ----> Model/View (item)
 class GraphicsScene(QGraphicsScene):
+    tool_reset = pyqtSignal()
     def __init__(self, parent=None):
         super().__init__(parent)
         self.label_item = None # <---- get rid of this eventually
@@ -94,29 +93,58 @@ class GraphicsScene(QGraphicsScene):
         s_idx = QtCore.QModelIndex(self.selectedItems()[0].p_index())
         self.parent().setCurrentIndex(s_idx)
 
+    def reset_tool(self):
+        self.tool_reset.emit()
+
+    def change_tool(self, action):
+        self.current_tool = action.text()
+
+        px = QPixmap(QtCore.QSize(32, 32))
+        px.fill(Qt.transparent)
+
+        qp = QPainter(px)
+        qp.setBrush(QtGui.QColor("blue"))
+        qp.drawEllipse(0, 0, 30, 30)
+        qp.end()
+
+        cursor  = QtGui.QCursor(px)
+
+        view = self.views()[0]
+        if self.current_tool == "Pan":
+            view.setCursor(Qt.OpenHandCursor)
+        elif self.current_tool == "Path" or self.current_tool == "Filled Path":
+            view.setCursor(cursor)
+        elif self.current_tool == "Rect" or self.current_tool == "Poly":
+            view.setCursor(Qt.CrossCursor)
+        else:
+            view.unsetCursor()
 
     def mousePressEvent(self, event):
         if self.label_item is None:
             return
         pos = event.scenePos()
 
-        if self.current_tool == "Path":
-            self.current_item = PangoHybridItem("Path", self.label_item)
+        if self.current_tool == "Path" or self.current_tool == "Filled Path":
+            self.current_item = PangoHybridItem(self.current_tool, self.label_item)
             path = QPainterPath(pos)
             self.current_item.data(Qt.UserRole).setPath(path)
 
         elif self.current_tool == "Poly":
             if self.current_item is None:
-                self.current_item = PangoHybridItem("Poly", self.label_item)
+                self.current_item = PangoHybridItem(self.current_tool, self.label_item)
                 poly = QPolygonF()
             else:
                 poly = self.current_item.data(Qt.UserRole).polygon()
 
-            sub_item = PangoHybridItem("Dot", self.current_item)
-            sub_item.data(Qt.UserRole).setRect(pos.x(), pos.y(), 5, 5)
-
-            poly += sub_item.data(Qt.UserRole).rect().center()
-            self.current_item.data(Qt.UserRole).setPolygon(poly)
+            if QtCore.QLineF(poly.first(), pos).length() <= 5:
+                self.current_item.data(Qt.UserRole).close_poly(True)
+                self.current_item = None
+                self.tool_reset.emit()
+            else:
+                sub_item = PangoHybridItem("Dot", self.current_item)
+                sub_item.data(Qt.UserRole).setRect(pos.x(), pos.y(), 5, 5)
+                poly += sub_item.data(Qt.UserRole).rect().center()
+                self.current_item.data(Qt.UserRole).setPolygon(poly)
 
         elif self.current_tool == "Select":
             super().mousePressEvent(event)
@@ -125,8 +153,8 @@ class GraphicsScene(QGraphicsScene):
     def mouseMoveEvent(self, event):
         pos = event.scenePos()
 
-        if self.current_tool == "Path" and self.current_item is not None:
-            if event.buttons() & Qt.LeftButton:
+        if self.current_tool == "Path" or self.current_tool == "Filled Path":
+            if self.current_item is not None and event.buttons() & Qt.LeftButton:
                     path = self.current_item.data(Qt.UserRole).path()
                     path.lineTo(pos)
                     self.current_item.data(Qt.UserRole).setPath(path)
@@ -135,12 +163,13 @@ class GraphicsScene(QGraphicsScene):
             super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        if self.current_tool == "Path" and self.current_item is not None:
-                length = self.current_item.data(Qt.UserRole).path().length()
-                if length == 0:
-                    idx = self.current_item.index()
-                    self.current_item.model().removeRow(0, idx)
-                self.current_item = None
+        if self.current_tool == "Path" or self.current_tool == "Filled Path":
+            if self.current_item is not None:
+                    length = self.current_item.data(Qt.UserRole).path().length()
+                    if length == 0:
+                        idx = self.current_item.index()
+                        self.current_item.model().removeRow(0, idx)
+                    self.current_item = None
 
         elif self.current_tool == "Select":
             super().mouseReleaseEvent(event)

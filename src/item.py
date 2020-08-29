@@ -22,6 +22,8 @@ class PangoHybridItem(QStandardItem):
             self.gfx = PangoPathGraphic()
         elif self.type == "Path":
             self.gfx = PangoPathGraphic()
+        elif self.type == "Filled Path":
+            self.gfx = PangoFilledPathGraphic()
         elif self.type == "Poly":
             self.gfx = PangoPolyGraphic()
         elif self.type == "Dot":
@@ -45,20 +47,21 @@ class PangoHybridItem(QStandardItem):
         self.setCheckable(True)
 
 class PangoGraphicMixin(object):
-    def hover_override(self, op_state):
-        if op_state & QStyle.State_Selected:
+    def set_opacity(self, painter, option):
+        #painter.setCompositionMode(QPainter.CompositionMode_Source)
+        if option.state & QStyle.State_Selected:
             self.setOpacity(1)
-        elif op_state & QStyle.State_MouseOver:
+        elif option.state & QStyle.State_MouseOver:
             self.setOpacity(0.8)
         else:
             self.setOpacity(0.5)
-        op_state &= ~QStyle.State_Selected
-        op_state &= ~QStyle.State_MouseOver
+        option.state &= ~QStyle.State_Selected
+        option.state &= ~QStyle.State_MouseOver
 
     def p_index(self):
         return self.data(0)
 
-    def set_pen(self, color=None, width=None):
+    def change_pen(self, color=None, width=None, style=None):
         if hasattr(self, "pen"):
             pen = self.pen()
             pen.setCapStyle(Qt.RoundCap)
@@ -67,14 +70,17 @@ class PangoGraphicMixin(object):
                 pen.setColor(color)
             if width is not None:
                 pen.setWidth(width)
+            if style is not None:
+                pen.setStyle(style)
             self.setPen(pen)
 
-    def set_brush(self, color=None):
+    def change_brush(self, color=None, style=None):
         if hasattr(self, "brush"):
             brush = self.brush()
-            brush.setStyle(Qt.SolidPattern)
             if color is not None:
                 brush.setColor(color)
+            if style is not None:
+                brush.setStyle(style)
             self.setBrush(brush)
 
 class PangoPathGraphic(PangoGraphicMixin, QGraphicsPathItem):
@@ -85,20 +91,19 @@ class PangoPathGraphic(PangoGraphicMixin, QGraphicsPathItem):
                       QGraphicsItem.ItemIsMovable)
 
     def set_decoration(self, color=None, width=None):
-        pen = self.pen()
-        pen.setCapStyle(Qt.RoundCap)
-        pen.setJoinStyle(Qt.RoundJoin)
-        pen.setWidth(10)
-        if color is not None:
-            pen.setColor(color)
-        if width is not None:
-            pen.setWidth(width)
-        self.setPen(pen)
+        self.change_pen(color, 10)
 
     def paint(self, painter, option, widget):
-        painter.setCompositionMode(QPainter.CompositionMode_Difference)
-        self.hover_override(option.state)
+        self.set_opacity(painter, option)
         super().paint(painter, option, widget)
+
+class PangoFilledPathGraphic(PangoPathGraphic):
+    def __init__(self, parent=None):
+        super().__init__()
+
+    def set_decoration(self, color=None, width=None):
+        super().set_decoration(color, width)
+        self.change_brush(color, Qt.SolidPattern)
 
 
 class PangoPolyGraphic(PangoGraphicMixin, QGraphicsPolygonItem):
@@ -108,23 +113,33 @@ class PangoPolyGraphic(PangoGraphicMixin, QGraphicsPolygonItem):
         self.setFlags(QGraphicsItem.ItemIsSelectable |
                       QGraphicsItem.ItemIsMovable)
 
-    def set_decoration(self, color=None, width=None):
-        self.set_pen(color, 5)
+        self.closed = False
+
+    def close_poly(self, state):
+        self.closed = state
+        self.update()
+
+    def set_decoration(self, color=None, width=None, style=None):
+        self.change_pen(color, 5)
+        self.change_brush(color, style)
 
     def paint(self, painter, option, widget):
-        self.hover_override(option.state)
+        self.set_opacity(painter, option)
+
         painter.setPen(self.pen())
         painter.setBrush(self.brush())
-        
-        path = QPainterPath()
-        path.moveTo(self.polygon().at(0))
+        poly = self.polygon()
 
-        for n in range(1, len(self.polygon())):
-            path.lineTo(self.polygon().at(n))
-            print(self.polygon().at(n))
-        print("----------------------")
+        if self.closed:
+            self.change_brush(style=Qt.SolidPattern)
+            painter.drawPolygon(poly)
+        else:
+            path = QPainterPath()
+            path.moveTo(poly.at(0))
+            for n in range(1, len(poly)):
+                path.lineTo(poly.at(n))
+            painter.drawPath(path)
 
-        painter.drawPath(path)
 
 class PangoDotGraphic(PangoGraphicMixin, QGraphicsEllipseItem):
     def __init__(self, parent=None):
@@ -137,23 +152,25 @@ class PangoDotGraphic(PangoGraphicMixin, QGraphicsEllipseItem):
 
         self.origin = None
 
+    def move_dot(self, value):
+        parent = self.p_index().parent().data(Qt.UserRole)
+        poly = parent.polygon().toPolygon()
+
+        if self.origin == None:
+            self.origin = poly.point(self.p_index().row())
+        poly.setPoint(self.p_index().row(), (self.origin+value).toPoint())
+        parent.setPolygon(QPolygonF(poly))
+
     def set_decoration(self, color=None, width=None):
-        self.set_pen(color, 5)
-        self.set_brush(QColor("black"))
+        self.change_pen(color, 5)
+        self.change_brush(QColor("black"))
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionHasChanged:
-            parent = self.p_index().parent().data(Qt.UserRole)
-            poly = parent.polygon().toPolygon()
-
-            if self.origin == None:
-                self.origin = poly.point(self.p_index().row())
-            poly.setPoint(self.p_index().row(), (self.origin+value).toPoint())
-
-            parent.setPolygon(QPolygonF(poly))
+            self.move_dot(value)
         return value
 
     def paint(self, painter, option, widget):
-        self.hover_override(option.state)
+        self.set_opacity(painter, option)
         super().paint(painter, option, widget)
 
