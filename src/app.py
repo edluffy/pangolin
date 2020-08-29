@@ -49,11 +49,14 @@ class MainWindow(QMainWindow):
         # Signals and Slots
         self.file_widget.file_view.activated.connect(
             self.graphics_view.new_image)
+
         self.menu_bar.open_images_action.triggered.connect(
             self.file_widget.open)
-
         self.tool_bar.action_group.triggered.connect(
             self.graphics_view.scene.change_tool)
+        self.tool_bar.size_select.valueChanged.connect(
+            self.graphics_view.scene.change_tool_size)
+
         self.graphics_view.scene.tool_reset.connect(self.tool_bar.reset_tool)
         self.graphics_view.view.cursor_moved.connect(self.tool_bar.update_coords)
 

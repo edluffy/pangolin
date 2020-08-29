@@ -1,14 +1,15 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import (QPainter, QPainterPath, QStandardItem,
-                         QStandardItemModel, QPixmap, QPolygonF)
+from PyQt5.QtGui import (QPainter, QPainterPath, QPixmap, QPolygonF,
+                         QStandardItem, QStandardItemModel)
 from PyQt5.QtWidgets import (QAbstractItemView, QApplication,
-                             QGraphicsItemGroup, QGraphicsPathItem,
+                             QGraphicsEllipseItem, QGraphicsItemGroup,
+                             QGraphicsPathItem, QGraphicsPixmapItem,
                              QGraphicsScene, QGraphicsView, QHBoxLayout,
-                             QLabel, QMainWindow,
-                             QTreeView, QGraphicsPixmapItem, QApplication)
+                             QLabel, QMainWindow, QTreeView)
 
 from item import PangoHybridItem
+
 
 # Model/View changes (item) ----> Scene/View (gfx)
 class PangoGraphicsView(QAbstractItemView):
@@ -27,7 +28,7 @@ class PangoGraphicsView(QAbstractItemView):
 
             while s_idx.parent().isValid():
                 s_idx = s_idx.parent()
-            self.scene.label_item = self.model().itemFromIndex(s_idx)
+            self.scene.change_label(self.model().itemFromIndex(s_idx))
 
         if deselected.indexes() != []:
             ds_idx = deselected.indexes()[0]
@@ -37,16 +38,16 @@ class PangoGraphicsView(QAbstractItemView):
     def dataChanged(self, top_left, bottom_right, roles):
         idx = top_left
         for gfx in self.scene.items():
-            if not hasattr(gfx, "p_index"):
-                return
-            if gfx.p_index() == idx:
-                if roles[0] == Qt.DecorationRole:
-                    gfx.set_decoration(color=idx.data(Qt.DecorationRole))
+            if hasattr(gfx, "p_index"):
+                if gfx.p_index() == idx:
+                    if roles[0] == Qt.DecorationRole:
+                        gfx.set_decoration(color=idx.data(
+                            Qt.DecorationRole), width=self.scene.current_tool_size)
 
-                elif roles[0] == Qt.CheckStateRole:
-                    visible = True if idx.data(
-                        Qt.CheckStateRole) == Qt.Checked else False
-                    gfx.setVisible(visible)
+                    elif roles[0] == Qt.CheckStateRole:
+                        visible = True if idx.data(
+                            Qt.CheckStateRole) == Qt.Checked else False
+                        gfx.setVisible(visible)
 
 
     def rowsInserted(self, parent_idx, start, end):
@@ -78,9 +79,11 @@ class GraphicsScene(QGraphicsScene):
     tool_reset = pyqtSignal()
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.label_item = None # <---- get rid of this eventually
+        self.label_item = None
         self.current_item = None
         self.current_tool = None
+        self.current_tool_size = 10
+        self.init_reticle(10)
 
         self.selectionChanged.connect(self.selection_changed)
 
@@ -92,31 +95,45 @@ class GraphicsScene(QGraphicsScene):
         s_idx = QtCore.QModelIndex(self.selectedItems()[0].p_index())
         self.parent().setCurrentIndex(s_idx)
 
+    def init_reticle(self, size):
+        self.reticle_item = QGraphicsEllipseItem()
+        self.reticle_item.setVisible(False)
+        self.reticle_item.setOpacity(0.8)
+        self.reticle_item.setRect(-size/2, -size/2, size, size)
+        self.reticle_item.setPen(QtGui.QPen(Qt.PenStyle.NoPen))
+        self.addItem(self.reticle_item)
+
     def reset_tool(self):
         self.tool_reset.emit()
 
+    def change_label(self, item):
+        self.label_item = item
+
+        color = self.label_item.data(Qt.DecorationRole)
+        self.reticle_item.setBrush(QtGui.QBrush(color, Qt.SolidPattern))
+
+
     def change_tool(self, action):
         self.current_tool = action.text()
-
-        px = QPixmap(QtCore.QSize(32, 32))
-        px.fill(Qt.transparent)
-
-        qp = QPainter(px)
-        qp.setBrush(QtGui.QColor("blue"))
-        qp.drawEllipse(0, 0, 30, 30)
-        qp.end()
-
-        cursor  = QtGui.QCursor(px)
+        self.reticle_item.setVisible(False)
 
         view = self.views()[0]
-        if self.current_tool == "Pan":
+        if self.current_tool == "Path" or self.current_tool == "Filled Path":
+            view.setCursor(Qt.BlankCursor)
+            self.reticle_item.setVisible(True)
+        elif self.current_tool == "Pan":
             view.setCursor(Qt.OpenHandCursor)
-        elif self.current_tool == "Path" or self.current_tool == "Filled Path":
-            view.setCursor(cursor)
         elif self.current_tool == "Rect" or self.current_tool == "Poly":
             view.setCursor(Qt.CrossCursor)
         else:
             view.unsetCursor()
+
+    def change_tool_size(self, size):
+        self.current_tool_size = size
+        if self.current_item is not None:
+            self.current_item.data(Qt.UserRole).set_decoration(width=size)
+
+        self.reticle_item.setRect(-size/2, -size/2, size, size)
 
     def mousePressEvent(self, event):
         if self.label_item is None:
@@ -154,9 +171,11 @@ class GraphicsScene(QGraphicsScene):
 
         if self.current_tool == "Path" or self.current_tool == "Filled Path":
             if self.current_item is not None and event.buttons() & Qt.LeftButton:
-                    path = self.current_item.data(Qt.UserRole).path()
-                    path.lineTo(pos)
-                    self.current_item.data(Qt.UserRole).setPath(path)
+                path = self.current_item.data(Qt.UserRole).path()
+                path.lineTo(pos)
+                self.current_item.data(Qt.UserRole).setPath(path)
+
+            self.reticle_item.setPos(pos)
 
         elif self.current_tool == "Select":
             super().mouseMoveEvent(event)
@@ -164,11 +183,11 @@ class GraphicsScene(QGraphicsScene):
     def mouseReleaseEvent(self, event):
         if self.current_tool == "Path" or self.current_tool == "Filled Path":
             if self.current_item is not None:
-                    length = self.current_item.data(Qt.UserRole).path().length()
-                    if length == 0:
-                        idx = self.current_item.index()
-                        self.current_item.model().removeRow(0, idx)
-                    self.current_item = None
+                length = self.current_item.data(Qt.UserRole).path().length()
+                if length == 0:
+                    idx = self.current_item.index()
+                    self.current_item.model().removeRow(0, idx)
+                self.current_item = None
 
         elif self.current_tool == "Select":
             super().mouseReleaseEvent(event)
@@ -201,4 +220,3 @@ class GraphicsView(QGraphicsView):
 
         scene_pos = self.mapToScene(event.pos()).toPoint()
         self.cursor_moved.emit(scene_pos)
-

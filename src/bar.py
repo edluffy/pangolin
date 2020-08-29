@@ -1,8 +1,9 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QIcon, QPixmap, QColor, QFont
-from PyQt5.QtWidgets import (QAction, QActionGroup, QLabel, QSizePolicy,
-                             QStatusBar, QToolBar, QWidget)
+from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtGui import QColor, QFont, QIcon, QPixmap
+from PyQt5.QtWidgets import (QAction, QActionGroup, QComboBox, QLabel,
+                             QSizePolicy, QSpinBox, QStatusBar, QToolBar,
+                             QWidget)
 
 
 class PangoBarMixin(object):
@@ -69,14 +70,19 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
         self.color_display.setFixedWidth(50)
         self.color_display.setFixedSize(QSize(50, 20))
 
-        self.label_view = QtWidgets.QComboBox()
+        self.label_view = QComboBox()
         self.label_view.setFixedWidth(150)
         self.label_view.setEditable(False)
         self.label_view.currentIndexChanged.connect(self.set_color)
 
+        self.size_select = QSpinBox()
+        self.size_select.setSuffix("px")
+        self.size_select.setRange(0, 99)
+        self.size_select.setSingleStep(5)
+        self.size_select.setValue(10)
+
         self.coord_display = QLabel()
         self.coord_display.setFixedWidth(40)
-        #self.coord_display.setAlignment(Qt.AlignVCenter|Qt.AlignRight)
         font = QFont("Arial", 10)
         self.coord_display.setFont(font)
 
@@ -102,6 +108,7 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
         self.addWidget(spacer_left)
         self.addWidget(self.color_display)
         self.addWidget(self.label_view)
+        self.addWidget(self.size_select)
 
         for action in self.action_group.actions():
             icon = self.get_icon(action.text(), QColor("grey"))
