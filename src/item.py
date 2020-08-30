@@ -1,9 +1,11 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QStandardItem, QPolygonF, QPainter, QPainterPath
+from PyQt5.QtCore import Qt, QRectF
+from PyQt5.QtGui import (QColor, QPainter, QPainterPath, QPolygonF,
+                         QStandardItem)
 from PyQt5.QtWidgets import (QGraphicsEllipseItem, QGraphicsItem,
                              QGraphicsItemGroup, QGraphicsPathItem,
-                             QGraphicsPolygonItem, QStyle, QWidget)
+                             QGraphicsPolygonItem, QGraphicsRectItem, QStyle,
+                             QWidget)
 
 PangoPalette = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
                 QColor('#4363d8'), QColor('#f58231'), QColor('#911eb4'),
@@ -24,6 +26,8 @@ class PangoHybridItem(QStandardItem):
             self.gfx = PangoPathGraphic()
         elif self.type == "Filled Path":
             self.gfx = PangoFilledPathGraphic()
+        elif self.type == "Rect":
+            self.gfx = PangoRectGraphic()
         elif self.type == "Poly":
             self.gfx = PangoPolyGraphic()
         elif self.type == "Dot":
@@ -105,6 +109,20 @@ class PangoFilledPathGraphic(PangoPathGraphic):
         super().set_decoration(color, width)
         self.change_brush(color, Qt.SolidPattern)
 
+class PangoRectGraphic(PangoGraphicMixin, QGraphicsRectItem):
+    def __init__(self, parent=None):
+        super().__init__()
+        self.setAcceptHoverEvents(True)
+        self.setFlags(QGraphicsItem.ItemIsSelectable |
+                      QGraphicsItem.ItemIsMovable)
+
+    def set_decoration(self, color=None, width=None, style=None):
+        self.change_pen(color, 10)
+        self.change_brush(color, style)
+
+    def paint(self, painter, option, widget):
+        self.set_opacity(painter, option)
+        super().paint(painter, option, widget)
 
 class PangoPolyGraphic(PangoGraphicMixin, QGraphicsPolygonItem):
     def __init__ (self, parent=None):
@@ -154,12 +172,30 @@ class PangoDotGraphic(PangoGraphicMixin, QGraphicsEllipseItem):
 
     def move_dot(self, value):
         parent = self.p_index().parent().data(Qt.UserRole)
-        poly = parent.polygon().toPolygon()
+        parent_item = self.p_index().model().itemFromIndex(
+            QtCore.QModelIndex(self.p_index().parent()))
 
-        if self.origin == None:
-            self.origin = poly.point(self.p_index().row())
-        poly.setPoint(self.p_index().row(), (self.origin+value).toPoint())
-        parent.setPolygon(QPolygonF(poly))
+        if parent_item.type == "Rect":
+            rect = parent.rect().toRect()
+            if self.origin == None:
+                if self.p_index().row() == 0:
+                    self.origin = rect.topLeft()
+                else:
+                    self.origin = rect.bottomRight()
+            else:
+                if self.p_index().row() == 0:
+                    rect.setTopLeft((self.origin+value).toPoint())
+                else:
+                    rect.setBottomRight((self.origin+value).toPoint())
+
+            parent.setRect(QRectF(rect))
+
+        elif parent_item.type == "Poly":
+            poly = parent.polygon().toPolygon()
+            if self.origin == None:
+                self.origin = poly.point(self.p_index().row())
+            poly.setPoint(self.p_index().row(), (self.origin+value).toPoint())
+            parent.setPolygon(QPolygonF(poly))
 
     def set_decoration(self, color=None, width=None):
         self.change_pen(color, 10)
@@ -173,4 +209,3 @@ class PangoDotGraphic(PangoGraphicMixin, QGraphicsEllipseItem):
     def paint(self, painter, option, widget):
         self.set_opacity(painter, option)
         super().paint(painter, option, widget)
-

@@ -1,5 +1,5 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QRectF
 from PyQt5.QtGui import (QPainter, QPainterPath, QPixmap, QPolygonF,
                          QStandardItem, QStandardItemModel)
 from PyQt5.QtWidgets import (QAbstractItemView, QApplication,
@@ -165,6 +165,27 @@ class GraphicsScene(QGraphicsScene):
             path = QPainterPath(pos)
             self.current_item.data(Qt.UserRole).setPath(path)
 
+        elif self.current_tool == "Rect":
+            if self.current_item is None:
+                item = PangoHybridItem(self.current_tool, self.label_item)
+                self.set_current_item(item)
+                rect = QRectF(pos, pos)
+                self.current_item.data(Qt.UserRole).setRect(rect)
+
+                sub_item = PangoHybridItem("Dot", self.current_item)
+                sub_item.data(Qt.UserRole).setRect(pos.x()-2.5, pos.y()-2.5, 5, 5)
+            else:
+                rect = self.current_item.data(Qt.UserRole).rect()
+                rect.setBottomRight(pos)
+                self.current_item.data(Qt.UserRole).setRect(rect)
+
+                sub_item = PangoHybridItem("Dot", self.current_item)
+                sub_item.data(Qt.UserRole).setRect(pos.x()-2.5, pos.y()-2.5, 5, 5)
+
+                self.set_current_item(None)
+                self.tool_reset.emit()
+
+
         elif self.current_tool == "Poly":
             if self.current_item is None:
                 item = PangoHybridItem(self.current_tool, self.label_item)
@@ -179,8 +200,8 @@ class GraphicsScene(QGraphicsScene):
                 self.tool_reset.emit()
             else:
                 sub_item = PangoHybridItem("Dot", self.current_item)
-                sub_item.data(Qt.UserRole).setRect(pos.x(), pos.y(), 5, 5)
-                poly += sub_item.data(Qt.UserRole).rect().center()
+                sub_item.data(Qt.UserRole).setRect(pos.x()-2.5, pos.y()-2.5, 5, 5)
+                poly += pos
                 self.current_item.data(Qt.UserRole).setPolygon(poly)
 
         elif self.current_tool == "Select":

@@ -87,7 +87,7 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
         # Tool Related
         self.size_select = self.SizeSelect()
         self.size_select.setSuffix("px")
-        self.size_select.setRange(0, 99)
+        self.size_select.setRange(1, 99)
         self.size_select.setSingleStep(5)
         self.size_select.setValue(10)
         self.size_select.setEnabled(False)
