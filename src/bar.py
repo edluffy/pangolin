@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (QAction, QActionGroup, QComboBox, QLabel,
                              QSizePolicy, QSpinBox, QStatusBar, QToolBar,
                              QWidget)
 
+from item import PangoHybridItem
 
 class PangoBarMixin(object):
     def get_icon(self, text, color):
@@ -60,33 +61,37 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
         super().__init__(parent)
         self.setIconSize(QtCore.QSize(16, 16))
         
-        # Widgets
         spacer_left = QWidget()
         spacer_left.setFixedWidth(10)
+        spacer_middle = QWidget()
+        spacer_middle.setFixedWidth(50)
         spacer_right = QWidget()
         spacer_right.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
+        # Label Related
         self.color_display = QLabel()
-        self.color_display.setFixedWidth(50)
         self.color_display.setFixedSize(QSize(50, 20))
+        self.label_select = self.LabelSelect(self.color_display)
+        self.label_select.lineEdit().returnPressed.connect(self.add_label)
 
-        self.label_view = QComboBox()
-        self.label_view.setFixedWidth(150)
-        self.label_view.setEditable(False)
-        self.label_view.currentIndexChanged.connect(self.set_color)
+        self.add_action = QAction("Add")
+        self.add_action.triggered.connect(self.add_label)
+        icon = self.get_icon("add", QColor("grey"))
+        self.add_action.setIcon(icon)
 
+        self.del_action = QAction("Delete")
+        self.del_action.triggered.connect(self.del_label)
+        icon = self.get_icon("del", QColor("grey"))
+        self.del_action.setIcon(icon)
+
+        # Tool Related
         self.size_select = QSpinBox()
         self.size_select.setSuffix("px")
         self.size_select.setRange(0, 99)
         self.size_select.setSingleStep(5)
         self.size_select.setValue(10)
+        self.size_select.setEnabled(False)
 
-        self.coord_display = QLabel()
-        self.coord_display.setFixedWidth(40)
-        font = QFont("Arial", 10)
-        self.coord_display.setFont(font)
-
-        # Actions
         self.pan_action = QAction("Pan")
         self.select_action = QAction("Select")
         self.path_action = QAction("Path")
@@ -96,6 +101,7 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
 
         self.action_group = QActionGroup(self)
         self.action_group.setExclusive(True)
+        self.action_group.triggered.connect(self.toggle_size_select)
 
         self.action_group.addAction(self.pan_action)
         self.action_group.addAction(self.select_action)
@@ -104,35 +110,87 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
         self.action_group.addAction(self.rect_action)
         self.action_group.addAction(self.poly_action)
 
-        # Layouts
-        self.addWidget(spacer_left)
-        self.addWidget(self.color_display)
-        self.addWidget(self.label_view)
-        self.addWidget(self.size_select)
-
         for action in self.action_group.actions():
             icon = self.get_icon(action.text(), QColor("grey"))
             action.setIcon(icon)
             action.setCheckable(True)
+
+        # Other
+        self.coord_display = QLabel()
+        self.coord_display.setFixedWidth(40)
+        font = QFont("Arial", 10)
+        self.coord_display.setFont(font)
+
+        # Layouts
+        self.addWidget(spacer_left)
+        self.addWidget(self.color_display)
+        self.addWidget(self.label_select)
+        self.addAction(self.add_action)
+        self.addAction(self.del_action)
+
+        self.addWidget(spacer_middle)
         self.addActions(self.action_group.actions())
+        self.addWidget(self.size_select)
 
         self.addWidget(spacer_right)
         self.addWidget(self.coord_display)
 
+    def add_label(self):
+        if not self.label_select.isEnabled():
+            self.label_select.setEnabled(True)
+
+        root = self.label_select.model().invisibleRootItem()
+        item = PangoHybridItem("Label", root)
+        item.setText("Empty Label")
+
+        self.label_select.setCurrentIndex(self.label_select.model().rowCount()-1)
+        self.label_select.lineEdit().selectAll()
+
+    def del_label(self):
+        row = self.label_select.currentIndex()
+        self.label_select.model().removeRow(row)
+
+        if self.label_select.model().rowCount() == 0:
+            self.label_select.setEnabled(False)
+
+    def toggle_size_select(self, action):
+        if action.text() == "Path" or action.text() == "Filled Path":
+            self.size_select.setEnabled(True)
+        else:
+            self.size_select.setEnabled(False)
 
     def reset_tool(self):
         self.select_action.setChecked(True)
         self.action_group.triggered.emit(self.select_action)
 
-    def set_color(self, idx):
-        color = self.label_view.itemData(idx, Qt.DecorationRole)
-        if color is not None:
-            self.color_display.setStyleSheet(
-                "QLabel { background-color : "+color.name()+"}")
-
     def update_coords(self, scene_pos):
         coords = "x: "+str(scene_pos.x())+"\ny: "+str(scene_pos.y())
         self.coord_display.setText(coords)
+
+    class LabelSelect(QComboBox):
+        def __init__(self, color_display, parent=None):
+            super().__init__(parent)
+            self.color_display = color_display
+            self.setFixedWidth(150)
+            self.setEditable(True)
+            self.setEnabled(False)
+
+            self.editTextChanged.connect(self.edit_text_changed)
+
+        def paintEvent(self, event):
+            super().paintEvent(event)
+            item = self.model().item(self.currentIndex())
+            if item is not None:
+                color = item.data(Qt.DecorationRole)
+                if color is not None:
+                    self.color_display.setStyleSheet(
+                        "QLabel { background-color : "+color.name()+"}")
+
+        def edit_text_changed(self, text):
+            row = self.currentIndex()
+            self.setItemData(row, text, Qt.DisplayRole)
+
+
 
 class PangoStatusBarWidget(PangoBarMixin, QStatusBar):
     def __init__(self, parent=None):

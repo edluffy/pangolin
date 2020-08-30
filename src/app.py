@@ -42,16 +42,18 @@ class MainWindow(QMainWindow):
         # Menu and toolbars
         self.menu_bar = PangoMenuBarWidget()
         self.tool_bar = PangoToolBarWidget()
-        self.tool_bar.label_view.setModel(self.model)
+        self.tool_bar.label_select.setModel(self.model)
 
         # Signals and Slots
-        self.file_widget.file_view.activated.connect(
-            self.graphics_view.scene.change_image)
-
         self.menu_bar.open_images_action.triggered.connect(
             self.file_widget.open)
+
+        self.file_widget.file_view.activated.connect(
+            self.graphics_view.scene.change_image)
         self.tool_bar.action_group.triggered.connect(
             self.graphics_view.scene.change_tool)
+        self.tool_bar.label_select.currentIndexChanged.connect(
+            self.graphics_view.scene.change_label)
         self.tool_bar.size_select.valueChanged.connect(
             self.graphics_view.scene.change_tool_size)
 

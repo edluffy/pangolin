@@ -120,7 +120,7 @@ class PangoPolyGraphic(PangoGraphicMixin, QGraphicsPolygonItem):
         self.update()
 
     def set_decoration(self, color=None, width=None, style=None):
-        self.change_pen(color, width)
+        self.change_pen(color, 10)
         self.change_brush(color, style)
 
     def paint(self, painter, option, widget):
@@ -162,7 +162,7 @@ class PangoDotGraphic(PangoGraphicMixin, QGraphicsEllipseItem):
         parent.setPolygon(QPolygonF(poly))
 
     def set_decoration(self, color=None, width=None):
-        self.change_pen(color, width)
+        self.change_pen(color, 10)
         self.change_brush(QColor("black"))
 
     def itemChange(self, change, value):

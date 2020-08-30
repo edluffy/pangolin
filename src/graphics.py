@@ -29,7 +29,6 @@ class PangoGraphicsView(QAbstractItemView):
 
             while s_idx.parent().isValid():
                 s_idx = s_idx.parent()
-            self.scene.change_label(self.model().itemFromIndex(s_idx))
 
         if deselected.indexes() != []:
             ds_idx = deselected.indexes()[0]
@@ -105,11 +104,12 @@ class GraphicsScene(QGraphicsScene):
         new_item = self.addPixmap(QPixmap(path))
         new_item.setZValue(-1)
 
-    def change_label(self, item):
-        self.label_item = item
-
-        color = self.label_item.data(Qt.DecorationRole)
-        self.reticle_item.setBrush(QtGui.QBrush(color, Qt.SolidPattern))
+    def change_label(self, row):
+        self.label_item = self.parent().model().item(row)
+        if self.label_item is not None:
+            color = self.label_item.data(Qt.DecorationRole)
+            if color is not None:
+                self.reticle_item.setBrush(QtGui.QBrush(color, Qt.SolidPattern))
 
     def change_tool(self, action):
         self.current_tool = action.text()
@@ -128,9 +128,6 @@ class GraphicsScene(QGraphicsScene):
 
     def change_tool_size(self, size):
         self.current_tool_size = size
-        if self.current_item is not None:
-            self.current_item.data(Qt.UserRole).set_decoration(width=size)
-
         self.reticle_item.setRect(-size/2, -size/2, size, size)
 
     def mousePressEvent(self, event):

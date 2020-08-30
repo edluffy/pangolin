@@ -6,8 +6,6 @@ from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QFileIconProvider,
                              QLineEdit, QListView, QPushButton, QVBoxLayout,
                              QWidget)
 
-from item import PangoHybridItem
-
 
 class PangoDockWidget(QDockWidget):
     def __init__(self, title, parent=None):
@@ -27,41 +25,7 @@ class PangoLabelWidget(PangoDockWidget):
         self.setFixedWidth(200)
 
         # Widgets
-        self.line_edit = QLineEdit()
-        self.line_edit.returnPressed.connect(self.add)
-        self.line_edit.setPlaceholderText("Enter a new label")
-
-        self.delete_button = QPushButton("-")
-        self.delete_button.pressed.connect(self.delete)
-        self.add_button = QPushButton("+")
-        self.add_button.pressed.connect(self.add)
-
-        # Layouts
-        self.layout = QVBoxLayout(self.bg)
-        self.button_layout = QHBoxLayout()
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.button_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.layout.addWidget(self.line_edit)
-        self.layout.addWidget(self.view)
-        self.layout.addLayout(self.button_layout)
-
-        self.button_layout.addWidget(self.delete_button)
-        self.button_layout.addWidget(self.add_button)
-
-    def add(self):
-        root = self.view.model().invisibleRootItem()
-        item = PangoHybridItem("Label", root)
-
-        text = self.line_edit.text()
-        if text:
-            item.setData(text, Qt.DisplayRole)
-        self.line_edit.clear()
-
-    def delete(self):
-        if self.view.selectedIndexes() != []:
-            idx = self.view.selectedIndexes()[0]
-            self.view.model().removeRow(idx.row())
+        self.setWidget(self.view)
 
 
 class PangoFileWidget(PangoDockWidget):
@@ -81,8 +45,6 @@ class PangoFileWidget(PangoDockWidget):
 
         # Widgets
         self.setWidget(self.file_view)
-
-        # Layouts
 
     def open(self):
         dialog = QFileDialog()
