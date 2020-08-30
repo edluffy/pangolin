@@ -100,7 +100,7 @@ class GraphicsScene(QGraphicsScene):
             pos.setX(widget_pos.x())
             pos.setY(view.viewport().geometry().top())
             pos = view.mapToScene(pos)
-            pos.setY(pos.y()+self.reticle_item.rect().width())
+            pos.setY(pos.y()+self.reticle_item.rect().width()/2)
 
             self.reticle_item.setPos(pos)
             self.reticle_item.setVisible(True)

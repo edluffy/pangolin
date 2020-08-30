@@ -195,15 +195,14 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
         def __init__(self, parent=None):
             super().__init__(parent)
 
-        def enterEvent(self, event):
-            if self.isEnabled():
-                center = self.geometry().center()
-                self.hover_change.emit(True, center)
+        def mousePressEvent(self, event):
+            super().mousePressEvent(event)
+            center = self.geometry().center()
+            self.hover_change.emit(True, center)
 
         def leaveEvent(self, event):
-            if self.isEnabled():
-                center = self.geometry().center()
-                self.hover_change.emit(False, center)
+            super().leaveEvent(event)
+            self.hover_change.emit(False, QtCore.QPoint())
 
 
 class PangoStatusBarWidget(PangoBarMixin, QStatusBar):
