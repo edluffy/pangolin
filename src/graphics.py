@@ -92,6 +92,21 @@ class GraphicsScene(QGraphicsScene):
         self.reticle_item.setPen(QtGui.QPen(Qt.PenStyle.NoPen))
         self.addItem(self.reticle_item)
 
+    def preview_reticle(self, entered, widget_pos):
+        if entered:
+            view = self.views()[0]
+            pos = QtCore.QPoint()
+
+            pos.setX(widget_pos.x())
+            pos.setY(view.viewport().geometry().top())
+            pos = view.mapToScene(pos)
+            pos.setY(pos.y()+self.reticle_item.rect().width())
+
+            self.reticle_item.setPos(pos)
+            self.reticle_item.setVisible(True)
+        else:
+            self.reticle_item.setVisible(False)
+
     def reset_tool(self):
         self.tool_reset.emit()
 
@@ -180,7 +195,6 @@ class GraphicsScene(QGraphicsScene):
             if self.current_item is not None:
                 length = self.current_item.data(Qt.UserRole).path().length()
                 if length == 0:
-                    print("entered here")
                     idx = self.current_item.index()
                     self.current_item.model().removeRow(0, idx)
                 self.current_item = None
@@ -216,3 +230,14 @@ class GraphicsView(QGraphicsView):
 
         scene_pos = self.mapToScene(event.pos()).toPoint()
         self.cursor_moved.emit(scene_pos)
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self.scene().reticle_item.setVisible(False)
+
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        tool = self.scene().current_tool
+        if tool == "Path" or tool == "Filled Path":
+            self.scene().reticle_item.setVisible(True)
+

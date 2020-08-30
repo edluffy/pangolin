@@ -50,12 +50,15 @@ class MainWindow(QMainWindow):
 
         self.file_widget.file_view.activated.connect(
             self.graphics_view.scene.change_image)
+
         self.tool_bar.action_group.triggered.connect(
             self.graphics_view.scene.change_tool)
         self.tool_bar.label_select.currentIndexChanged.connect(
             self.graphics_view.scene.change_label)
         self.tool_bar.size_select.valueChanged.connect(
             self.graphics_view.scene.change_tool_size)
+        self.tool_bar.size_select.hover_change.connect(
+            self.graphics_view.scene.preview_reticle)
 
         self.graphics_view.scene.tool_reset.connect(self.tool_bar.reset_tool)
         self.graphics_view.view.cursor_moved.connect(self.tool_bar.update_coords)

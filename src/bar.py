@@ -1,5 +1,5 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QIcon, QPixmap
 from PyQt5.QtWidgets import (QAction, QActionGroup, QComboBox, QLabel,
                              QSizePolicy, QSpinBox, QStatusBar, QToolBar,
@@ -85,7 +85,7 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
         self.del_action.setIcon(icon)
 
         # Tool Related
-        self.size_select = QSpinBox()
+        self.size_select = self.SizeSelect()
         self.size_select.setSuffix("px")
         self.size_select.setRange(0, 99)
         self.size_select.setSingleStep(5)
@@ -190,6 +190,20 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
             row = self.currentIndex()
             self.setItemData(row, text, Qt.DisplayRole)
 
+    class SizeSelect(QSpinBox):
+        hover_change = pyqtSignal(bool, QtCore.QPoint)
+        def __init__(self, parent=None):
+            super().__init__(parent)
+
+        def enterEvent(self, event):
+            if self.isEnabled():
+                center = self.geometry().center()
+                self.hover_change.emit(True, center)
+
+        def leaveEvent(self, event):
+            if self.isEnabled():
+                center = self.geometry().center()
+                self.hover_change.emit(False, center)
 
 
 class PangoStatusBarWidget(PangoBarMixin, QStatusBar):
