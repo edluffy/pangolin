@@ -14,8 +14,6 @@ from resources import icons_rc
 app = QApplication([])
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
-#QApplication.setStyle("Fusion")
-
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
@@ -30,8 +28,8 @@ class MainWindow(QMainWindow):
         self.tree_view = QTreeView()
         self.tree_view.setModel(self.model)
         self.tree_view.setStyleSheet(
-                "QTreeView::indicator:checked:enabled{ image: url(:black/eye_on.png)} \
-                        QTreeView::indicator:unchecked{ image: url(:black/eye_off.png)}")
+            "QTreeView::indicator:checked:enabled{ image: url(:black/eye_on.png)} \
+             QTreeView::indicator:unchecked{ image: url(:black/eye_off.png)}")
 
         self.graphics_view = PangoGraphicsView()
         self.graphics_view.setModel(self.model)
@@ -48,7 +46,7 @@ class MainWindow(QMainWindow):
 
         # Signals and Slots
         self.file_widget.file_view.activated.connect(
-            self.graphics_view.new_image)
+            self.graphics_view.scene.change_image)
 
         self.menu_bar.open_images_action.triggered.connect(
             self.file_widget.open)
@@ -63,6 +61,7 @@ class MainWindow(QMainWindow):
         # Layouts
         self.bg = QWidget()
         self.setCentralWidget(self.bg)
+
         self.layout = QVBoxLayout(self.bg)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)

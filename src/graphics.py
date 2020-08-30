@@ -11,15 +11,16 @@ from PyQt5.QtWidgets import (QAbstractItemView, QApplication,
 from item import PangoHybridItem
 
 
-# Model/View changes (item) ----> Scene/View (gfx)
 class PangoGraphicsView(QAbstractItemView):
     tool_reset = pyqtSignal()
     def __init__(self, parent=None):
         super().__init__(parent)
 
         self.scene = GraphicsScene(self)
+        self.scene.selectionChanged.connect(self.scene_selection_changed)
         self.view = GraphicsView(self.scene)
 
+    # Model/View changes (item) ----> Scene/View (gfx)
     def selectionChanged(self, selected, deselected):
         if selected.indexes() != []:
             s_idx = selected.indexes()[0]
@@ -49,7 +50,6 @@ class PangoGraphicsView(QAbstractItemView):
                             Qt.CheckStateRole) == Qt.Checked else False
                         gfx.setVisible(visible)
 
-
     def rowsInserted(self, parent_idx, start, end):
         idx = self.model().index(start, 0, parent_idx)
         gfx = idx.data(Qt.UserRole)
@@ -65,35 +65,25 @@ class PangoGraphicsView(QAbstractItemView):
         self.scene.removeItem(gfx)
         del gfx
 
-    def new_image(self, idx):
-        path = idx.model().filePath(idx)
 
-        for item in self.scene.items():
-            if item.type == QGraphicsPixmapItem():
-                self.scene.removeItem(item)
-        new_item = self.scene.addPixmap(QPixmap(path))
-        new_item.setZValue(-1)
+    # Scene/View changes (gfx) ----> Model/View (item)
+    def scene_selection_changed(self):
+        if self.scene.selectedItems() == []:
+            self.clearSelection()
+        else:
+            s_idx = QtCore.QModelIndex(self.scene.selectedItems()[0].p_index())
+            self.setCurrentIndex(s_idx)
 
-# Scene/View changes (gfx) ----> Model/View (item)
+
 class GraphicsScene(QGraphicsScene):
     tool_reset = pyqtSignal()
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.label_item = None
-        self.current_item = None
+        self.label_item = None # <----- Move to GraphicsView, create item, return gfx
+        self.current_item = None # <--- Replace with current_gfx implementation
         self.current_tool = None
         self.current_tool_size = 10
         self.init_reticle(10)
-
-        self.selectionChanged.connect(self.selection_changed)
-
-    def selection_changed(self):
-        if self.selectedItems() == []:
-            self.parent().clearSelection()
-            return
-
-        s_idx = QtCore.QModelIndex(self.selectedItems()[0].p_index())
-        self.parent().setCurrentIndex(s_idx)
 
     def init_reticle(self, size):
         self.reticle_item = QGraphicsEllipseItem()
@@ -106,12 +96,20 @@ class GraphicsScene(QGraphicsScene):
     def reset_tool(self):
         self.tool_reset.emit()
 
+    def change_image(self, idx):
+        path = idx.model().filePath(idx)
+
+        for item in self.items():
+            if item.type == QGraphicsPixmapItem():
+                self.removeItem(item)
+        new_item = self.addPixmap(QPixmap(path))
+        new_item.setZValue(-1)
+
     def change_label(self, item):
         self.label_item = item
 
         color = self.label_item.data(Qt.DecorationRole)
         self.reticle_item.setBrush(QtGui.QBrush(color, Qt.SolidPattern))
-
 
     def change_tool(self, action):
         self.current_tool = action.text()
@@ -185,6 +183,7 @@ class GraphicsScene(QGraphicsScene):
             if self.current_item is not None:
                 length = self.current_item.data(Qt.UserRole).path().length()
                 if length == 0:
+                    print("entered here")
                     idx = self.current_item.index()
                     self.current_item.model().removeRow(0, idx)
                 self.current_item = None

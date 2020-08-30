@@ -166,7 +166,6 @@ class PangoDotGraphic(PangoGraphicMixin, QGraphicsEllipseItem):
         self.change_brush(QColor("black"))
 
     def itemChange(self, change, value):
-        print(change)
         if change == QGraphicsItem.ItemPositionHasChanged:
             self.move_dot(value)
         return value
