@@ -116,9 +116,13 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
             action.setCheckable(True)
 
         # Other
+        font = QFont("Arial", 10)
+        self.info_display = QLabel()
+        self.info_display.setFixedWidth(100)
+        self.info_display.setFont(font)
+
         self.coord_display = QLabel()
         self.coord_display.setFixedWidth(40)
-        font = QFont("Arial", 10)
         self.coord_display.setFont(font)
 
         # Layouts
@@ -133,6 +137,7 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
         self.addWidget(self.size_select)
 
         self.addWidget(spacer_right)
+        self.addWidget(self.info_display)
         self.addWidget(self.coord_display)
 
     def add_label(self):
@@ -166,6 +171,13 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
     def update_coords(self, scene_pos):
         coords = "x: "+str(scene_pos.x())+"\ny: "+str(scene_pos.y())
         self.coord_display.setText(coords)
+
+    def update_info(self, text):
+        if text is not "":
+            info = "Drawing: "+text
+        else:
+            info = ""
+        self.info_display.setText(info)
 
     class LabelSelect(QComboBox):
         def __init__(self, color_display, parent=None):

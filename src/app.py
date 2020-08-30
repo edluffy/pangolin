@@ -4,7 +4,7 @@ from PyQt5.QtGui import (QIcon, QPainter, QPainterPath, QStandardItem,
                          QStandardItemModel)
 from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QLabel,
                              QMainWindow, QSizePolicy, QStatusBar, QToolBar,
-                             QTreeView, QVBoxLayout, QWidget)
+                             QTreeView, QVBoxLayout, QWidget, QShortcut)
 
 from bar import PangoMenuBarWidget, PangoStatusBarWidget, PangoToolBarWidget
 from dock import PangoFileWidget, PangoLabelWidget
@@ -61,6 +61,7 @@ class MainWindow(QMainWindow):
             self.graphics_view.scene.preview_reticle)
 
         self.graphics_view.scene.tool_reset.connect(self.tool_bar.reset_tool)
+        self.graphics_view.scene.item_changed.connect(self.tool_bar.update_info)
         self.graphics_view.view.cursor_moved.connect(self.tool_bar.update_coords)
 
         # Layouts
@@ -77,6 +78,11 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, self.file_widget)
 
         self.addToolBar(Qt.TopToolBarArea, self.menu_bar)
+
+        # Shortcuts
+        self.sh_reset_tool = QShortcut(QtGui.QKeySequence('Esc'), self)
+        self.sh_reset_tool.activated.connect(self.graphics_view.scene.reset_tool)
+
 
 window = MainWindow()
 window.show()

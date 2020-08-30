@@ -76,6 +76,7 @@ class PangoGraphicsView(QAbstractItemView):
 
 class GraphicsScene(QGraphicsScene):
     tool_reset = pyqtSignal()
+    item_changed = pyqtSignal(str)
     def __init__(self, parent=None):
         super().__init__(parent)
         self.label_item = None # <----- Move to GraphicsView, create item, return gfx
@@ -145,26 +146,36 @@ class GraphicsScene(QGraphicsScene):
         self.current_tool_size = size
         self.reticle_item.setRect(-size/2, -size/2, size, size)
 
+    def set_current_item(self, item):
+        self.current_item = item
+        if item is not None:
+            text = item.type
+        else:
+            text = ""
+        self.item_changed.emit(text)
+
     def mousePressEvent(self, event):
         if self.label_item is None:
             return
         pos = event.scenePos()
 
         if self.current_tool == "Path" or self.current_tool == "Filled Path":
-            self.current_item = PangoHybridItem(self.current_tool, self.label_item)
+            item = PangoHybridItem(self.current_tool, self.label_item)
+            self.set_current_item(item)
             path = QPainterPath(pos)
             self.current_item.data(Qt.UserRole).setPath(path)
 
         elif self.current_tool == "Poly":
             if self.current_item is None:
-                self.current_item = PangoHybridItem(self.current_tool, self.label_item)
+                item = PangoHybridItem(self.current_tool, self.label_item)
+                self.set_current_item(item)
                 poly = QPolygonF()
             else:
                 poly = self.current_item.data(Qt.UserRole).polygon()
 
             if QtCore.QLineF(poly.first(), pos).length() <= 5:
                 self.current_item.data(Qt.UserRole).close_poly(True)
-                self.current_item = None
+                self.set_current_item(None)
                 self.tool_reset.emit()
             else:
                 sub_item = PangoHybridItem("Dot", self.current_item)
@@ -197,7 +208,7 @@ class GraphicsScene(QGraphicsScene):
                 if length == 0:
                     idx = self.current_item.index()
                     self.current_item.model().removeRow(0, idx)
-                self.current_item = None
+                self.set_current_item(None)
 
         elif self.current_tool == "Select":
             super().mouseReleaseEvent(event)
