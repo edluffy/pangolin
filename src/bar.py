@@ -1,11 +1,12 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QIcon, QPixmap
-from PyQt5.QtWidgets import (QAction, QActionGroup, QComboBox, QLabel,
-                             QSizePolicy, QSpinBox, QStatusBar, QToolBar,
-                             QWidget)
+from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox,
+                             QLabel, QSizePolicy, QSpinBox, QStatusBar,
+                             QToolBar, QWidget)
 
 from item import PangoHybridItem
+
 
 class PangoBarMixin(object):
     def get_icon(self, text, color):
@@ -84,6 +85,11 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
         icon = self.get_icon("del", QColor("grey"))
         self.del_action.setIcon(icon)
 
+        self.color_action = QAction("Palette")
+        self.color_action.triggered.connect(self.change_color)
+        icon = self.get_icon("palette", QColor("grey"))
+        self.color_action.setIcon(icon)
+
         # Tool Related
         self.size_select = self.SizeSelect()
         self.size_select.setSuffix("px")
@@ -131,6 +137,7 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
         self.addWidget(self.label_select)
         self.addAction(self.add_action)
         self.addAction(self.del_action)
+        self.addAction(self.color_action)
 
         self.addWidget(spacer_middle)
         self.addActions(self.action_group.actions())
@@ -139,6 +146,24 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
         self.addWidget(spacer_right)
         self.addWidget(self.info_display)
         self.addWidget(self.coord_display)
+
+    def change_color(self):
+        dialog = QColorDialog()
+        dialog.setOption(QColorDialog.ShowAlphaChannel, False)
+        color = dialog.getColor()
+
+        row = self.label_select.currentIndex()
+        label_item = self.label_select.model().item(row, 0)
+        label_item.setData(color, Qt.DecorationRole)
+
+        for n in range(0, label_item.rowCount()):
+            child = label_item.child(n, 0)
+            child.setData(color, Qt.DecorationRole)
+
+            for n in range(0, child.rowCount()):
+                grand_child = child.child(n, 0)
+                grand_child.setData(color, Qt.DecorationRole)
+
 
     def add_label(self):
         if not self.label_select.isEnabled():
