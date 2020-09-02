@@ -1,11 +1,11 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import QSize, Qt, pyqtSignal
+from PyQt5.QtCore import QSize, Qt, pyqtSignal, QPoint
 from PyQt5.QtGui import QColor, QFont, QIcon, QPixmap
 from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox,
                              QLabel, QSizePolicy, QSpinBox, QStatusBar,
                              QToolBar, QWidget)
 
 from item import PangoHybridItem
+from resources import icons_rc
 
 
 class PangoBarMixin(object):
@@ -23,7 +23,7 @@ class PangoMenuBarWidget(PangoBarMixin, QToolBar):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMovable(False)
-        self.setIconSize(QtCore.QSize(24, 24))
+        self.setIconSize(QSize(24, 24))
         self.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
 
         # Widgets
@@ -60,7 +60,7 @@ class PangoMenuBarWidget(PangoBarMixin, QToolBar):
 class PangoToolBarWidget(PangoBarMixin, QToolBar):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setIconSize(QtCore.QSize(16, 16))
+        self.setIconSize(QSize(16, 16))
         
         spacer_left = QWidget()
         spacer_left.setFixedWidth(10)
@@ -228,7 +228,7 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
             self.setItemData(row, text, Qt.DisplayRole)
 
     class SizeSelect(QSpinBox):
-        hover_change = pyqtSignal(bool, QtCore.QPoint)
+        hover_change = pyqtSignal(bool, QPoint)
         def __init__(self, parent=None):
             super().__init__(parent)
 
@@ -239,7 +239,7 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
 
         def leaveEvent(self, event):
             super().leaveEvent(event)
-            self.hover_change.emit(False, QtCore.QPoint())
+            self.hover_change.emit(False, QPoint())
 
 
 class PangoStatusBarWidget(PangoBarMixin, QStatusBar):

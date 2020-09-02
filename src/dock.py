@@ -1,10 +1,7 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QStandardItem
-from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QFileIconProvider,
-                             QFileSystemModel, QGraphicsItemGroup, QHBoxLayout,
-                             QLineEdit, QListView, QPushButton, QVBoxLayout,
-                             QWidget)
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QPixmap, QIcon
+from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QFileIconProvider, 
+                             QFileSystemModel,  QListView,  QWidget)
 
 
 class PangoDockWidget(QDockWidget):
@@ -41,7 +38,7 @@ class PangoFileWidget(PangoDockWidget):
         self.file_view.setModel(self.file_model)
         self.file_view.setViewMode(QListView.IconMode)
         self.file_view.setFlow(QListView.LeftToRight)
-        self.file_view.setIconSize(QtCore.QSize(150, 150))
+        self.file_view.setIconSize(QSize(150, 150))
 
         # Widgets
         self.setWidget(self.file_view)
@@ -64,9 +61,9 @@ class ThumbnailProvider(QFileIconProvider):
         fn = type.filePath()
 
         if fn.endswith(".jpg"):
-            a = QtGui.QPixmap(QtCore.QSize(100, 100))
+            a = QPixmap(QSize(100, 100))
             a = a.scaledToHeight(125, Qt.FastTransformation)
             a.load(fn)
-            return QtGui.QIcon(a)
+            return QIcon(a)
         else:
             return super().icon(type)

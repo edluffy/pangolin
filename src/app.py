@@ -1,15 +1,10 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import (QIcon, QPainter, QPainterPath, QStandardItem,
-                         QStandardItemModel)
-from PyQt5.QtWidgets import (QAction, QActionGroup, QApplication, QLabel,
-                             QMainWindow, QSizePolicy, QStatusBar, QToolBar,
-                             QTreeView, QVBoxLayout, QWidget, QShortcut)
+from PyQt5.QtGui import QKeySequence, QStandardItemModel
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTreeView, QVBoxLayout, QWidget, QShortcut
 
-from bar import PangoMenuBarWidget, PangoStatusBarWidget, PangoToolBarWidget
+from bar import PangoMenuBarWidget, PangoToolBarWidget
 from dock import PangoFileWidget, PangoLabelWidget
 from graphics import PangoGraphicsView
-from resources import icons_rc
 
 app = QApplication([])
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
@@ -80,7 +75,7 @@ class MainWindow(QMainWindow):
         self.addToolBar(Qt.TopToolBarArea, self.menu_bar)
 
         # Shortcuts
-        self.sh_reset_tool = QShortcut(QtGui.QKeySequence('Esc'), self)
+        self.sh_reset_tool = QShortcut(QKeySequence('Esc'), self)
         self.sh_reset_tool.activated.connect(self.graphics_view.scene.reset_tool)
 
 

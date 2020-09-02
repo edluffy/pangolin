@@ -1,11 +1,7 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt, QRectF
-from PyQt5.QtGui import (QColor, QPainter, QPainterPath, QPolygonF,
-                         QStandardItem)
-from PyQt5.QtWidgets import (QGraphicsEllipseItem, QGraphicsItem,
-                             QGraphicsItemGroup, QGraphicsPathItem,
-                             QGraphicsPolygonItem, QGraphicsRectItem, QStyle,
-                             QWidget)
+from PyQt5.QtCore import Qt, QRectF, QPersistentModelIndex, QModelIndex
+from PyQt5.QtGui import QColor, QPainterPath, QPolygonF, QStandardItem
+from PyQt5.QtWidgets import (QGraphicsEllipseItem, QGraphicsItem, QGraphicsPathItem,
+                             QGraphicsPolygonItem, QGraphicsRectItem, QStyle)
 
 PangoPalette = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
                 QColor('#4363d8'), QColor('#f58231'), QColor('#911eb4'),
@@ -35,7 +31,7 @@ class PangoHybridItem(QStandardItem):
         self.setData(self.gfx, Qt.UserRole)
 
         parent.appendRow(self)
-        self.gfx.setData(0, QtCore.QPersistentModelIndex(self.index()))
+        self.gfx.setData(0, QPersistentModelIndex(self.index()))
 
         parent_gfx = parent.data(Qt.UserRole)
         if parent_gfx is not None:
@@ -173,7 +169,7 @@ class PangoDotGraphic(PangoGraphicMixin, QGraphicsEllipseItem):
     def move_dot(self, value):
         parent = self.p_index().parent().data(Qt.UserRole)
         parent_item = self.p_index().model().itemFromIndex(
-            QtCore.QModelIndex(self.p_index().parent()))
+            QModelIndex(self.p_index().parent()))
 
         if parent_item.type == "Rect":
             rect = parent.rect().toRect()

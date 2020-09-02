@@ -1,12 +1,7 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt, pyqtSignal, QRectF
-from PyQt5.QtGui import (QPainter, QPainterPath, QPixmap, QPolygonF,
-                         QStandardItem, QStandardItemModel)
-from PyQt5.QtWidgets import (QAbstractItemView, QApplication,
-                             QGraphicsEllipseItem, QGraphicsItemGroup,
-                             QGraphicsPathItem, QGraphicsPixmapItem,
-                             QGraphicsScene, QGraphicsView, QHBoxLayout,
-                             QLabel, QMainWindow, QTreeView)
+from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPoint, QModelIndex, QLineF
+from PyQt5.QtGui import QPainterPath, QPixmap, QPolygonF, QPen, QBrush
+from PyQt5.QtWidgets import (QAbstractItemView, QGraphicsEllipseItem, 
+                             QGraphicsPixmapItem, QGraphicsScene, QGraphicsView)
 
 from item import PangoHybridItem
 
@@ -70,7 +65,7 @@ class PangoGraphicsView(QAbstractItemView):
         if self.scene.selectedItems() == []:
             self.clearSelection()
         else:
-            s_idx = QtCore.QModelIndex(self.scene.selectedItems()[0].p_index())
+            s_idx = QModelIndex(self.scene.selectedItems()[0].p_index())
             self.setCurrentIndex(s_idx)
 
 
@@ -90,13 +85,13 @@ class GraphicsScene(QGraphicsScene):
         self.reticle_item.setVisible(False)
         self.reticle_item.setOpacity(0.8)
         self.reticle_item.setRect(-size/2, -size/2, size, size)
-        self.reticle_item.setPen(QtGui.QPen(Qt.PenStyle.NoPen))
+        self.reticle_item.setPen(QPen(Qt.NoPen))
         self.addItem(self.reticle_item)
 
     def preview_reticle(self, entered, widget_pos):
         if entered:
             view = self.views()[0]
-            pos = QtCore.QPoint()
+            pos = QPoint()
 
             pos.setX(widget_pos.x())
             pos.setY(view.viewport().geometry().top())
@@ -125,7 +120,7 @@ class GraphicsScene(QGraphicsScene):
         if self.label_item is not None:
             color = self.label_item.data(Qt.DecorationRole)
             if color is not None:
-                self.reticle_item.setBrush(QtGui.QBrush(color, Qt.SolidPattern))
+                self.reticle_item.setBrush(QBrush(color, Qt.SolidPattern))
 
     def change_tool(self, action):
         self.current_tool = action.text()
@@ -194,7 +189,7 @@ class GraphicsScene(QGraphicsScene):
             else:
                 poly = self.current_item.data(Qt.UserRole).polygon()
 
-            if QtCore.QLineF(poly.first(), pos).length() <= 5:
+            if QLineF(poly.first(), pos).length() <= 5:
                 self.current_item.data(Qt.UserRole).close_poly(True)
                 self.set_current_item(None)
                 self.tool_reset.emit()
@@ -235,7 +230,7 @@ class GraphicsScene(QGraphicsScene):
             super().mouseReleaseEvent(event)
 
 class GraphicsView(QGraphicsView):
-    cursor_moved = pyqtSignal(QtCore.QPoint)
+    cursor_moved = pyqtSignal(QPoint)
     def __init__ (self, parent=None):
         super().__init__(parent)
 
