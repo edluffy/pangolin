@@ -63,11 +63,11 @@ class MainWindow(QMainWindow):
         self.bg = QWidget()
         self.setCentralWidget(self.bg)
 
-        self.layout = QVBoxLayout(self.bg)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(0)
-        self.layout.addWidget(self.tool_bar)
-        self.layout.addWidget(self.graphics_view.view)
+        self.bg_layout = QVBoxLayout(self.bg)
+        self.bg_layout.setContentsMargins(0, 0, 0, 0)
+        self.bg_layout.setSpacing(0)
+        self.bg_layout.addWidget(self.tool_bar)
+        self.bg_layout.addWidget(self.graphics_view.view)
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.label_widget)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.file_widget)

@@ -1,25 +1,14 @@
 from PyQt5.QtCore import QSize, Qt, pyqtSignal, QPoint
-from PyQt5.QtGui import QColor, QFont, QIcon, QPixmap
+from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox,
                              QLabel, QSizePolicy, QSpinBox, QStatusBar,
                              QToolBar, QWidget)
 
 from item import PangoHybridItem
-from resources import icons_rc
+from utils import pango_get_icon
 
 
-class PangoBarMixin(object):
-    def get_icon(self, text, color):
-        fn = ":/icons/"+text.lower().replace(" ", "_")+".png"
-        px = QPixmap(fn)
-        mask = px.createMaskFromColor(QColor('white'), Qt.MaskOutColor)
-        px.fill(color)
-        px.setMask(mask)
-
-        return QIcon(px)
-
-
-class PangoMenuBarWidget(PangoBarMixin, QToolBar):
+class PangoMenuBarWidget(QToolBar):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMovable(False)
@@ -47,8 +36,7 @@ class PangoMenuBarWidget(PangoBarMixin, QToolBar):
         self.action_group.addAction(self.run_action)
 
         for action in self.action_group.actions():
-            icon = self.get_icon(action.text(), QColor("grey"))
-            action.setIcon(icon)
+            action.setIcon(pango_get_icon(action.text()))
 
         self.addAction(self.action_group.actions()[0])
         self.addWidget(spacer_left)
@@ -57,7 +45,7 @@ class PangoMenuBarWidget(PangoBarMixin, QToolBar):
         self.addAction(self.action_group.actions()[-1])
 
 
-class PangoToolBarWidget(PangoBarMixin, QToolBar):
+class PangoToolBarWidget(QToolBar):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setIconSize(QSize(16, 16))
@@ -77,17 +65,17 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
 
         self.add_action = QAction("Add")
         self.add_action.triggered.connect(self.add_label)
-        icon = self.get_icon("add", QColor("grey"))
+        icon = pango_get_icon("add")
         self.add_action.setIcon(icon)
 
         self.del_action = QAction("Delete")
         self.del_action.triggered.connect(self.del_label)
-        icon = self.get_icon("del", QColor("grey"))
+        icon = pango_get_icon("del")
         self.del_action.setIcon(icon)
 
         self.color_action = QAction("Palette")
         self.color_action.triggered.connect(self.change_color)
-        icon = self.get_icon("palette", QColor("grey"))
+        icon = pango_get_icon("palette")
         self.color_action.setIcon(icon)
 
         # Tool Related
@@ -117,7 +105,7 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
         self.action_group.addAction(self.poly_action)
 
         for action in self.action_group.actions():
-            icon = self.get_icon(action.text(), QColor("grey"))
+            icon = pango_get_icon(action.text())
             action.setIcon(icon)
             action.setCheckable(True)
 
@@ -242,7 +230,7 @@ class PangoToolBarWidget(PangoBarMixin, QToolBar):
             self.hover_change.emit(False, QPoint())
 
 
-class PangoStatusBarWidget(PangoBarMixin, QStatusBar):
+class PangoStatusBarWidget(QStatusBar):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setContentsMargins(0, 0, 0, 0)

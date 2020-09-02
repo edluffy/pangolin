@@ -3,13 +3,7 @@ from PyQt5.QtGui import QColor, QPainterPath, QPolygonF, QStandardItem
 from PyQt5.QtWidgets import (QGraphicsEllipseItem, QGraphicsItem, QGraphicsPathItem,
                              QGraphicsPolygonItem, QGraphicsRectItem, QStyle)
 
-PangoPalette = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
-                QColor('#4363d8'), QColor('#f58231'), QColor('#911eb4'),
-                QColor('#46f0f0'), QColor('#f032e6'), QColor('#bcf60c'),
-                QColor('#fabebe'), QColor('#008080'), QColor('#e6beff'),
-                QColor('#9a6324'), QColor('#fffac8'), QColor('#800000'),
-                QColor('#aaffc3'), QColor('#808000'), QColor('#ffd8b1'),
-                QColor('#000075'), QColor('#808080')]
+from utils import pango_get_palette
 
 class PangoHybridItem(QStandardItem):
     def __init__ (self, type, parent=None):
@@ -38,7 +32,7 @@ class PangoHybridItem(QStandardItem):
             self.gfx.setParentItem(parent_gfx)
             color = parent.data(Qt.DecorationRole)
         else:
-            color = PangoPalette[self.row() % len(PangoPalette)]
+            color = pango_get_palette(self.row())
 
         # Item specific defaults
         self.setData(self.type, Qt.DisplayRole)
