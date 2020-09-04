@@ -1,107 +1,143 @@
-from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPoint, QModelIndex, QLineF
-from PyQt5.QtGui import QPainterPath, QPixmap, QPolygonF, QPen, QBrush
-from PyQt5.QtWidgets import (QAbstractItemView, QGraphicsEllipseItem, 
-                             QGraphicsPixmapItem, QGraphicsScene, QGraphicsView)
+from PyQt5.QtCore import QEvent, QItemSelectionModel, QObject, Qt, pyqtSignal, QRectF, QPoint, QModelIndex, QLineF, QPersistentModelIndex
+from PyQt5.QtGui import QColor, QPainterPath, QPixmap, QPolygonF, QPen, QBrush
+from PyQt5.QtWidgets import (QAbstractItemView, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPathItem, 
+                             QGraphicsPixmapItem, QGraphicsScene, QGraphicsSceneMouseEvent, QGraphicsView)
 
-from item import PangoHybridItem
+from bidict import bidict
 
+from item import PangoGraphic, PangoHybridItem, PangoPathGraphic, PangoDotGraphic, PangoPolyGraphic, PangoRectGraphic
+from utils import PangoShapeType, pango_gfx_change_debug, pango_item_role_debug
 
-class PangoGraphicsView(QAbstractItemView):
+""" PangoModelSceneInterface promotes loose coupling by keeping model/view and 
+   scene/view from referring to each other explicitly """
+class PangoSceneModelInterface(object):
     tool_reset = pyqtSignal()
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+        self.model.dataChanged.connect(self.item_changed)
 
-        self.scene = GraphicsScene(self)
-        self.scene.selectionChanged.connect(self.scene_selection_changed)
-        self.view = GraphicsView(self.scene)
+        self.map = bidict()
 
     # Model/View changes (item) ----> Scene/View (gfx)
-    def selectionChanged(self, selected, deselected):
-        if selected.indexes() != []:
-            s_idx = selected.indexes()[0]
-            s_gfx = s_idx.data(Qt.UserRole)
-            s_gfx.setSelected(True)
-
-            while s_idx.parent().isValid():
-                s_idx = s_idx.parent()
-
-        if deselected.indexes() != []:
-            ds_idx = deselected.indexes()[0]
-            ds_gfx = ds_idx.data(Qt.UserRole)
-            ds_gfx.setSelected(False)
-
-    def dataChanged(self, top_left, bottom_right, roles):
-        idx = top_left
-        for gfx in self.scene.items():
-            if hasattr(gfx, "p_index"):
-                if gfx.p_index() == idx:
-                    if roles[0] == Qt.DecorationRole:
-                        gfx.set_decoration(color=idx.data(
-                            Qt.DecorationRole), width=self.scene.current_tool_size)
-
-                    elif roles[0] == Qt.CheckStateRole:
-                        visible = True if idx.data(
-                            Qt.CheckStateRole) == Qt.Checked else False
-                        gfx.setVisible(visible)
-
-    def rowsInserted(self, parent_idx, start, end):
-        idx = self.model().index(start, 0, parent_idx)
-        gfx = idx.data(Qt.UserRole)
-
-        parent_gfx = parent_idx.data(Qt.UserRole)
-        if parent_gfx is None:
-            self.scene.addItem(gfx)
-
-    def rowsAboutToBeRemoved(self, parent_idx, start, end):
-        idx = self.model().index(start, 0, parent_idx)
-        gfx = idx.data(Qt.UserRole)
-
-        self.scene.removeItem(gfx)
-        del gfx
-
+    def set_view(self, view): # <--- ditch in favour of set_model?
+        self.view = view
+        self.view.selectionModel().selectionChanged.connect(self.item_selection_changed)
 
     # Scene/View changes (gfx) ----> Model/View (item)
-    def scene_selection_changed(self):
-        if self.scene.selectedItems() == []:
-            self.clearSelection()
+    def set_scene(self, scene):
+        self.scene = scene
+        self.scene.gfx_changed.connect(self.gfx_changed)
+        self.scene.selectionChanged.connect(self.gfx_selection_changed)
+
+    def item_selection_changed(self):
+        new = [self.map[QPersistentModelIndex(idx)] for idx in self.view.selectedIndexes()]
+        old = self.scene.selectedItems()
+
+        for gfx in set(new)-set(old):
+            gfx.setSelected(True)
+
+        for gfx in set(old)-set(new):
+            gfx.setSelected(False)
+
+    def gfx_selection_changed(self):
+        new = [QModelIndex(self.map.inverse[gfx]) for gfx in self.scene.selectedItems()]
+        old = self.view.selectedIndexes()
+
+        for idx in set(new)-set(old):
+            self.view.selectionModel().select(idx, QItemSelectionModel.Select)
+
+        for idx in set(old)-set(new):
+            self.view.selectionModel().select(idx, QItemSelectionModel.Deselect)
+
+    def item_changed(self, top_idx, bottom_idx, roles):
+        item = self.model.itemFromIndex(top_idx)
+        role = roles[0]
+        #print("Item change: ", pango_item_role_debug(role))
+        try:
+            gfx = self.map[item.key()]
+        except KeyError:
+            gfx = self.create_gfx_from_item(item)
+
+        if role == Qt.DisplayRole:
+            gfx.set_name(item.name())
+        elif role == Qt.DecorationRole:
+            gfx.set_color(item.color())
+        elif role == Qt.CheckStateRole:
+            gfx.set_visible(item.visible())
+
+    def gfx_changed(self, gfx, change):
+        #print("Gfx change: ", pango_gfx_change_debug(change))
+        try:
+            item = self.model.itemFromIndex(QModelIndex(self.map.inverse[gfx]))
+        except KeyError:
+            item = self.create_item_from_gfx(gfx)
+
+        if change == QGraphicsItem.ItemToolTipHasChanged:
+            item.set_name(gfx.name())
+        elif change == QGraphicsItem.ItemTransformHasChanged:
+            item.set_color(gfx.color())
+        elif change == QGraphicsItem.ItemVisibleHasChanged:
+            item.set_visible(gfx.visible())
+
+    def item_removed(self):
+        pass
+
+    def gfx_removed(self):
+        pass
+
+    def create_item_from_gfx(self, gfx):
+        item = PangoHybridItem(gfx.type())
+
+        # Add to model, then map
+        if gfx.parentItem() is not None:
+            parent_item = self.model.itemFromIndex(QModelIndex(self.map.inverse[gfx.parentItem()]))
+            parent_item.appendRow(item)
         else:
-            s_idx = QModelIndex(self.scene.selectedItems()[0].p_index())
-            self.setCurrentIndex(s_idx)
+            self.model.appendRow(item)
+        self.map[item.key()] = gfx
+        return item
+
+    def create_gfx_from_item(self, item):
+        if item.type() == PangoShapeType.Path:
+            gfx = PangoPathGraphic()
+        elif item.type() == PangoShapeType.Rect:
+            gfx = PangoRectGraphic()
+        elif item.type() == PangoShapeType.Poly:
+            gfx = PangoPolyGraphic()
+        elif item.type() == PangoShapeType.Dot:
+            gfx = PangoDotGraphic()
+        else:
+            gfx = PangoGraphic()
+
+        # Map, then add to scene
+        self.map[item.key()] = gfx
+        if item.parent() is not None:
+            gfx.setParentItem(self.map[item.parent().key()])
+        else:
+            self.scene.addItem(gfx)
+        return gfx
+
+    def set_label(self, row):
+        item = self.model.item(row)
+        try:
+            self.scene.label = self.map[item.key()]
+        except KeyError:
+            return
 
 
-class GraphicsScene(QGraphicsScene):
+class PangoGraphicsScene(QGraphicsScene):
     tool_reset = pyqtSignal()
-    item_changed = pyqtSignal(str)
+
+    gfx_changed = pyqtSignal(PangoGraphic, QGraphicsItem.GraphicsItemChange)
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.label_item = None # <----- Move to GraphicsView, create item, return gfx
-        self.current_item = None # <--- Replace with current_gfx implementation
-        self.current_tool = None
-        self.current_tool_size = 10
-        self.init_reticle(10)
+        self.setSceneRect(0, 0, 100, 100)
 
-    def init_reticle(self, size):
-        self.reticle_item = QGraphicsEllipseItem()
-        self.reticle_item.setVisible(False)
-        self.reticle_item.setOpacity(0.8)
-        self.reticle_item.setRect(-size/2, -size/2, size, size)
-        self.reticle_item.setPen(QPen(Qt.NoPen))
-        self.addItem(self.reticle_item)
-
-    def preview_reticle(self, entered, widget_pos):
-        if entered:
-            view = self.views()[0]
-            pos = QPoint()
-
-            pos.setX(widget_pos.x())
-            pos.setY(view.viewport().geometry().top())
-            pos = view.mapToScene(pos)
-            pos.setY(pos.y()+self.reticle_item.rect().width()/2)
-
-            self.reticle_item.setPos(pos)
-            self.reticle_item.setVisible(True)
-        else:
-            self.reticle_item.setVisible(False)
+        self.label = PangoGraphic()
+        self.tool_size = 10
+        self.tool = None
+        self.gfx = None
 
     def reset_tool(self):
         self.tool_reset.emit()
@@ -115,125 +151,54 @@ class GraphicsScene(QGraphicsScene):
         new_item = self.addPixmap(QPixmap(path))
         new_item.setZValue(-1)
 
-    def change_label(self, row):
-        self.label_item = self.parent().model().item(row)
-        if self.label_item is not None:
-            color = self.label_item.data(Qt.DecorationRole)
-            if color is not None:
-                self.reticle_item.setBrush(QBrush(color, Qt.SolidPattern))
-
     def change_tool(self, action):
-        self.current_tool = action.text()
-        self.reticle_item.setVisible(False)
-
         view = self.views()[0]
-        if self.current_tool == "Path" or self.current_tool == "Filled Path":
-            view.setCursor(Qt.BlankCursor)
-            self.reticle_item.setVisible(True)
-        elif self.current_tool == "Pan":
-            view.setCursor(Qt.OpenHandCursor)
-        elif self.current_tool == "Rect" or self.current_tool == "Poly":
-            view.setCursor(Qt.CrossCursor)
-        else:
-            view.unsetCursor()
+        view.setDragMode(QGraphicsView.NoDrag)
+        self.tool = action.text()
 
-    def change_tool_size(self, size):
-        self.current_tool_size = size
-        self.reticle_item.setRect(-size/2, -size/2, size, size)
+        if self.tool == "Pan":
+            view.setDragMode(QGraphicsView.ScrollHandDrag)
+        elif self.tool == "Lasso":
+            view.setDragMode(QGraphicsView.RubberBandDrag)
+        elif self.tool == "Path":
+            #view.setCursor(Qt.BlankCursor)
+            pass
+        elif self.tool == "Rect":
+            pass
+        elif self.tool == "Poly":
+            pass
 
-    def set_current_item(self, item):
-        self.current_item = item
-        if item is not None:
-            text = item.type
-        else:
-            text = ""
-        self.item_changed.emit(text)
+    def set_tool_size(self, size):
+        self.tool_size = size
 
-    def mousePressEvent(self, event):
-        if self.label_item is None:
-            return
-        pos = event.scenePos()
+    def event(self, event):
+        super().event(event)
 
-        if self.current_tool == "Path" or self.current_tool == "Filled Path":
-            item = PangoHybridItem(self.current_tool, self.label_item)
-            self.set_current_item(item)
-            path = QPainterPath(pos)
-            self.current_item.data(Qt.UserRole).setPath(path)
+        if self.tool == "Path":
+            if event.type() == QEvent.GraphicsSceneMousePress:
+                self.gfx = PangoPathGraphic()
 
-        elif self.current_tool == "Rect":
-            if self.current_item is None:
-                item = PangoHybridItem(self.current_tool, self.label_item)
-                self.set_current_item(item)
-                rect = QRectF(pos, pos)
-                self.current_item.data(Qt.UserRole).setRect(rect)
+                self.gfx.setParentItem(self.label)
+                self.gfx.set_width(self.tool_size)
+                self.gfx.set_name("Rando Path")
+                self.gfx.colorize()
 
-                sub_item = PangoHybridItem("Dot", self.current_item)
-                sub_item.data(Qt.UserRole).setRect(pos.x()-2.5, pos.y()-2.5, 5, 5)
-            else:
-                rect = self.current_item.data(Qt.UserRole).rect()
-                rect.setBottomRight(pos)
-                self.current_item.data(Qt.UserRole).setRect(rect)
-
-                sub_item = PangoHybridItem("Dot", self.current_item)
-                sub_item.data(Qt.UserRole).setRect(pos.x()-2.5, pos.y()-2.5, 5, 5)
-
-                self.set_current_item(None)
-                self.tool_reset.emit()
-
-
-        elif self.current_tool == "Poly":
-            if self.current_item is None:
-                item = PangoHybridItem(self.current_tool, self.label_item)
-                self.set_current_item(item)
-                poly = QPolygonF()
-            else:
-                poly = self.current_item.data(Qt.UserRole).polygon()
-
-            if QLineF(poly.first(), pos).length() <= 5:
-                self.current_item.data(Qt.UserRole).close_poly(True)
-                self.set_current_item(None)
-                self.tool_reset.emit()
-            else:
-                sub_item = PangoHybridItem("Dot", self.current_item)
-                sub_item.data(Qt.UserRole).setRect(pos.x()-2.5, pos.y()-2.5, 5, 5)
-                poly += pos
-                self.current_item.data(Qt.UserRole).setPolygon(poly)
-
-        elif self.current_tool == "Select":
-            super().mousePressEvent(event)
-
-
-    def mouseMoveEvent(self, event):
-        pos = event.scenePos()
-
-        if self.current_tool == "Path" or self.current_tool == "Filled Path":
-            if self.current_item is not None and event.buttons() & Qt.LeftButton:
-                path = self.current_item.data(Qt.UserRole).path()
-                path.lineTo(pos)
-                self.current_item.data(Qt.UserRole).setPath(path)
-
-            self.reticle_item.setPos(pos)
-
-        elif self.current_tool == "Select":
-            super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        if self.current_tool == "Path" or self.current_tool == "Filled Path":
-            if self.current_item is not None:
-                length = self.current_item.data(Qt.UserRole).path().length()
-                if length == 0:
-                    idx = self.current_item.index()
-                    self.current_item.model().removeRow(0, idx)
-                self.set_current_item(None)
-
-        elif self.current_tool == "Select":
-            super().mouseReleaseEvent(event)
-
-class GraphicsView(QGraphicsView):
+                self.gfx.move_to(event.scenePos())
+                return True
+            if event.type() == QEvent.GraphicsSceneMouseMove:
+                if self.gfx is not None:
+                    self.gfx.line_to(event.scenePos())
+                    return True
+            if event.type() == QEvent.GraphicsSceneMouseRelease:
+                if self.gfx is not None:
+                    self.gfx = None
+                    return True
+        return False
+ 
+class PangoGraphicsView(QGraphicsView):
     cursor_moved = pyqtSignal(QPoint)
-    def __init__ (self, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-
         self.setInteractive(True)
         self.setMouseTracking(True)
 
@@ -257,14 +222,3 @@ class GraphicsView(QGraphicsView):
 
         scene_pos = self.mapToScene(event.pos()).toPoint()
         self.cursor_moved.emit(scene_pos)
-
-    def leaveEvent(self, event):
-        super().leaveEvent(event)
-        self.scene().reticle_item.setVisible(False)
-
-    def enterEvent(self, event):
-        super().enterEvent(event)
-        tool = self.scene().current_tool
-        if tool == "Path" or tool == "Filled Path":
-            self.scene().reticle_item.setVisible(True)
-

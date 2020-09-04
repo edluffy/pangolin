@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox,
                              QToolBar, QWidget)
 
 from item import PangoHybridItem
-from utils import pango_get_icon
+from utils import PangoShapeType, pango_get_icon, pango_get_palette
 
 
 class PangoMenuBarWidget(QToolBar):
@@ -87,7 +87,7 @@ class PangoToolBarWidget(QToolBar):
         self.size_select.setEnabled(False)
 
         self.pan_action = QAction("Pan")
-        self.select_action = QAction("Select")
+        self.lasso_action = QAction("Lasso")
         self.path_action = QAction("Path")
         self.filled_path_action = QAction("Filled Path")
         self.rect_action = QAction("Rect")
@@ -98,7 +98,7 @@ class PangoToolBarWidget(QToolBar):
         self.action_group.triggered.connect(self.toggle_size_select)
 
         self.action_group.addAction(self.pan_action)
-        self.action_group.addAction(self.select_action)
+        self.action_group.addAction(self.lasso_action)
         self.action_group.addAction(self.path_action)
         self.action_group.addAction(self.filled_path_action)
         self.action_group.addAction(self.rect_action)
@@ -157,9 +157,13 @@ class PangoToolBarWidget(QToolBar):
         if not self.label_select.isEnabled():
             self.label_select.setEnabled(True)
 
+        item = PangoHybridItem(PangoShapeType.Default)
+
         root = self.label_select.model().invisibleRootItem()
-        item = PangoHybridItem("Label", root)
-        item.setText("Empty Label")
+        root.appendRow(item)
+
+        item.colorize()
+        item.set_name("Empty Label")
 
         self.label_select.setCurrentIndex(self.label_select.model().rowCount()-1)
         self.label_select.lineEdit().selectAll()
@@ -178,8 +182,8 @@ class PangoToolBarWidget(QToolBar):
             self.size_select.setEnabled(False)
 
     def reset_tool(self):
-        self.select_action.setChecked(True)
-        self.action_group.triggered.emit(self.select_action)
+        self.lasso_action.setChecked(True)
+        self.action_group.triggered.emit(self.lasso_action)
 
     def update_coords(self, scene_pos):
         coords = "x: "+str(scene_pos.x())+"\ny: "+str(scene_pos.y())

@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QTreeView, QVBoxLayout, Q
 
 from bar import PangoMenuBarWidget, PangoToolBarWidget
 from dock import PangoFileWidget, PangoLabelWidget
-from graphics import PangoGraphicsView
+from graphics import PangoSceneModelInterface, PangoGraphicsScene, PangoGraphicsView
 
 app = QApplication([])
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
@@ -18,17 +18,22 @@ class MainWindow(QMainWindow):
 
         # Models and Views
         self.model = QStandardItemModel()
-        self.model.removeRow
+        self.interface = PangoSceneModelInterface(self.model)
 
         self.tree_view = QTreeView()
         self.tree_view.setModel(self.model)
+        self.tree_view.setSelectionMode(QTreeView.ExtendedSelection)
         self.tree_view.setStyleSheet(
             "QTreeView::indicator:checked:enabled{ image: url(:black/eye_on.png)} \
              QTreeView::indicator:unchecked{ image: url(:black/eye_off.png)}")
 
+        self.graphics_scene = PangoGraphicsScene()
+
         self.graphics_view = PangoGraphicsView()
-        self.graphics_view.setModel(self.model)
-        self.graphics_view.setSelectionModel(self.tree_view.selectionModel())
+        self.graphics_view.setScene(self.graphics_scene)
+
+        self.interface.set_view(self.tree_view)
+        self.interface.set_scene(self.graphics_scene)
 
         # Dock widgets
         self.label_widget = PangoLabelWidget("Labels", self.tree_view)
@@ -44,20 +49,18 @@ class MainWindow(QMainWindow):
             self.file_widget.open)
 
         self.file_widget.file_view.activated.connect(
-            self.graphics_view.scene.change_image)
+            self.graphics_scene.change_image)
+
+        self.tool_bar.label_select.currentIndexChanged.connect(
+            self.interface.set_label)
 
         self.tool_bar.action_group.triggered.connect(
-            self.graphics_view.scene.change_tool)
-        self.tool_bar.label_select.currentIndexChanged.connect(
-            self.graphics_view.scene.change_label)
+            self.graphics_scene.change_tool)
         self.tool_bar.size_select.valueChanged.connect(
-            self.graphics_view.scene.change_tool_size)
-        self.tool_bar.size_select.hover_change.connect(
-            self.graphics_view.scene.preview_reticle)
+            self.graphics_scene.set_tool_size)
 
-        self.graphics_view.scene.tool_reset.connect(self.tool_bar.reset_tool)
-        self.graphics_view.scene.item_changed.connect(self.tool_bar.update_info)
-        self.graphics_view.view.cursor_moved.connect(self.tool_bar.update_coords)
+        self.graphics_scene.tool_reset.connect(self.tool_bar.reset_tool)
+        self.graphics_scene.views()[0].cursor_moved.connect(self.tool_bar.update_coords)
 
         # Layouts
         self.bg = QWidget()
@@ -67,7 +70,7 @@ class MainWindow(QMainWindow):
         self.bg_layout.setContentsMargins(0, 0, 0, 0)
         self.bg_layout.setSpacing(0)
         self.bg_layout.addWidget(self.tool_bar)
-        self.bg_layout.addWidget(self.graphics_view.view)
+        self.bg_layout.addWidget(self.graphics_view)
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.label_widget)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.file_widget)
@@ -76,7 +79,7 @@ class MainWindow(QMainWindow):
 
         # Shortcuts
         self.sh_reset_tool = QShortcut(QKeySequence('Esc'), self)
-        self.sh_reset_tool.activated.connect(self.graphics_view.scene.reset_tool)
+        self.sh_reset_tool.activated.connect(self.graphics_scene.reset_tool)
 
 
 window = MainWindow()

@@ -2,6 +2,10 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QPixmap, QColor
 #from PyQt5.QtWidgets import
 
+from enum import Enum
+
+from PyQt5.QtWidgets import QGraphicsItem
+
 from resources import icons_rc
 
 pango_palette = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
@@ -24,3 +28,39 @@ def pango_get_icon(name, color=None):
     px.fill(pango_app_icon_color if color is None else color)
     px.setMask(mask)
     return QIcon(px)
+
+class PangoShapeType(Enum):
+    Default = QGraphicsItem.UserType +1
+    Path = QGraphicsItem.UserType + 2
+    Rect = QGraphicsItem.UserType + 3
+    Poly = QGraphicsItem.UserType + 4
+    Dot = QGraphicsItem.UserType + 5
+
+
+def pango_item_role_debug(role):
+    return role_list[role]
+role_list =  [
+    "DisplayRole", "DecorationRole", "EditRole",
+    "ToolTipRole", "StatusTipRole", "WhatsThisRole",
+    "FontRole", "TextAlignmentRole", "BackgroundColorRole",
+    "BackgroundRole", "TextColorRole", "ForegroundRole",
+    "CheckStateRole", "AccessibleTextRole", "AccessibleDescriptionRole",
+    "SizeHintRole", "InitialSortOrderRole", "DisplayPropertyRole",
+    "DecorationPropertyRole", "ToolTipPropertyRole", "StatusTipPropertyRole",
+    "WhatsThisPropertyRole", "UserRole"]
+
+def pango_gfx_change_debug(change):
+    return change_list[change]
+change_list = [
+    "ItemPositionChange", "ItemMatrixChange", "ItemVisibleChange",
+    "ItemEnabledChange", "ItemSelectedChange", "ItemParentChange",
+    "ItemChildAddedChange", "ItemChildRemovedChange", "ItemTransformChange",
+    "ItemPositionHasChanged", "ItemTransformHasChanged", "ItemSceneChange",
+    "ItemVisibleHasChanged", "ItemEnabledHasChanged", "ItemSelectedHasChanged",
+    "ItemParentHasChanged", "ItemSceneHasChanged", "ItemCursorChange",
+    "ItemCursorHasChanged", "ItemToolTipChange", "ItemToolTipHasChanged",
+    "ItemFlagsChange", "ItemFlagsHaveChanged", "ItemZValueChange",
+    "ItemZValueHasChanged", "ItemOpacityChange", "ItemOpacityHasChanged",
+    "ItemScenePositionHasChanged", "ItemRotationChange", "ItemRotationHasChanged",
+    "ItemScaleChange", "ItemScaleHasChanged", "ItemTransformOriginPointChange",
+    "ItemTrasformOriginPointHasChanged" ]
