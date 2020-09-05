@@ -43,7 +43,7 @@ role_list =  [
     "DisplayRole", "DecorationRole", "EditRole",
     "ToolTipRole", "StatusTipRole", "WhatsThisRole",
     "FontRole", "TextAlignmentRole", "BackgroundColorRole",
-    "BackgroundRole", "TextColorRole", "ForegroundRole",
+    "ForegroundRole",
     "CheckStateRole", "AccessibleTextRole", "AccessibleDescriptionRole",
     "SizeHintRole", "InitialSortOrderRole", "DisplayPropertyRole",
     "DecorationPropertyRole", "ToolTipPropertyRole", "StatusTipPropertyRole",

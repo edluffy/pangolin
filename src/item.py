@@ -1,15 +1,18 @@
 from PyQt5.QtCore import Qt, QRectF, QPersistentModelIndex, QModelIndex
-from PyQt5.QtGui import QBrush, QColor, QPainterPath, QPainterPathStroker, QPen, QPolygonF, QStandardItem
+from PyQt5.QtGui import QBrush, QColor, QIcon, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF, QStandardItem
 from PyQt5.QtWidgets import (QAbstractGraphicsShapeItem, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPathItem,
                              QGraphicsPolygonItem, QGraphicsRectItem, QStyle)
 
-from utils import PangoShapeType, pango_get_palette
+from utils import PangoShapeType, pango_get_icon, pango_get_palette
 
 class PangoHybridItem(QStandardItem):
     def __init__ (self, type):
         super().__init__()
         self.set_type(type)
         self.setCheckable(True)
+
+        self._color = QColor()
+        self._icon = ""
 
     def key(self):
         return QPersistentModelIndex(self.index())
@@ -25,18 +28,34 @@ class PangoHybridItem(QStandardItem):
     
     def set_name(self, name):
         self.setData(name, Qt.DisplayRole)
-    
-    def color(self):
-        return QColor(self.data(Qt.DecorationRole))
 
-    def set_color(self, color=None):
-        self.setData(color, Qt.DecorationRole)
-    
-    def colorize(self):
-        if self.parent() is None:
-            self.set_color(pango_get_palette(self.row()))
+    def decoration(self):
+        return (self._icon, self._color)
+
+    def set_decoration(self, decoration=None):
+        if decoration == self.decoration():
+            return
+        if decoration is not None:
+            self._icon, self._color = decoration
+            self.setData(pango_get_icon(self._icon, self._color), Qt.DecorationRole)
         else:
-            self.set_color(self.parent().color())
+            if self.parent() is None:
+                self._color = pango_get_palette(self.row())
+            else:
+                self._color = self.parent().color()
+
+            if self.type() == PangoShapeType.Path:
+                self._icon = "path"
+            elif self.type() == PangoShapeType.Rect:
+                self._icon = "rectangle"
+            elif self.type() == PangoShapeType.Poly:
+                self._icon = "polygon"
+            elif self.type() == PangoShapeType.Dot:
+                self._icon = "dot"
+            else:
+                self._icon = "path"
+
+            self.setData(pango_get_icon(self._icon, self._color), Qt.DecorationRole)
 
     def visible(self):
         return self.data(Qt.CheckStateRole) == Qt.Checked
@@ -52,11 +71,10 @@ class PangoGraphic(QGraphicsItem):
         self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.setFlag(QGraphicsItem.ItemIsMovable)
 
+        self._icon = ""
         self._pen = QPen()
-        self._pen.setWidth(10)
         self._pen.setCapStyle(Qt.RoundCap)
         self._pen.setJoinStyle(Qt.RoundJoin)
-
         self._brush = QBrush()
  
     def name(self):
@@ -65,20 +83,37 @@ class PangoGraphic(QGraphicsItem):
     def set_name(self, name):
         self.setToolTip(name)
 
-    def color(self):
-        return self._pen.color()
+    def decoration(self):
+        return (self._icon, self._pen.color())
+    
+    def set_decoration(self, decoration=None):
+        if decoration == self.decoration():
+            return
+        if decoration is not None:
+            icon, color = decoration
+            self._pen.setColor(color)
+            self._icon = icon
+        else:
+            if self.parentItem() is None:
+                self._pen.setColor(pango_get_palette(len(self.scene().items())))
+            else:
+                self._pen.setColor(self.parentItem().decoration()[1])
 
-    def set_color(self, color):
-        self._pen.setColor(color)
-        # Hijack 'ItemTransformHasChanged' since not being used
+            if self.type() == PangoShapeType.Path:
+                self._icon = "path"
+            elif self.type() == PangoShapeType.Rect:
+                self._icon = "rectangle"
+            elif self.type() == PangoShapeType.Poly:
+                self._icon = "polygon"
+            elif self.type() == PangoShapeType.Dot:
+                self._icon = "dot"
+            else:
+                self._icon = "path"
+
+        # Hijack 'ItemTransformHasChanged' since not being used anyway
         if self.scene() is not None:
             self.scene().gfx_changed.emit(self, QGraphicsItem.ItemTransformHasChanged)
-
-    def colorize(self):
-        if self.parentItem() is None:
-            self.set_color(pango_get_palette(len(self.scene().items())))
-        else:
-            self.set_color(self.parentItem().color())
+        self.update()
 
     def visible(self):
         return self.isVisible()
@@ -92,13 +127,16 @@ class PangoGraphic(QGraphicsItem):
         return value
 
     def paint(self, painter, option, widget):
+        painter.setCompositionMode(QPainter.CompositionMode_Source)
         painter.setPen(self._pen)
         painter.setBrush(self._brush)
 
         if option.state & QStyle.State_Selected:
-            self.setOpacity(1)
+            if self.opacity() != 1:
+                self.setOpacity(1)
         else:
-            self.setOpacity(0.5)
+            if self.opacity() != 0.5:
+                self.setOpacity(0.5)
 
     def boundingRect(self):
         return QRectF()
@@ -113,6 +151,12 @@ class PangoPathGraphic(PangoGraphic):
 
     def set_width(self, width):
         self._pen.setWidth(width)
+
+    def merge(self, gfx):
+        if self._pen == gfx._pen:
+            self._path.addPath(gfx._path)
+            self.scene().removeItem(gfx)
+            self.update()
 
     def move_to(self, pnt):
         self._path.moveTo(pnt)
@@ -131,8 +175,7 @@ class PangoPathGraphic(PangoGraphic):
 
     def shape(self):
         st = QPainterPathStroker(self._pen)
-        st.setWidth(self._pen.width()*1.5)
-        outline = st.createStroke(self._path).simplified()
+        outline = st.createStroke(self._path)
         return outline
 
     def type(self):

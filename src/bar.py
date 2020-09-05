@@ -1,11 +1,11 @@
-from PyQt5.QtCore import QSize, Qt, pyqtSignal, QPoint
-from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtCore import QPoint, QSize, Qt, pyqtSignal
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox,
                              QLabel, QSizePolicy, QSpinBox, QStatusBar,
                              QToolBar, QWidget)
 
 from item import PangoHybridItem
-from utils import PangoShapeType, pango_get_icon, pango_get_palette
+from utils import PangoShapeType, pango_get_icon
 
 
 class PangoMenuBarWidget(QToolBar):
@@ -79,12 +79,11 @@ class PangoToolBarWidget(QToolBar):
         self.color_action.setIcon(icon)
 
         # Tool Related
-        self.size_select = self.SizeSelect()
+        self.size_select = QSpinBox()
         self.size_select.setSuffix("px")
         self.size_select.setRange(1, 99)
         self.size_select.setSingleStep(5)
         self.size_select.setValue(10)
-        self.size_select.setEnabled(False)
 
         self.pan_action = QAction("Pan")
         self.lasso_action = QAction("Lasso")
@@ -135,34 +134,41 @@ class PangoToolBarWidget(QToolBar):
         self.addWidget(self.info_display)
         self.addWidget(self.coord_display)
 
+        self.size_select.setEnabled(False)
+        self.label_select.setEnabled(False)
+        self.action_group.setEnabled(False)
+        self.color_action.setEnabled(False)
+
     def change_color(self):
         dialog = QColorDialog()
         dialog.setOption(QColorDialog.ShowAlphaChannel, False)
-        color = dialog.getColor()
-
         row = self.label_select.currentIndex()
         label_item = self.label_select.model().item(row, 0)
-        label_item.setData(color, Qt.DecorationRole)
+
+        decoration = (label_item.decoration()[0], dialog.getColor())
+        label_item.set_decoration(decoration)
 
         for n in range(0, label_item.rowCount()):
             child = label_item.child(n, 0)
-            child.setData(color, Qt.DecorationRole)
+            child.set_decoration(decoration)
 
             for n in range(0, child.rowCount()):
                 grand_child = child.child(n, 0)
-                grand_child.setData(color, Qt.DecorationRole)
+                grand_child.set_decoration(decoration)
 
 
     def add_label(self):
         if not self.label_select.isEnabled():
             self.label_select.setEnabled(True)
+            self.action_group.setEnabled(True)
+            self.color_action.setEnabled(True)
 
         item = PangoHybridItem(PangoShapeType.Default)
 
         root = self.label_select.model().invisibleRootItem()
         root.appendRow(item)
 
-        item.colorize()
+        item.set_decoration()
         item.set_name("Empty Label")
 
         self.label_select.setCurrentIndex(self.label_select.model().rowCount()-1)
@@ -174,6 +180,8 @@ class PangoToolBarWidget(QToolBar):
 
         if self.label_select.model().rowCount() == 0:
             self.label_select.setEnabled(False)
+            self.action_group.setEnabled(False)
+            self.color_action.setEnabled(False)
 
     def toggle_size_select(self, action):
         if action.text() == "Path" or action.text() == "Filled Path":
@@ -184,17 +192,6 @@ class PangoToolBarWidget(QToolBar):
     def reset_tool(self):
         self.lasso_action.setChecked(True)
         self.action_group.triggered.emit(self.lasso_action)
-
-    def update_coords(self, scene_pos):
-        coords = "x: "+str(scene_pos.x())+"\ny: "+str(scene_pos.y())
-        self.coord_display.setText(coords)
-
-    def update_info(self, text):
-        if text is not "":
-            info = "Drawing: "+text
-        else:
-            info = ""
-        self.info_display.setText(info)
 
     class LabelSelect(QComboBox):
         def __init__(self, color_display, parent=None):
@@ -210,7 +207,7 @@ class PangoToolBarWidget(QToolBar):
             super().paintEvent(event)
             item = self.model().item(self.currentIndex())
             if item is not None:
-                color = item.data(Qt.DecorationRole)
+                _, color = item.decoration()
                 if color is not None:
                     self.color_display.setStyleSheet(
                         "QLabel { background-color : "+color.name()+"}")
@@ -218,21 +215,6 @@ class PangoToolBarWidget(QToolBar):
         def edit_text_changed(self, text):
             row = self.currentIndex()
             self.setItemData(row, text, Qt.DisplayRole)
-
-    class SizeSelect(QSpinBox):
-        hover_change = pyqtSignal(bool, QPoint)
-        def __init__(self, parent=None):
-            super().__init__(parent)
-
-        def mousePressEvent(self, event):
-            super().mousePressEvent(event)
-            center = self.geometry().center()
-            self.hover_change.emit(True, center)
-
-        def leaveEvent(self, event):
-            super().leaveEvent(event)
-            self.hover_change.emit(False, QPoint())
-
 
 class PangoStatusBarWidget(QStatusBar):
     def __init__(self, parent=None):

@@ -1,7 +1,7 @@
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QPixmap, QIcon
-from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QFileIconProvider, 
-                             QFileSystemModel,  QListView,  QWidget)
+from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QFileIconProvider,
+                             QFileSystemModel, QListView, QWidget)
 
 
 class PangoDockWidget(QDockWidget):
@@ -55,7 +55,6 @@ class PangoFileWidget(PangoDockWidget):
 class ThumbnailProvider(QFileIconProvider):
     def __init__(self):
         super().__init__()
-        pass
 
     def icon(self, type: 'QFileIconProvider.IconType'):
         fn = type.filePath()
