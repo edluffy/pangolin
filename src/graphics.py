@@ -1,19 +1,23 @@
 from PyQt5.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QPainter, QPen, QPixmap
 from PyQt5.QtWidgets import (QAction, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPixmapItem,
-                             QGraphicsScene, QGraphicsView, QMenu)
+                             QGraphicsScene, QGraphicsView, QMenu, QUndoCommand, QUndoStack)
 
 from item import (PangoDotGraphic, PangoGraphic, PangoPathGraphic,
                   PangoPolyGraphic, PangoRectGraphic)
 from utils import PangoShapeType, pango_get_icon, pango_gfx_change_debug, pango_item_role_debug
 
+import copy
+
 
 class PangoGraphicsScene(QGraphicsScene):
     gfx_changed = pyqtSignal(PangoGraphic, QGraphicsItem.GraphicsItemChange)
+    gfx_removed = pyqtSignal(PangoGraphic)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setSceneRect(0, 0, 100, 100)
+        self.undo_stack = QUndoStack()
 
         self.label = PangoGraphic()
         self.gfx = None
@@ -36,16 +40,19 @@ class PangoGraphicsScene(QGraphicsScene):
 
     def set_label(self, label):
         self.label = label
+        self.gfx = None
         self.reticle.setBrush(self.label.decoration()[1])
 
     def set_tool(self, action):
         self.tool = action.text()
+        self.gfx = None
         self.reticle.setVisible(self.tool == "Path")
         self.views()[0].set_cursor(self.tool)
 
     def set_tool_size(self, size_select):
         size = size_select.value()
         self.tool_size = size
+        self.gfx = None
 
         view = self.views()[0]
         x = size_select.geometry().center().x()
@@ -61,29 +68,45 @@ class PangoGraphicsScene(QGraphicsScene):
         super().event(event)
         if self.tool == "Path":
             if event.type() == QEvent.GraphicsSceneMousePress:
-                self.gfx = PangoPathGraphic()
-
-                self.gfx.setParentItem(self.label)
-                self.gfx.set_width(self.tool_size)
-                self.gfx.set_name("Rando Path")
-                self.gfx.set_decoration()
-
+                if self.gfx is None:
+                    self.undo_stack.push(AddGraphicCommand(
+                        self, self.label, self.tool_size, event.scenePos())) 
                 self.gfx.move_to(event.scenePos())
                 return True
             if event.type() == QEvent.GraphicsSceneMouseMove:
-                if self.gfx is not None:
-                    self.gfx.line_to(event.scenePos())
+                if event.buttons() & Qt.LeftButton:
+                    if self.gfx is not None and self.gfx.type() == PangoShapeType.Path:
+                        self.gfx.line_to(event.scenePos())
                 self.reticle.setPos(event.scenePos())
                 return True
-            if event.type() == QEvent.GraphicsSceneMouseRelease:
-                if self.gfx is not None:
-                    for gfx in self.gfx.collidingItems():
-                        if gfx.type() == PangoShapeType.Path:
-                            self.gfx.merge(gfx)
-                    self.gfx = None
-                    return True
         return False
- 
+
+class AddGraphicCommand(QUndoCommand):
+    def __init__(self, scene, label, tool_size, pos):
+        super().__init__()
+        self.scene = scene
+        self.label = label
+        self.tool_size = tool_size
+        self.pos = pos
+
+        self.gfx = PangoPathGraphic()
+
+    def redo(self):
+        self.gfx.setParentItem(self.label)
+        name = "Path at ("+str(round(self.pos.x()))+", "+str(round(self.pos.y()))+")"
+
+        self.gfx.set_name(name)
+        self.gfx.set_width(self.tool_size)
+        self.gfx.set_decoration()
+
+        self.scene.gfx = self.gfx
+        self.setText("Added "+self.gfx.name())
+
+    def undo(self):
+        self.scene.removeItem(self.gfx)
+        self.scene.gfx_removed.emit(self.gfx)
+
+
 class PangoGraphicsView(QGraphicsView):
     def __init__(self, parent=None):
         super().__init__(parent)

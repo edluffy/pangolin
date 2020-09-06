@@ -1,7 +1,9 @@
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QFileIconProvider,
-                             QFileSystemModel, QListView, QWidget)
+                             QFileSystemModel, QListView, QVBoxLayout, QWidget)
+
+from utils import pango_get_icon
 
 
 class PangoDockWidget(QDockWidget):
@@ -16,13 +18,20 @@ class PangoDockWidget(QDockWidget):
         self.setTitleBarWidget(QWidget())
 
 class PangoLabelWidget(PangoDockWidget):
-    def __init__(self, title, view, parent=None):
+    def __init__(self, title, tree_view, undo_view, parent=None):
         super().__init__(title, parent)
-        self.view = view
+        self.tree_view = tree_view
+        self.undo_view = undo_view
         self.setFixedWidth(200)
 
         # Widgets
-        self.setWidget(self.view)
+        self.undo_view.setCleanIcon(pango_get_icon("save_masks"))
+        self.undo_view.setEmptyLabel("Last save state")
+
+        # Layouts
+        self.bg_layout = QVBoxLayout(self.bg)
+        self.bg_layout.addWidget(self.tree_view)
+        self.bg_layout.addWidget(self.undo_view)
 
 
 class PangoFileWidget(PangoDockWidget):

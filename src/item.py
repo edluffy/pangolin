@@ -1,4 +1,4 @@
-from PyQt5.QtCore import Qt, QRectF, QPersistentModelIndex, QModelIndex
+from PyQt5.QtCore import QPointF, Qt, QRectF, QPersistentModelIndex, QModelIndex
 from PyQt5.QtGui import QBrush, QColor, QIcon, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF, QStandardItem
 from PyQt5.QtWidgets import (QAbstractGraphicsShapeItem, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPathItem,
                              QGraphicsPolygonItem, QGraphicsRectItem, QStyle)
@@ -149,14 +149,9 @@ class PangoPathGraphic(PangoGraphic):
         super().__init__(parent)
         self._path  = QPainterPath()
 
-    def set_width(self, width):
-        self._pen.setWidth(width)
-
-    def merge(self, gfx):
-        if self._pen == gfx._pen:
-            self._path.addPath(gfx._path)
-            self.scene().removeItem(gfx)
-            self.update()
+    def set_width(self, width=None):
+        if width is not None:
+            self._pen.setWidth(width)
 
     def move_to(self, pnt):
         self._path.moveTo(pnt)

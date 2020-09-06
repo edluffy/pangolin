@@ -1,6 +1,6 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QKeySequence, QStandardItemModel
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QShortcut, QTreeView,
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QShortcut, QTreeView, QUndoView,
                              QVBoxLayout, QWidget)
 
 from bar import PangoMenuBarWidget, PangoToolBarWidget
@@ -30,6 +30,7 @@ class MainWindow(QMainWindow):
         #     QTreeView::indicator:unchecked{ image: url(:black/eye_off.png)}")
 
         self.scene = PangoGraphicsScene()
+        self.undo_view = QUndoView(self.scene.undo_stack)
 
         self.graphics_view = PangoGraphicsView()
         self.graphics_view.setScene(self.scene)
@@ -38,7 +39,7 @@ class MainWindow(QMainWindow):
         self.interface.set_scene(self.scene)
 
         # Dock widgets
-        self.label_widget = PangoLabelWidget("Labels", self.tree_view)
+        self.label_widget = PangoLabelWidget("Labels", self.tree_view, self.undo_view)
         self.file_widget = PangoFileWidget("Files")
 
         # Menu and toolbars

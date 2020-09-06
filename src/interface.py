@@ -27,6 +27,7 @@ class PangoModelSceneInterface(object):
     def set_scene(self, scene):
         self.scene = scene
         self.scene.gfx_changed.connect(self.gfx_changed)
+        self.scene.gfx_removed.connect(self.gfx_removed)
         self.scene.selectionChanged.connect(self.gfx_selection_changed)
 
     def item_selection_changed(self):
@@ -71,6 +72,8 @@ class PangoModelSceneInterface(object):
             item = self.model.itemFromIndex(QModelIndex(self.map.inverse[gfx]))
         except KeyError:
             item = self.create_item_from_gfx(gfx)
+        if item is None:
+            item = self.create_item_from_gfx(gfx)
 
         if change == QGraphicsItem.ItemToolTipHasChanged:
             item.set_name(gfx.name())
@@ -78,8 +81,6 @@ class PangoModelSceneInterface(object):
             item.set_decoration(gfx.decoration())
         elif change == QGraphicsItem.ItemVisibleHasChanged:
             item.set_visible(gfx.visible())
-        elif change == QGraphicsItem.ItemSceneChange:
-            self.gfx_removed(gfx)
 
     def item_removed(self, parent_idx, first, last):
         if parent_idx.isValid():
@@ -88,6 +89,7 @@ class PangoModelSceneInterface(object):
             item = self.model.item(first, 0)
 
         gfx = self.map[item.key()]
+        _ = self.map.pop(item.key())
         del gfx
 
     def gfx_removed(self, gfx):
