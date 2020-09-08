@@ -16,7 +16,7 @@ class PangoGraphicsScene(QGraphicsScene):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setSceneRect(0, 0, 100, 100)
+        self.px = None
         self.undo_stack = QUndoStack()
         self.last_com = None
 
@@ -29,14 +29,9 @@ class PangoGraphicsScene(QGraphicsScene):
         self.reticle.setPen(QPen(Qt.NoPen))
         self.addItem(self.reticle)
 
-    def change_image(self, idx):
+    def set_image(self, idx):
         path = idx.model().filePath(idx)
-
-        for item in self.items():
-            if item.type == QGraphicsPixmapItem():
-                self.removeItem(item)
-        new_item = self.addPixmap(QPixmap(path))
-        new_item.setZValue(-1)
+        self.px = QPixmap(path)
 
     def set_label(self, label):
         self.label = label
@@ -78,6 +73,12 @@ class PangoGraphicsScene(QGraphicsScene):
                 self.undo_stack.undo()
                 self.removeItem(self.last_com.gfx)
         self.last_com = None
+
+    def drawBackground(self, painter, rect):
+        if self.px is not None:
+            painter.drawPixmap(0, 0, self.px)
+            self.setSceneRect(QRectF(self.px.rect()))
+            self.views()[0].viewport().update()
 
     def mousePressEvent(self, event):
         pos = event.scenePos()
@@ -213,6 +214,7 @@ class PangoGraphicsView(QGraphicsView):
         super().__init__(parent)
         self.setInteractive(True)
         self.setMouseTracking(True)
+        self.setCacheMode(QGraphicsView.CacheBackground)
         self.coords = ""
 
     def set_cursor(self, tool):

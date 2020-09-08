@@ -7,7 +7,6 @@ from bar import PangoMenuBarWidget, PangoToolBarWidget
 from dock import PangoFileWidget, PangoLabelWidget
 from graphics import PangoGraphicsScene, PangoGraphicsView
 from interface import PangoModelSceneInterface
-
 app = QApplication([])
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
@@ -25,9 +24,6 @@ class MainWindow(QMainWindow):
         self.tree_view = QTreeView()
         self.tree_view.setModel(self.model)
         self.tree_view.setSelectionMode(QTreeView.ExtendedSelection)
-        #self.tree_view.setStyleSheet(
-        #    "QTreeView::indicator:checked:enabled{ image: url(:black/eye_on.png)} \
-        #     QTreeView::indicator:unchecked{ image: url(:black/eye_off.png)}")
 
         self.scene = PangoGraphicsScene()
         self.undo_view = QUndoView(self.scene.undo_stack)
@@ -50,7 +46,7 @@ class MainWindow(QMainWindow):
         # Signals and Slots
         self.menu_bar.open_images_action.triggered.connect(self.file_widget.open)
 
-        self.file_widget.file_view.activated.connect(self.scene.change_image)
+        self.file_widget.file_view.activated.connect(self.scene.set_image)
 
         self.tool_bar.label_select.currentIndexChanged.connect(self.interface.set_label)
         self.tool_bar.action_group.triggered.connect(self.scene.set_tool)

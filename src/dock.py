@@ -1,7 +1,7 @@
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QEvent, QSize, Qt
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QFileIconProvider,
-                             QFileSystemModel, QListView, QVBoxLayout, QWidget)
+                             QFileSystemModel, QListView, QStyleOptionViewItem, QStyledItemDelegate, QVBoxLayout, QWidget)
 
 from utils import pango_get_icon
 
@@ -25,14 +25,18 @@ class PangoLabelWidget(PangoDockWidget):
         self.setFixedWidth(200)
 
         # Widgets
+        self.tree_view.setStyleSheet(
+            "QTreeView::indicator:checked:enabled{ image: url(:icons/eye_on.png)} \
+             QTreeView::indicator:unchecked{ image: url(:icons/eye_off.png)}")
+
         self.undo_view.setCleanIcon(pango_get_icon("save_masks"))
         self.undo_view.setEmptyLabel("Last save state")
 
         # Layouts
         self.bg_layout = QVBoxLayout(self.bg)
+        self.bg_layout.setContentsMargins(0, 0, 0, 0)
         self.bg_layout.addWidget(self.tree_view)
         self.bg_layout.addWidget(self.undo_view)
-
 
 class PangoFileWidget(PangoDockWidget):
     def __init__(self, title, parent=None):
