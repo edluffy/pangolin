@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QPointF, Qt, QRectF, QPersistentModelIndex, QModelIndex
+from PyQt5.QtCore import QLineF, QPointF, Qt, QRectF, QPersistentModelIndex, QModelIndex
 from PyQt5.QtGui import QBrush, QColor, QIcon, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF, QStandardItem
 from PyQt5.QtWidgets import (QAbstractGraphicsShapeItem, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPathItem,
                              QGraphicsPolygonItem, QGraphicsRectItem, QStyle)
@@ -51,7 +51,7 @@ class PangoHybridItem(QStandardItem):
             elif self.type() == PangoShapeType.Poly:
                 self._icon = "polygon"
             elif self.type() == PangoShapeType.Dot:
-                self._icon = "dot"
+                self._icon = "dot" 
             else:
                 self._icon = "path"
 
@@ -69,7 +69,6 @@ class PangoGraphic(QGraphicsItem):
         self.setCacheMode(QGraphicsItem.DeviceCoordinateCache)
         self.setAcceptHoverEvents(True)
         self.setFlag(QGraphicsItem.ItemIsSelectable)
-        self.setFlag(QGraphicsItem.ItemIsMovable)
 
         self._icon = ""
         self._pen = QPen()
@@ -132,11 +131,9 @@ class PangoGraphic(QGraphicsItem):
         painter.setBrush(self._brush)
 
         if option.state & QStyle.State_Selected:
-            if self.opacity() != 1:
-                self.setOpacity(1)
+            painter.setOpacity(0.7)
         else:
-            if self.opacity() != 0.5:
-                self.setOpacity(0.5)
+            painter.setOpacity(0.5)
 
     def boundingRect(self):
         return QRectF()
@@ -147,38 +144,114 @@ class PangoGraphic(QGraphicsItem):
 class PangoPathGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._path  = QPainterPath()
+        self._points = []
 
     def set_width(self, width=None):
         if width is not None:
             self._pen.setWidth(width)
 
-    def move_to(self, pnt):
-        self._path.moveTo(pnt)
-        self.update()
+    def add_point(self, pnt, action):
+        self._points.append((pnt, action))
 
-    def line_to(self, pnt):
-        self._path.lineTo(pnt)
-        self.update()
+    def pop_point(self):
+        return self._points.pop()
+    
+    def path(self):
+        if len(self._points) > 1:
+            path = QPainterPath(self._points[0][0])
+            for point, action in self._points[1:]:
+                if action == 0:
+                    path.lineTo(point)
+                else:
+                    path.moveTo(point)
+            return path
+        else:
+            return QPainterPath()
 
     def paint(self, painter, option, widget):
         super().paint(painter, option, widget)
-        painter.drawPath(self._path)
+        painter.drawPath(self.path())
 
     def boundingRect(self):
         return self.shape().controlPointRect()
 
     def shape(self):
         st = QPainterPathStroker(self._pen)
-        outline = st.createStroke(self._path)
-        return outline
+        return st.createStroke(self.path())
 
     def type(self):
         return PangoShapeType.Path
 
+
 class PangoPolyGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._polygon = QPolygonF()
+        self._closed = False
+
+        self.w = 10
+        self._pen.setWidth(self.w)
+        self._brush.setStyle(Qt.SolidPattern)
+
+    def add_point(self, pnt):
+        if len(self._polygon) > 1 and (QLineF(self._polygon.first(), pnt).length() <= self.w):
+            self._closed = True
+        else:
+            self._polygon += pnt
+
+    def rem_point(self):
+        if self._polygon.count() > 1:
+            self._polygon.remove(self._polygon.count()-1)
+            self._closed = False
+
+    def points(self):
+        pnts = []
+        for n in range(0, self._polygon.count()):
+            pnts.append(self._polygon.value(n))
+        return pnts
+
+    def closed(self):
+        return self._closed
+    
+    def set_decoration(self, decoration=None):
+        super().set_decoration(decoration)
+        self._brush.setColor(self._pen.color())
+
+    def hoverMoveEvent(self, event):
+        pass
+
+    def paint(self, painter, option, widget):
+        super().paint(painter, option, widget)
+        if self._closed:
+            painter.drawPolygon(self._polygon)
+        else:
+            for n in range(0, len(self._polygon)-1):
+                painter.drawLine(self._polygon.value(n),
+                                 self._polygon.value(n+1))
+
+        if option.state & QStyle.State_MouseOver:
+            painter.setOpacity(1)
+            for n in range(0, len(self._polygon)):
+                painter.drawRect(self._polygon.value(n).x()-5,
+                                 self._polygon.value(n).y()-5, 10, 10)
+
+    def boundingRect(self):
+        return self.shape().controlPointRect().adjusted(-self.w, -self.w, self.w, self.w)
+
+    def shape(self):
+        path = QPainterPath()
+        path.addPolygon(self._polygon)
+
+        st = QPainterPathStroker()
+        st.setWidth(self._pen.width())
+        st.setJoinStyle(self._pen.joinStyle())
+        outline = st.createStroke(path)
+
+        path.addPath(outline)
+        return path
+
+    def type(self):
+        return PangoShapeType.Poly
 
 
 class PangoRectGraphic(PangoGraphic):
@@ -186,6 +259,31 @@ class PangoRectGraphic(PangoGraphic):
         super().__init__(parent)
 
 
-class PangoDotGraphic(PangoGraphic):
+class PangoPointGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setFlag(QGraphicsItem.ItemIsMovable)
+        self.setFlag(QGraphicsItem.ItemIgnoresParentOpacity)
+        self.r = 10
+
+        self._pnt = QRectF(0, 0, self.r, self.r)
+        self._pen.setWidth(self.r)
+
+    def set_pos(self, pnt):
+        self._pnt.setRect(pnt.x()-self.r/2, pnt.y()-self.r/2, self.r, self.r)
+
+    def paint(self, painter, option, widget):
+        super().paint(painter, option, widget)
+        painter.drawRect(self._pnt)
+
+    def boundingRect(self):
+        return self.shape().controlPointRect().adjusted(-self.r, -self.r, self.r, self.r)
+
+    def shape(self):
+        path = QPainterPath()
+        path.addEllipse(self._pnt)
+        return path
+
+    def type(self):
+        return PangoShapeType.Dot
+

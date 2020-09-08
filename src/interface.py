@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QGraphicsItem
 
 from bidict import bidict
 
-from item import PangoDotGraphic, PangoGraphic, PangoHybridItem, PangoPathGraphic, PangoPolyGraphic, PangoRectGraphic
+from item import PangoPointGraphic, PangoGraphic, PangoHybridItem, PangoPathGraphic, PangoPolyGraphic, PangoRectGraphic
 from utils import PangoShapeType, pango_gfx_change_debug, pango_item_role_debug
 
 """ PangoModelSceneInterface promotes loose coupling by keeping model/view and 
@@ -116,7 +116,7 @@ class PangoModelSceneInterface(object):
         elif item.type() == PangoShapeType.Poly:
             gfx = PangoPolyGraphic()
         elif item.type() == PangoShapeType.Dot:
-            gfx = PangoDotGraphic()
+            gfx = PangoPointGraphic()
         else:
             gfx = PangoGraphic()
 

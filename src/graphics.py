@@ -1,9 +1,9 @@
 from PyQt5.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
-from PyQt5.QtGui import QFont, QPainter, QPen, QPixmap
+from PyQt5.QtGui import QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygonF
 from PyQt5.QtWidgets import (QAction, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPixmapItem,
                              QGraphicsScene, QGraphicsView, QMenu, QUndoCommand, QUndoStack)
 
-from item import (PangoDotGraphic, PangoGraphic, PangoPathGraphic,
+from item import (PangoPointGraphic, PangoGraphic, PangoPathGraphic,
                   PangoPolyGraphic, PangoRectGraphic)
 from utils import PangoShapeType, pango_get_icon, pango_gfx_change_debug, pango_item_role_debug
 
@@ -18,9 +18,9 @@ class PangoGraphicsScene(QGraphicsScene):
         super().__init__(parent)
         self.setSceneRect(0, 0, 100, 100)
         self.undo_stack = QUndoStack()
+        self.last_com = None
 
         self.label = PangoGraphic()
-        self.gfx = None
         self.tool = None
         self.tool_size = 10
 
@@ -40,19 +40,21 @@ class PangoGraphicsScene(QGraphicsScene):
 
     def set_label(self, label):
         self.label = label
-        self.gfx = None
+        self.reset_com()
+
         self.reticle.setBrush(self.label.decoration()[1])
 
     def set_tool(self, action):
         self.tool = action.text()
-        self.gfx = None
+        self.reset_com()
+
         self.reticle.setVisible(self.tool == "Path")
         self.views()[0].set_cursor(self.tool)
 
     def set_tool_size(self, size_select):
         size = size_select.value()
         self.tool_size = size
-        self.gfx = None
+        self.reset_com()
 
         view = self.views()[0]
         x = size_select.geometry().center().x()
@@ -60,52 +62,150 @@ class PangoGraphicsScene(QGraphicsScene):
         self.reticle.setRect(-size/2, -size/2, size, size)
         self.reticle.setPos(view.mapToScene(QPoint(x, y)))
 
+    def reset_tool(self):
+        self.set_tool(QAction("Lasso"))
+        self.reset_com()
+
+    def reset_com(self):
+        if type(self.last_com) is ExtendPoly:
+            if not self.last_com.gfx.closed():
+                while type(self.undo_stack.command(self.undo_stack.index()-1)) is ExtendPoly:
+                    self.undo_stack.command(self.undo_stack.index()-1).setObsolete(True)
+                    self.undo_stack.undo()
+
+                self.undo_stack.command(self.undo_stack.index()-1).setObsolete(True)
+                self.undo_stack.undo()
+                self.removeItem(self.last_com.gfx)
+        self.last_com = None
+
     def mousePressEvent(self, event):
+        pos = event.scenePos()
+
         if self.tool == "Pan" or self.tool == "Lasso":
             super().mousePressEvent(event)
 
-    def event(self, event):
-        super().event(event)
-        if self.tool == "Path":
-            if event.type() == QEvent.GraphicsSceneMousePress:
-                if self.gfx is None:
-                    self.undo_stack.push(AddGraphicCommand(
-                        self, self.label, self.tool_size, event.scenePos())) 
-                self.gfx.move_to(event.scenePos())
-                return True
-            if event.type() == QEvent.GraphicsSceneMouseMove:
-                if event.buttons() & Qt.LeftButton:
-                    if self.gfx is not None and self.gfx.type() == PangoShapeType.Path:
-                        self.gfx.line_to(event.scenePos())
-                self.reticle.setPos(event.scenePos())
-                return True
-        return False
+        elif self.tool == "Path":
+            if type(self.last_com) is not ExtendPath:
+                self.last_com = CreatePath(self.label, self.tool_size, pos)
+                self.undo_stack.push(self.last_com)
 
-class AddGraphicCommand(QUndoCommand):
-    def __init__(self, scene, label, tool_size, pos):
+            self.undo_stack.beginMacro("Path extension at ("+str(pos.x())+", "+str(pos.y())+")")
+            self.last_com = ExtendPath(self.last_com.gfx, pos, 1)
+            self.undo_stack.push(self.last_com)
+
+        elif self.tool == "Poly":
+            if type(self.last_com) is not ExtendPoly:
+                self.last_com = CreatePoly(self.label, pos)
+                self.undo_stack.push(self.last_com)
+
+            self.last_com = ExtendPoly(self.last_com.gfx, [pos])
+            self.undo_stack.push(self.last_com)
+
+            if self.last_com.gfx.closed():
+                points = self.last_com.gfx.points()
+                points.append(pos)
+
+                while type(self.undo_stack.command(self.undo_stack.index()-1)) is ExtendPoly:
+                    self.undo_stack.undo()
+                self.undo_stack.push(ExtendPoly(self.last_com.gfx, points))
+                self.reset_tool()
+
+
+    def mouseMoveEvent(self, event):
+        super().mouseMoveEvent(event)
+        pos = event.scenePos()
+
+        if self.tool == "Path":
+            self.reticle.setPos(pos)
+            if event.buttons() & Qt.LeftButton:
+                if type(self.last_com) is ExtendPath:
+                    self.last_com = ExtendPath(self.last_com.gfx, pos, 0)
+                    self.undo_stack.push(self.last_com)
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        if self.tool == "Path":
+            self.undo_stack.endMacro()
+
+
+class CreatePath(QUndoCommand):
+    def __init__(self, p_gfx, tool_size, pos):
         super().__init__()
-        self.scene = scene
-        self.label = label
+        self.p_gfx = p_gfx
         self.tool_size = tool_size
         self.pos = pos
 
-        self.gfx = PangoPathGraphic()
-
     def redo(self):
-        self.gfx.setParentItem(self.label)
         name = "Path at ("+str(round(self.pos.x()))+", "+str(round(self.pos.y()))+")"
 
-        self.gfx.set_name(name)
-        self.gfx.set_width(self.tool_size)
+        self.gfx = PangoPathGraphic()
+        self.gfx.setParentItem(self.p_gfx)
         self.gfx.set_decoration()
-
-        self.scene.gfx = self.gfx
-        self.setText("Added "+self.gfx.name())
+        self.gfx.set_width(self.tool_size)
+        self.gfx.set_name(name)
+        self.setText("Created "+name)
 
     def undo(self):
-        self.scene.removeItem(self.gfx)
-        self.scene.gfx_removed.emit(self.gfx)
+        self.gfx.scene().gfx_removed.emit(self.gfx)
+        del self.gfx
 
+class ExtendPath(QUndoCommand):
+    def __init__(self, gfx, pos, action):
+        super().__init__()
+        self.gfx = gfx
+        self.pos = pos
+        self.action = action
+        
+    def redo(self):
+        self.gfx.add_point(self.pos, self.action)
+        self.gfx.update()
+
+    def undo(self):
+        _, _ = self.gfx.pop_point()
+        self.gfx.update()
+
+
+class CreatePoly(QUndoCommand):
+    def __init__(self, p_gfx, pos):
+        super().__init__()
+        self.p_gfx = p_gfx
+        self.pos = pos
+    
+    def redo(self):
+        name = "Poly at ("+str(round(self.pos.x()))+", "+str(round(self.pos.y()))+")"
+
+        self.gfx = PangoPolyGraphic()
+        self.gfx.setParentItem(self.p_gfx)
+        self.gfx.set_decoration()
+        self.gfx.set_name(name)
+        self.setText("Created "+name)
+
+    def undo(self):
+        self.gfx.scene().gfx_removed.emit(self.gfx)
+        del self.gfx
+
+class ExtendPoly(QUndoCommand):
+    def __init__(self, gfx, points):
+        super().__init__()
+        self.gfx = gfx
+        self.points = points
+
+    def redo(self):
+        for point in self.points:
+            self.gfx.add_point(point)
+        self.gfx.update()
+
+        if self.gfx.closed():
+            self.setText("Finished "+self.gfx.name())
+        else:
+            coords = "("+str(round(self.points[-1].x())) + \
+                ", "+str(round(self.points[-1].y()))+")"
+            self.setText("Extended Poly to "+coords)
+
+    def undo(self):
+        for _ in self.points:
+            self.gfx.rem_point()
+        self.gfx.update()
 
 class PangoGraphicsView(QGraphicsView):
     def __init__(self, parent=None):
@@ -153,7 +253,6 @@ class PangoGraphicsView(QGraphicsView):
         item = self.itemAt(event.pos())
         if hasattr(item, "name"):
             self.coords+=item.name()
-        
 
     def wheelEvent(self, event):
         self.setTransformationAnchor(QGraphicsView.NoAnchor)
