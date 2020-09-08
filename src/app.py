@@ -57,6 +57,8 @@ class MainWindow(QMainWindow):
         self.tool_bar.size_select.valueChanged.connect(
             lambda: self.scene.set_tool_size(self.tool_bar.size_select))
 
+        self.scene.tool_changed.connect(self.tool_bar.change_tool)
+
         # Layouts
         self.bg = QWidget()
         self.setCentralWidget(self.bg)

@@ -13,6 +13,7 @@ import copy
 class PangoGraphicsScene(QGraphicsScene):
     gfx_changed = pyqtSignal(PangoGraphic, QGraphicsItem.GraphicsItemChange)
     gfx_removed = pyqtSignal(PangoGraphic)
+    tool_changed = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -64,6 +65,7 @@ class PangoGraphicsScene(QGraphicsScene):
 
     def reset_tool(self):
         self.set_tool(QAction("Lasso"))
+        self.tool_changed.emit("Lasso")
         self.reset_com()
 
     def reset_com(self):

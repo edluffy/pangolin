@@ -189,9 +189,11 @@ class PangoToolBarWidget(QToolBar):
         else:
             self.size_select.setEnabled(False)
 
-    def reset_tool(self):
-        self.lasso_action.setChecked(True)
-        self.action_group.triggered.emit(self.lasso_action)
+    def change_tool(self, text):
+        for action in self.action_group.actions():
+            if action.text() == text:
+                action.setChecked(True)
+                return
 
     class LabelSelect(QComboBox):
         def __init__(self, color_display, parent=None):
