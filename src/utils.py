@@ -29,12 +29,12 @@ def pango_get_icon(name, color=None):
     px.setMask(mask)
     return QIcon(px)
 
+
 class PangoShapeType(Enum):
     Default = QGraphicsItem.UserType +1
     Path = QGraphicsItem.UserType + 2
     Rect = QGraphicsItem.UserType + 3
     Poly = QGraphicsItem.UserType + 4
-    Dot = QGraphicsItem.UserType + 5
 
 
 def pango_item_role_debug(role):

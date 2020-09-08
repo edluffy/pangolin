@@ -47,13 +47,11 @@ class PangoHybridItem(QStandardItem):
             if self.type() == PangoShapeType.Path:
                 self._icon = "path"
             elif self.type() == PangoShapeType.Rect:
-                self._icon = "rectangle"
+                self._icon = "rect"
             elif self.type() == PangoShapeType.Poly:
-                self._icon = "polygon"
-            elif self.type() == PangoShapeType.Dot:
-                self._icon = "dot" 
+                self._icon = "poly"
             else:
-                self._icon = "path"
+                self._icon = "label"
 
             self.setData(pango_get_icon(self._icon, self._color), Qt.DecorationRole)
 
@@ -101,13 +99,11 @@ class PangoGraphic(QGraphicsItem):
             if self.type() == PangoShapeType.Path:
                 self._icon = "path"
             elif self.type() == PangoShapeType.Rect:
-                self._icon = "rectangle"
+                self._icon = "rect"
             elif self.type() == PangoShapeType.Poly:
-                self._icon = "polygon"
-            elif self.type() == PangoShapeType.Dot:
-                self._icon = "dot"
+                self._icon = "poly"
             else:
-                self._icon = "path"
+                self._icon = "label"
 
         # Hijack 'ItemTransformHasChanged' since not being used anyway
         if self.scene() is not None:
@@ -257,33 +253,4 @@ class PangoPolyGraphic(PangoGraphic):
 class PangoRectGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
-
-
-class PangoPointGraphic(PangoGraphic):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setFlag(QGraphicsItem.ItemIsMovable)
-        self.setFlag(QGraphicsItem.ItemIgnoresParentOpacity)
-        self.r = 10
-
-        self._pnt = QRectF(0, 0, self.r, self.r)
-        self._pen.setWidth(self.r)
-
-    def set_pos(self, pnt):
-        self._pnt.setRect(pnt.x()-self.r/2, pnt.y()-self.r/2, self.r, self.r)
-
-    def paint(self, painter, option, widget):
-        super().paint(painter, option, widget)
-        painter.drawRect(self._pnt)
-
-    def boundingRect(self):
-        return self.shape().controlPointRect().adjusted(-self.r, -self.r, self.r, self.r)
-
-    def shape(self):
-        path = QPainterPath()
-        path.addEllipse(self._pnt)
-        return path
-
-    def type(self):
-        return PangoShapeType.Dot
 

@@ -17,5 +17,6 @@
 	<file>icons/del.png</file>
 	<file>icons/trash.png</file>
 	<file>icons/palette.png</file>
+	<file>icons/label.png</file>
 </qresource>
 </RCC>

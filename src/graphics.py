@@ -3,8 +3,7 @@ from PyQt5.QtGui import QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygonF
 from PyQt5.QtWidgets import (QAction, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPixmapItem,
                              QGraphicsScene, QGraphicsView, QMenu, QUndoCommand, QUndoStack)
 
-from item import (PangoPointGraphic, PangoGraphic, PangoPathGraphic,
-                  PangoPolyGraphic, PangoRectGraphic)
+from item import PangoGraphic, PangoPathGraphic, PangoPolyGraphic, PangoRectGraphic
 from utils import PangoShapeType, pango_get_icon, pango_gfx_change_debug, pango_item_role_debug
 
 import copy
@@ -91,7 +90,7 @@ class PangoGraphicsScene(QGraphicsScene):
                 self.last_com = CreatePath(self.label, self.tool_size, pos)
                 self.undo_stack.push(self.last_com)
 
-            self.undo_stack.beginMacro("Path extension at ("+str(pos.x())+", "+str(pos.y())+")")
+            self.undo_stack.beginMacro("Extended Path to ("+str(pos.x())+", "+str(pos.y())+")")
             self.last_com = ExtendPath(self.last_com.gfx, pos, 1)
             self.undo_stack.push(self.last_com)
 
@@ -145,7 +144,7 @@ class CreatePath(QUndoCommand):
         self.gfx.set_decoration()
         self.gfx.set_width(self.tool_size)
         self.gfx.set_name(name)
-        self.setText("Created "+name)
+        self.setText("+ Created "+name)
 
     def undo(self):
         self.gfx.scene().gfx_removed.emit(self.gfx)
@@ -180,7 +179,7 @@ class CreatePoly(QUndoCommand):
         self.gfx.setParentItem(self.p_gfx)
         self.gfx.set_decoration()
         self.gfx.set_name(name)
-        self.setText("Created "+name)
+        self.setText("+ Created "+name)
 
     def undo(self):
         self.gfx.scene().gfx_removed.emit(self.gfx)
