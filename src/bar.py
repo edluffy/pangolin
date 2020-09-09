@@ -4,8 +4,8 @@ from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox,
                              QLabel, QSizePolicy, QSpinBox, QStatusBar,
                              QToolBar, QWidget)
 
-from item import PangoHybridItem
-from utils import PangoShapeType, pango_get_icon
+from item import PangoLabelItem
+from utils import pango_get_icon
 
 
 class PangoMenuBarWidget(QToolBar):
@@ -163,7 +163,7 @@ class PangoToolBarWidget(QToolBar):
             self.action_group.setEnabled(True)
             self.color_action.setEnabled(True)
 
-        item = PangoHybridItem(PangoShapeType.Default)
+        item = PangoLabelItem()
 
         root = self.label_select.model().invisibleRootItem()
         root.appendRow(item)

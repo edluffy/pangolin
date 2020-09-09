@@ -5,10 +5,9 @@ from PyQt5.QtWidgets import (QAbstractGraphicsShapeItem, QGraphicsEllipseItem, Q
 
 from utils import PangoShapeType, pango_get_icon, pango_get_palette
 
-class PangoHybridItem(QStandardItem):
-    def __init__ (self, type):
+class PangoItem(QStandardItem):
+    def __init__ (self):
         super().__init__()
-        self.set_type(type)
         self.setCheckable(True)
 
         self._color = QColor()
@@ -17,12 +16,6 @@ class PangoHybridItem(QStandardItem):
     def key(self):
         return QPersistentModelIndex(self.index())
 
-    def type(self):
-        return self.data(Qt.UserRole)
-
-    def set_type(self, shape):
-        self.setData(shape, Qt.UserRole)
-    
     def name(self):
         return self.data(Qt.DisplayRole)
     
@@ -44,22 +37,50 @@ class PangoHybridItem(QStandardItem):
             else:
                 self._color = self.parent().color()
 
-            if self.type() == PangoShapeType.Path:
-                self._icon = "path"
-            elif self.type() == PangoShapeType.Rect:
-                self._icon = "rect"
-            elif self.type() == PangoShapeType.Poly:
-                self._icon = "poly"
-            else:
-                self._icon = "label"
-
-            self.setData(pango_get_icon(self._icon, self._color), Qt.DecorationRole)
+        self.setData(pango_get_icon(self._icon, self._color), Qt.DecorationRole)
 
     def visible(self):
         return self.data(Qt.CheckStateRole) == Qt.Checked
 
     def set_visible(self, state):
         self.setData(Qt.Checked if state else Qt.Unchecked, Qt.CheckStateRole)
+
+
+class PangoLabelItem(PangoItem):
+    def __init__(self):
+        super().__init__()
+
+    def set_decoration(self, decoration=None):
+        self._icon = "label"
+        super().set_decoration(decoration)
+
+
+class PangoPathItem(PangoItem):
+    def __init__(self):
+        super().__init__()
+
+    def set_decoration(self, decoration=None):
+        self._icon = "path"
+        super().set_decoration(decoration)
+
+
+class PangoPolyItem(PangoItem):
+    def __init__(self):
+        super().__init__()
+
+    def set_decoration(self, decoration=None):
+        self._icon = "poly"
+        super().set_decoration(decoration)
+
+
+class PangoRectItem(PangoItem):
+    def __init__(self):
+        super().__init__()
+
+    def set_decoration(self, decoration=None):
+        self._icon = "rect"
+        super().set_decoration(decoration)
+
 
 class PangoGraphic(QGraphicsItem):
     def __init__(self, parent=None):
@@ -96,15 +117,6 @@ class PangoGraphic(QGraphicsItem):
             else:
                 self._pen.setColor(self.parentItem().decoration()[1])
 
-            if self.type() == PangoShapeType.Path:
-                self._icon = "path"
-            elif self.type() == PangoShapeType.Rect:
-                self._icon = "rect"
-            elif self.type() == PangoShapeType.Poly:
-                self._icon = "poly"
-            else:
-                self._icon = "label"
-
         # Hijack 'ItemTransformHasChanged' since not being used anyway
         if self.scene() is not None:
             self.scene().gfx_changed.emit(self, QGraphicsItem.ItemTransformHasChanged)
@@ -134,17 +146,24 @@ class PangoGraphic(QGraphicsItem):
     def boundingRect(self):
         return QRectF()
 
-    def type(self):
-        return PangoShapeType.Default
+class PangoLabelGraphic(PangoGraphic):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def set_decoration(self, decoration=None):
+        self._icon = "label"
+        super().set_decoration(decoration)
+
+    def paint(self, painter, option, widget):
+        super().paint(painter, option, widget)
+
+    def boundingRect(self):
+        return super().boundingRect()
 
 class PangoPathGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._points = []
-
-    def set_width(self, width=None):
-        if width is not None:
-            self._pen.setWidth(width)
 
     def add_point(self, pnt, action):
         self._points.append((pnt, action))
@@ -164,6 +183,14 @@ class PangoPathGraphic(PangoGraphic):
         else:
             return QPainterPath()
 
+    def set_width(self, width=None):
+        if width is not None:
+            self._pen.setWidth(width)
+
+    def set_decoration(self, decoration=None):
+        self._icon = "path"
+        super().set_decoration(decoration)
+
     def paint(self, painter, option, widget):
         super().paint(painter, option, widget)
         painter.drawPath(self.path())
@@ -174,10 +201,6 @@ class PangoPathGraphic(PangoGraphic):
     def shape(self):
         st = QPainterPathStroker(self._pen)
         return st.createStroke(self.path())
-
-    def type(self):
-        return PangoShapeType.Path
-
 
 class PangoPolyGraphic(PangoGraphic):
     def __init__(self, parent=None):
@@ -210,8 +233,9 @@ class PangoPolyGraphic(PangoGraphic):
         return self._closed
     
     def set_decoration(self, decoration=None):
-        super().set_decoration(decoration)
         self._brush.setColor(self._pen.color())
+        self._icon = "poly"
+        super().set_decoration(decoration)
 
     def hoverMoveEvent(self, event):
         pass
@@ -245,10 +269,6 @@ class PangoPolyGraphic(PangoGraphic):
 
         path.addPath(outline)
         return path
-
-    def type(self):
-        return PangoShapeType.Poly
-
 
 class PangoRectGraphic(PangoGraphic):
     def __init__(self, parent=None):

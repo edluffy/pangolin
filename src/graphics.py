@@ -65,13 +65,14 @@ class PangoGraphicsScene(QGraphicsScene):
     def reset_com(self):
         if type(self.last_com) is ExtendPoly:
             if not self.last_com.gfx.closed():
-                while type(self.undo_stack.command(self.undo_stack.index()-1)) is ExtendPoly:
-                    self.undo_stack.command(self.undo_stack.index()-1).setObsolete(True)
+                while type(self.undo_stack.command(self.undo_stack.index()-1)) \
+                       in (ExtendPoly, CreatePoly):
                     self.undo_stack.undo()
+                    self.undo_stack.command(self.undo_stack.index()).setObsolete(True)
 
-                self.undo_stack.command(self.undo_stack.index()-1).setObsolete(True)
+                # Refresh changes made to stack
+                self.undo_stack.push(QUndoCommand())
                 self.undo_stack.undo()
-                self.removeItem(self.last_com.gfx)
         self.last_com = None
 
     def drawBackground(self, painter, rect):
@@ -83,7 +84,7 @@ class PangoGraphicsScene(QGraphicsScene):
     def mousePressEvent(self, event):
         pos = event.scenePos()
 
-        if self.tool == "Pan" or self.tool == "Lasso":
+        if self.tool in ("Pan", "Lasso"):
             super().mousePressEvent(event)
 
         elif self.tool == "Path":

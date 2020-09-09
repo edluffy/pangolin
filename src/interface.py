@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QGraphicsItem
 
 from bidict import bidict
 
-from item import PangoGraphic, PangoHybridItem, PangoPathGraphic, PangoPolyGraphic, PangoRectGraphic
+from item import PangoGraphic, PangoItem, PangoLabelGraphic, PangoLabelItem, PangoPathGraphic, PangoPathItem, PangoPolyGraphic, PangoPolyItem, PangoRectGraphic, PangoRectItem
 from utils import PangoShapeType, pango_gfx_change_debug, pango_item_role_debug
 
 """ PangoModelSceneInterface promotes loose coupling by keeping model/view and 
@@ -72,8 +72,6 @@ class PangoModelSceneInterface(object):
             item = self.model.itemFromIndex(QModelIndex(self.map.inverse[gfx]))
         except KeyError:
             item = self.create_item_from_gfx(gfx)
-        if item is None:
-            item = self.create_item_from_gfx(gfx)
 
         if change == QGraphicsItem.ItemToolTipHasChanged:
             item.set_name(gfx.name())
@@ -97,7 +95,16 @@ class PangoModelSceneInterface(object):
         self.model.removeRow(idx.row(), idx.parent())
 
     def create_item_from_gfx(self, gfx):
-        item = PangoHybridItem(gfx.type())
+        if type(gfx) is PangoLabelGraphic:
+            item = PangoLabelItem()
+        elif type(gfx) is PangoPathGraphic:
+            item = PangoPathItem()
+        elif type(gfx) is PangoPolyGraphic:
+            item = PangoPolyItem()
+        elif type(gfx) is PangoRectGraphic:
+            item = PangoRectItem()
+        else:
+            item = PangoItem()
 
         # Add to model, then map
         if gfx.parentItem() is not None:
@@ -109,12 +116,14 @@ class PangoModelSceneInterface(object):
         return item
 
     def create_gfx_from_item(self, item):
-        if item.type() == PangoShapeType.Path:
+        if type(item) is PangoLabelItem:
+            gfx = PangoLabelGraphic()
+        elif type(item) is PangoPathItem:
             gfx = PangoPathGraphic()
-        elif item.type() == PangoShapeType.Rect:
-            gfx = PangoRectGraphic()
-        elif item.type() == PangoShapeType.Poly:
+        elif type(item) is PangoPolyItem:
             gfx = PangoPolyGraphic()
+        elif type(item) is PangoRectItem:
+            gfx = PangoRectGraphic()
         else:
             gfx = PangoGraphic()
 
