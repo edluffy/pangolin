@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QShortcut, QTreeView, QU
                              QVBoxLayout, QWidget)
 
 from bar import PangoMenuBarWidget, PangoToolBarWidget
-from dock import PangoFileWidget, PangoLabelWidget
+from dock import PangoFileWidget, PangoLabelWidget, PangoUndoWidget
 from graphics import PangoGraphicsScene, PangoGraphicsView
 from interface import PangoModelSceneInterface
 app = QApplication([])
@@ -23,7 +23,6 @@ class MainWindow(QMainWindow):
 
         self.tree_view = QTreeView()
         self.tree_view.setModel(self.model)
-        self.tree_view.setSelectionMode(QTreeView.ExtendedSelection)
 
         self.scene = PangoGraphicsScene()
         self.undo_view = QUndoView(self.scene.undo_stack)
@@ -35,7 +34,8 @@ class MainWindow(QMainWindow):
         self.interface.set_scene(self.scene)
 
         # Dock widgets
-        self.label_widget = PangoLabelWidget("Labels", self.tree_view, self.undo_view)
+        self.label_widget = PangoLabelWidget("Labels", self.tree_view)
+        self.undo_widget = PangoUndoWidget("History", self.undo_view)
         self.file_widget = PangoFileWidget("Files")
 
         # Menu and toolbars
@@ -66,6 +66,7 @@ class MainWindow(QMainWindow):
         self.bg_layout.addWidget(self.graphics_view)
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.label_widget)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.undo_widget)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.file_widget)
 
         self.addToolBar(Qt.TopToolBarArea, self.menu_bar)

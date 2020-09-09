@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QPoint, QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox,
-                             QLabel, QSizePolicy, QSpinBox, QStatusBar,
+                             QLabel, QSizePolicy, QSpinBox, QStatusBar, QStyle, QStyleOptionComboBox,
                              QToolBar, QWidget)
 
 from item import PangoLabelItem
@@ -143,19 +143,20 @@ class PangoToolBarWidget(QToolBar):
         dialog = QColorDialog()
         dialog.setOption(QColorDialog.ShowAlphaChannel, False)
         row = self.label_select.currentIndex()
-        label_item = self.label_select.model().item(row, 0)
+        color = dialog.getColor()
 
-        decoration = (label_item.decoration()[0], dialog.getColor())
+        label_item = self.label_select.model().item(row, 0)
+        decoration = (label_item.decoration()[0], color)
         label_item.set_decoration(decoration)
 
         for n in range(0, label_item.rowCount()):
             child = label_item.child(n, 0)
+            decoration = (child.decoration()[0], color)
             child.set_decoration(decoration)
 
-            for n in range(0, child.rowCount()):
-                grand_child = child.child(n, 0)
-                grand_child.set_decoration(decoration)
-
+        # Refresh label (for scene reticle etc.)
+        self.label_select.setCurrentIndex(0)
+        self.label_select.setCurrentIndex(row)
 
     def add_label(self):
         if not self.label_select.isEnabled():

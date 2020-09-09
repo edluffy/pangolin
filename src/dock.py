@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QEvent, QSize, Qt
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QFileIconProvider,
-                             QFileSystemModel, QListView, QStyleOptionViewItem, QStyledItemDelegate, QVBoxLayout, QWidget)
+                             QFileSystemModel, QListView, QStyle, QStyleOptionViewItem, QStyledItemDelegate, QTreeView, QVBoxLayout, QWidget)
 
 from utils import pango_get_icon
 
@@ -15,28 +15,32 @@ class PangoDockWidget(QDockWidget):
         self.bg = QWidget()
         self.setWidget(self.bg)
 
-        self.setTitleBarWidget(QWidget())
+        #self.setTitleBarWidget(QWidget())
 
 class PangoLabelWidget(PangoDockWidget):
-    def __init__(self, title, tree_view, undo_view, parent=None):
+    def __init__(self, title, tree_view, parent=None):
         super().__init__(title, parent)
+        self.setFixedWidth(250)
         self.tree_view = tree_view
-        self.undo_view = undo_view
-        self.setFixedWidth(200)
 
-        # Widgets
-        self.tree_view.setStyleSheet(
-            "QTreeView::indicator:checked:enabled{ image: url(:icons/eye_on.png)} \
-             QTreeView::indicator:unchecked{ image: url(:icons/eye_off.png)}")
+        self.tree_view.setSelectionMode(QTreeView.ExtendedSelection)
+        #self.tree_view.setStyleSheet(
+        #    "QTreeView::indicator:checked:enabled{ image: url(:icons/eye_on.png)} \
+        #     QTreeView::indicator:unchecked{ image: url(:icons/eye_off.png)}")
+
+        self.setWidget(self.tree_view)
+
+class PangoUndoWidget(PangoDockWidget):
+    def __init__(self, title, undo_view, parent=None):
+        super().__init__(title, parent)
+        self.setFixedWidth(250)
+        self.undo_view = undo_view
 
         self.undo_view.setCleanIcon(pango_get_icon("save_masks"))
         self.undo_view.setEmptyLabel("Last save state")
 
-        # Layouts
-        self.bg_layout = QVBoxLayout(self.bg)
-        self.bg_layout.setContentsMargins(0, 0, 0, 0)
-        self.bg_layout.addWidget(self.tree_view)
-        self.bg_layout.addWidget(self.undo_view)
+        self.setWidget(self.undo_view)
+
 
 class PangoFileWidget(PangoDockWidget):
     def __init__(self, title, parent=None):
@@ -53,7 +57,6 @@ class PangoFileWidget(PangoDockWidget):
         self.file_view.setFlow(QListView.LeftToRight)
         self.file_view.setIconSize(QSize(150, 150))
 
-        # Widgets
         self.setWidget(self.file_view)
 
     def open(self):
