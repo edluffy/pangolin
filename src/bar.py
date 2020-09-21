@@ -3,6 +3,7 @@ from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox,
                              QLabel, QSizePolicy, QSpinBox, QStatusBar, QStyle, QStyleOptionComboBox,
                              QToolBar, QWidget)
+from graphics import PangoGraphicsScene
 
 from item import PangoLabelItem
 from utils import pango_get_icon
@@ -49,6 +50,7 @@ class PangoToolBarWidget(QToolBar):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setIconSize(QSize(16, 16))
+        self.scene = None
         
         spacer_left = QWidget()
         spacer_left.setFixedWidth(10)
@@ -74,12 +76,15 @@ class PangoToolBarWidget(QToolBar):
         self.del_action.setIcon(icon)
 
         self.color_action = QAction("Palette")
-        self.color_action.triggered.connect(self.change_color)
+        self.color_action.triggered.connect(self.set_color)
         icon = pango_get_icon("palette")
         self.color_action.setIcon(icon)
 
         # Tool Related
         self.size_select = QSpinBox()
+        self.size_select.valueChanged.connect(self.set_tool_size)
+
+
         self.size_select.setSuffix("px")
         self.size_select.setRange(1, 99)
         self.size_select.setSingleStep(5)
@@ -94,7 +99,7 @@ class PangoToolBarWidget(QToolBar):
 
         self.action_group = QActionGroup(self)
         self.action_group.setExclusive(True)
-        self.action_group.triggered.connect(self.toggle_size_select)
+        self.action_group.triggered.connect(self.set_tool)
 
         self.action_group.addAction(self.pan_action)
         self.action_group.addAction(self.lasso_action)
@@ -136,10 +141,13 @@ class PangoToolBarWidget(QToolBar):
 
         self.size_select.setEnabled(False)
         self.label_select.setEnabled(False)
+        self.add_action.setEnabled(False)
+        self.del_action.setEnabled(False)
         self.action_group.setEnabled(False)
         self.color_action.setEnabled(False)
 
-    def change_color(self):
+
+    def set_color(self):
         dialog = QColorDialog()
         dialog.setOption(QColorDialog.ShowAlphaChannel, False)
         row = self.label_select.currentIndex()
@@ -165,15 +173,15 @@ class PangoToolBarWidget(QToolBar):
             self.color_action.setEnabled(True)
 
         item = PangoLabelItem()
-
         root = self.label_select.model().invisibleRootItem()
         root.appendRow(item)
-
         item.set_decoration()
         item.set_name("Empty Label")
 
-        self.label_select.setCurrentIndex(self.label_select.model().rowCount()-1)
-        self.label_select.lineEdit().selectAll()
+        bottom_row = self.label_select.model().rowCount()-1
+        self.label_select.setCurrentIndex(bottom_row)
+        if bottom_row == 0:
+            self.label_select.currentIndexChanged.emit(self.label_select.currentIndex())
 
     def del_label(self):
         row = self.label_select.currentIndex()
@@ -184,17 +192,48 @@ class PangoToolBarWidget(QToolBar):
             self.action_group.setEnabled(False)
             self.color_action.setEnabled(False)
 
-    def toggle_size_select(self, action):
+    def set_tool(self, action):
+        if self.scene is None:
+            return
+
+        self.scene.tool = action.text()
+        self.scene.reset_com()
+        self.scene.reticle.setVisible(self.scene.tool == "Path")
+        self.scene.views()[0].set_cursor(self.scene.tool)
+
         if action.text() == "Path" or action.text() == "Filled Path":
             self.size_select.setEnabled(True)
         else:
             self.size_select.setEnabled(False)
 
-    def change_tool(self, text):
-        for action in self.action_group.actions():
-            if action.text() == text:
-                action.setChecked(True)
-                return
+    def reset_tool(self):
+        self.lasso_action.setChecked(True)
+        self.set_tool(self.lasso_action)
+
+    def set_tool_size(self, size):
+        if self.scene is None:
+            return
+
+        self.scene.tool_size = size
+        self.scene.reset_com()
+
+        view = self.scene.views()[0]
+        x = self.size_select.geometry().center().x()
+        y = view.rect().top() + size/2
+        self.scene.reticle.setRect(-size/2, -size/2, size, size)
+        self.scene.reticle.setPos(view.mapToScene(QPoint(x, y)))
+
+    def set_scene(self, scene):
+        if self.scene is not None:
+            self.scene.tool_reset.disconnect(self.reset_tool)
+
+        self.scene = scene
+        self.scene.tool_reset.connect(self.reset_tool)
+        self.reset_tool()
+
+        if not self.add_action.isEnabled() or self.del_action.isEnabled():
+            self.add_action.setEnabled(True)
+            self.del_action.setEnabled(True)
 
     class LabelSelect(QComboBox):
         def __init__(self, color_display, parent=None):

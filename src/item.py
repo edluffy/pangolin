@@ -9,12 +9,19 @@ class PangoItem(QStandardItem):
     def __init__ (self):
         super().__init__()
         self.setCheckable(True)
+        self.setEditable(False)
 
         self._color = QColor()
         self._icon = ""
 
     def key(self):
         return QPersistentModelIndex(self.index())
+
+    def fpath(self):
+        return self.data(Qt.UserRole)
+    
+    def set_fpath(self, fpath):
+        self.setData(fpath, Qt.UserRole)
 
     def name(self):
         return self.data(Qt.DisplayRole)
@@ -32,10 +39,7 @@ class PangoItem(QStandardItem):
             self._icon, self._color = decoration
             self.setData(pango_get_icon(self._icon, self._color), Qt.DecorationRole)
         else:
-            if self.parent() is None:
-                self._color = pango_get_palette(self.row())
-            else:
-                self._color = self.parent().color()
+            self._color = pango_get_palette(self.row())
 
         self.setData(pango_get_icon(self._icon, self._color), Qt.DecorationRole)
 
@@ -45,10 +49,16 @@ class PangoItem(QStandardItem):
     def set_visible(self, state):
         self.setData(Qt.Checked if state else Qt.Unchecked, Qt.CheckStateRole)
 
-
 class PangoLabelItem(PangoItem):
     def __init__(self):
         super().__init__()
+
+    def clone(self):
+        item = PangoLabelItem()
+        item.set_name(self.name())
+        item.set_decoration(self.decoration())
+        item.set_visible(self.visible())
+        return item
 
     def set_decoration(self, decoration=None):
         self._icon = "label"
@@ -89,12 +99,22 @@ class PangoGraphic(QGraphicsItem):
         self.setAcceptHoverEvents(True)
         self.setFlag(QGraphicsItem.ItemIsSelectable)
 
+        self._fpath = None
         self._icon = ""
         self._pen = QPen()
         self._pen.setCapStyle(Qt.RoundCap)
         self._pen.setJoinStyle(Qt.RoundJoin)
         self._brush = QBrush()
  
+    def fpath(self):
+        return self._fpath
+    
+    def set_fpath(self, fpath):
+        self._fpath = fpath
+        # Hijack 'ItemMatrixChanged' since not being used anyway
+        if self.scene() is not None:
+            self.scene().gfx_changed.emit(self, QGraphicsItem.ItemMatrixChange)
+
     def name(self):
         return self.toolTip()
     
@@ -121,12 +141,6 @@ class PangoGraphic(QGraphicsItem):
         if self.scene() is not None:
             self.scene().gfx_changed.emit(self, QGraphicsItem.ItemTransformHasChanged)
         self.update()
-
-    def visible(self):
-        return self.isVisible()
-
-    def set_visible(self, state):
-        self.setVisible(state)
 
     def itemChange(self, change, value):
         if self.scene() is not None:

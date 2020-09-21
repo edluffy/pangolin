@@ -6,61 +6,36 @@ from PyQt5.QtWidgets import (QAction, QGraphicsEllipseItem, QGraphicsItem, QGrap
 from item import PangoGraphic, PangoPathGraphic, PangoPolyGraphic, PangoRectGraphic
 from utils import PangoShapeType, pango_get_icon, pango_gfx_change_debug, pango_item_role_debug
 
-import copy
-
 
 class PangoGraphicsScene(QGraphicsScene):
     gfx_changed = pyqtSignal(PangoGraphic, QGraphicsItem.GraphicsItemChange)
     gfx_removed = pyqtSignal(PangoGraphic)
-    tool_changed = pyqtSignal(str)
+    tool_reset = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.px = None
         self.undo_stack = QUndoStack()
         self.last_com = None
-
+        self.fpath = None
         self.label = PangoGraphic()
+
         self.tool = None
         self.tool_size = 10
 
+        self.init_reticle()
+
+    def init_reticle(self):
         self.reticle = QGraphicsEllipseItem(-5, -5, 10, 10)
         self.reticle.setVisible(False)
         self.reticle.setPen(QPen(Qt.NoPen))
         self.addItem(self.reticle)
 
-    def set_image(self, idx):
-        path = idx.model().filePath(idx)
-        self.px = QPixmap(path)
-
-    def set_label(self, label):
-        self.label = label
-        self.reset_com()
-
+    def update_reticle(self):
         self.reticle.setBrush(self.label.decoration()[1])
 
-    def set_tool(self, action):
-        self.tool = action.text()
-        self.reset_com()
-
-        self.reticle.setVisible(self.tool == "Path")
-        self.views()[0].set_cursor(self.tool)
-
-    def set_tool_size(self, size_select):
-        size = size_select.value()
-        self.tool_size = size
-        self.reset_com()
-
-        view = self.views()[0]
-        x = size_select.geometry().center().x()
-        y = view.rect().top() + size/2
-        self.reticle.setRect(-size/2, -size/2, size, size)
-        self.reticle.setPos(view.mapToScene(QPoint(x, y)))
-
-    def reset_tool(self):
-        self.set_tool(QAction("Lasso"))
-        self.tool_changed.emit("Lasso")
-        self.reset_com()
+    def drawBackground(self, painter, rect):
+        px = QPixmap(self.fpath)
+        painter.drawPixmap(0, 0, px)
 
     def reset_com(self):
         if type(self.last_com) is ExtendPoly:
@@ -74,12 +49,6 @@ class PangoGraphicsScene(QGraphicsScene):
                 self.undo_stack.push(QUndoCommand())
                 self.undo_stack.undo()
         self.last_com = None
-
-    def drawBackground(self, painter, rect):
-        if self.px is not None:
-            painter.drawPixmap(0, 0, self.px)
-            self.setSceneRect(QRectF(self.px.rect()))
-            self.views()[0].viewport().update()
 
     def mousePressEvent(self, event):
         pos = event.scenePos()
@@ -111,7 +80,8 @@ class PangoGraphicsScene(QGraphicsScene):
                 while type(self.undo_stack.command(self.undo_stack.index()-1)) is ExtendPoly:
                     self.undo_stack.undo()
                 self.undo_stack.push(ExtendPoly(self.last_com.gfx, points))
-                self.reset_tool()
+                self.tool_reset.emit()
+                self.reset_com()
 
 
     def mouseMoveEvent(self, event):
@@ -146,6 +116,7 @@ class CreatePath(QUndoCommand):
         self.gfx.set_decoration()
         self.gfx.set_width(self.tool_size)
         self.gfx.set_name(name)
+        self.gfx.set_fpath(self.gfx.scene().fpath)
         self.setText("+ Created "+name)
 
     def undo(self):
@@ -181,6 +152,7 @@ class CreatePoly(QUndoCommand):
         self.gfx.setParentItem(self.p_gfx)
         self.gfx.set_decoration()
         self.gfx.set_name(name)
+        self.gfx.set_fpath(self.gfx.scene().fpath)
         self.setText("+ Created "+name)
 
     def undo(self):

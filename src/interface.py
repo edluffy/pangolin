@@ -1,8 +1,10 @@
 from PyQt5.QtCore import (QItemSelectionModel, QModelIndex,
-                          QPersistentModelIndex, Qt)
+                          QPersistentModelIndex, QRectF, QSortFilterProxyModel, Qt)
+from PyQt5.QtGui import QPixmap, QStandardItemModel
 from PyQt5.QtWidgets import QGraphicsItem
 
 from bidict import bidict
+from graphics import PangoGraphicsScene
 
 from item import PangoGraphic, PangoItem, PangoLabelGraphic, PangoLabelItem, PangoPathGraphic, PangoPathItem, PangoPolyGraphic, PangoPolyItem, PangoRectGraphic, PangoRectItem
 from utils import PangoShapeType, pango_gfx_change_debug, pango_item_role_debug
@@ -14,24 +16,41 @@ class PangoModelSceneInterface(object):
         super().__init__()
         self.map = bidict()
 
-    # Model/View changes (item) ----> Scene/View (gfx)
-    def set_model(self, model, view):
-        self.model = model
+        # Model/View changes (item) ----> Scene/View (gfx)
+        self.model = QStandardItemModel()
         self.model.dataChanged.connect(self.item_changed)
         self.model.rowsAboutToBeRemoved.connect(self.item_removed)
 
-        self.view = view
-        self.view.selectionModel().selectionChanged.connect(self.item_selection_changed)
-
-    # Scene/View changes (gfx) ----> Model/View (item)
-    def set_scene(self, scene):
-        self.scene = scene
+        # Scene/View changes (gfx) ----> Model/View (item)
+        self.scene = PangoGraphicsScene()
         self.scene.gfx_changed.connect(self.gfx_changed)
         self.scene.gfx_removed.connect(self.gfx_removed)
         self.scene.selectionChanged.connect(self.gfx_selection_changed)
 
+    def set_tree(self, view):
+        self.tree = view
+        if self.tree.selectionModel() is not None:
+            self.tree.selectionModel().selectionChanged.connect(self.item_selection_changed)
+
+    def filter_tree(self, fpath):
+        for row in range(0, self.model.rowCount()):
+            label = self.model.item(row)
+            if label.hasChildren():
+                for row in range(0, label.rowCount()):
+                    item = label.child(row)
+                    gfx = self.map[item.key()]
+
+                    if item.fpath()==fpath:
+                        self.tree.setRowHidden(row, label.index(), False)
+                        if gfx.scene() is not self.scene:
+                            self.scene.addItem(gfx)
+                    else:
+                        self.tree.setRowHidden(row, label.index(), True)
+                        if gfx.scene() is self.scene:
+                            self.scene.removeItem(gfx)
+
     def item_selection_changed(self):
-        new = [self.map[QPersistentModelIndex(idx)] for idx in self.view.selectedIndexes()]
+        new = [self.map[QPersistentModelIndex(idx)] for idx in self.tree.selectedIndexes()]
         old = self.scene.selectedItems()
 
         for gfx in set(new)-set(old):
@@ -42,13 +61,13 @@ class PangoModelSceneInterface(object):
 
     def gfx_selection_changed(self):
         new = [QModelIndex(self.map.inverse[gfx]) for gfx in self.scene.selectedItems()]
-        old = self.view.selectedIndexes()
+        old = self.tree.selectedIndexes()
 
         for idx in set(new)-set(old):
-            self.view.selectionModel().select(idx, QItemSelectionModel.Select)
+            self.tree.selectionModel().select(idx, QItemSelectionModel.Select)
 
         for idx in set(old)-set(new):
-            self.view.selectionModel().select(idx, QItemSelectionModel.Deselect)
+            self.tree.selectionModel().select(idx, QItemSelectionModel.Deselect)
 
     def item_changed(self, top_idx, bottom_idx, roles):
         item = self.model.itemFromIndex(top_idx)
@@ -64,7 +83,9 @@ class PangoModelSceneInterface(object):
             elif role == Qt.DecorationRole:
                 gfx.set_decoration(item.decoration())
             elif role == Qt.CheckStateRole:
-                gfx.set_visible(item.visible())
+                gfx.setVisible(item.visible())
+            elif role == Qt.UserRole:
+                gfx.set_fpath(item.fpath())
 
     def gfx_changed(self, gfx, change):
         #print("Gfx change: ", pango_gfx_change_debug(change))
@@ -78,7 +99,9 @@ class PangoModelSceneInterface(object):
         elif change == QGraphicsItem.ItemTransformHasChanged:
             item.set_decoration(gfx.decoration())
         elif change == QGraphicsItem.ItemVisibleHasChanged:
-            item.set_visible(gfx.visible())
+            item.set_visible(gfx.isVisible())
+        elif change == QGraphicsItem.ItemMatrixChange:
+            item.set_fpath(gfx.fpath())
 
     def item_removed(self, parent_idx, first, last):
         if parent_idx.isValid():
@@ -108,7 +131,8 @@ class PangoModelSceneInterface(object):
 
         # Add to model, then map
         if gfx.parentItem() is not None:
-            parent_item = self.model.itemFromIndex(QModelIndex(self.map.inverse[gfx.parentItem()]))
+            parent_item = self.model.itemFromIndex(
+                    QModelIndex(self.map.inverse[gfx.parentItem()]))
             parent_item.appendRow(item)
         else:
             self.model.appendRow(item)
@@ -134,12 +158,4 @@ class PangoModelSceneInterface(object):
         else:
             self.scene.addItem(gfx)
         return gfx
-
-    def set_label(self, row):
-        item = self.model.item(row)
-        try:
-            self.scene.set_label(self.map[item.key()])
-        except:
-            return
-
-
+    

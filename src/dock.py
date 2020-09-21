@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QEvent, QSize, Qt
+from PyQt5.QtCore import QEvent, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QFileIconProvider,
                              QFileSystemModel, QListView, QStyle, QStyleOptionViewItem, QStyledItemDelegate, QTreeView, QVBoxLayout, QWidget)
@@ -64,8 +64,9 @@ class PangoFileWidget(PangoDockWidget):
         dialog.setFileMode(QFileDialog.DirectoryOnly)
         dialog.exec()
 
-        self.file_model.setRootPath(dialog.directory().absolutePath())
-        self.file_view.setRootIndex(self.file_model.index(self.file_model.rootPath()))
+        if dialog.result():
+            self.file_model.setRootPath(dialog.directory().absolutePath())
+            self.file_view.setRootIndex(self.file_model.index(self.file_model.rootPath()))
 
 
 class ThumbnailProvider(QFileIconProvider):

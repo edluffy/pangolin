@@ -1,5 +1,5 @@
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QKeySequence, QStandardItemModel
+from PyQt5.QtCore import QItemSelectionModel, QModelIndex, QRectF, Qt
+from PyQt5.QtGui import QKeySequence, QPixmap, QStandardItemModel
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QShortcut, QTreeView, QUndoView,
                              QVBoxLayout, QWidget)
 
@@ -7,6 +7,7 @@ from bar import PangoMenuBarWidget, PangoToolBarWidget
 from dock import PangoFileWidget, PangoLabelWidget, PangoUndoWidget
 from graphics import PangoGraphicsScene, PangoGraphicsView
 from interface import PangoModelSceneInterface
+from item import PangoLabelItem
 app = QApplication([])
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
@@ -18,20 +19,18 @@ class MainWindow(QMainWindow):
         self.setGeometry(50, 50, 1000, 675)
 
         # Models and Views
-        self.model = QStandardItemModel()
         self.interface = PangoModelSceneInterface()
 
         self.tree_view = QTreeView()
-        self.tree_view.setModel(self.model)
-
-        self.scene = PangoGraphicsScene()
-        self.undo_view = QUndoView(self.scene.undo_stack)
+        self.tree_view.setUniformRowHeights(True)
+        self.tree_view.setModel(self.interface.model)
+        self.interface.set_tree(self.tree_view)
 
         self.graphics_view = PangoGraphicsView()
-        self.graphics_view.setScene(self.scene)
+        self.graphics_view.setScene(self.interface.scene)
 
-        self.interface.set_model(self.model, self.tree_view)
-        self.interface.set_scene(self.scene)
+        self.undo_view = QUndoView()
+        self.undo_view.setStack(self.interface.scene.undo_stack)
 
         # Dock widgets
         self.label_widget = PangoLabelWidget("Labels", self.tree_view)
@@ -41,19 +40,14 @@ class MainWindow(QMainWindow):
         # Menu and toolbars
         self.menu_bar = PangoMenuBarWidget()
         self.tool_bar = PangoToolBarWidget()
-        self.tool_bar.label_select.setModel(self.model)
+        self.tool_bar.set_scene(self.interface.scene)
+        self.tool_bar.label_select.setModel(self.interface.model)
 
         # Signals and Slots
         self.menu_bar.open_images_action.triggered.connect(self.file_widget.open)
 
-        self.file_widget.file_view.activated.connect(self.scene.set_image)
-
-        self.tool_bar.label_select.currentIndexChanged.connect(self.interface.set_label)
-        self.tool_bar.action_group.triggered.connect(self.scene.set_tool)
-        self.tool_bar.size_select.valueChanged.connect(
-            lambda: self.scene.set_tool_size(self.tool_bar.size_select))
-
-        self.scene.tool_changed.connect(self.tool_bar.change_tool)
+        self.file_widget.file_view.activated.connect(self.switch_image)
+        self.tool_bar.label_select.currentIndexChanged.connect(self.switch_label)
 
         # Layouts
         self.bg = QWidget()
@@ -74,6 +68,25 @@ class MainWindow(QMainWindow):
         # Shortcuts
         self.sh_reset_tool = QShortcut(QKeySequence('Esc'), self)
         #self.sh_reset_tool.activated.connect(self.scene.reset_tool)
+        
+
+    def switch_image(self, idx):
+        fpath = idx.model().filePath(idx)
+        self.interface.filter_tree(fpath)
+        self.interface.scene.reset_com()
+        self.interface.scene.fpath = fpath
+        self.interface.scene.undo_stack.clear()
+        self.interface.scene.setSceneRect(QRectF(QPixmap(fpath).rect()))
+        self.graphics_view.fitInView(self.interface.scene.sceneRect(), Qt.KeepAspectRatio)
+
+    def switch_label(self, row):
+        item = self.interface.model.item(row)
+        try:
+            self.interface.scene.label = self.interface.map[item.key()]
+            self.interface.scene.update_reticle()
+            self.interface.scene.reset_com()
+        except KeyError:
+            return
 
 
 window = MainWindow()
