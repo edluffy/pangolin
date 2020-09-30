@@ -134,6 +134,7 @@ class PangoModelSceneInterface(object):
             parent_item = self.model.itemFromIndex(
                     QModelIndex(self.map.inverse[gfx.parentItem()]))
             parent_item.appendRow(item)
+            self.tree.expand(parent_item.index())
         else:
             self.model.appendRow(item)
         self.map[item.key()] = gfx

@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
-from PyQt5.QtGui import QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygonF
+from PyQt5.QtCore import QEvent, QLineF, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
+from PyQt5.QtGui import QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygonF, QTransform
 from PyQt5.QtWidgets import (QAction, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPixmapItem,
                              QGraphicsScene, QGraphicsView, QMenu, QUndoCommand, QUndoStack)
 
@@ -55,12 +55,27 @@ class PangoGraphicsScene(QGraphicsScene):
 
         if self.tool in ("Pan", "Lasso"):
             super().mousePressEvent(event)
+            gfx = self.itemAt(pos, QTransform())
+            if type(gfx) is PangoPolyGraphic:
+                distances = []
+                for point in gfx.points():
+                    distances.append(QLineF(point, pos).length())
+
+                if min(distances) < 20:
+                    point_idx = distances.index(min(distances))
+
+                    self.undo_stack.endMacro()
+                    self.undo_stack.beginMacro(
+                            "Moving Point at "+str(pos.x())+", "+str(pos.y())+")")
+                    self.last_com = MovePointPoly(gfx, point_idx, pos)
+                    self.undo_stack.push(self.last_com)
 
         elif self.tool == "Path":
             if type(self.last_com) is not ExtendPath:
                 self.last_com = CreatePath(self.label, self.tool_size, pos)
                 self.undo_stack.push(self.last_com)
 
+            self.undo_stack.endMacro()
             self.undo_stack.beginMacro("Extended Path to ("+str(pos.x())+", "+str(pos.y())+")")
             self.last_com = ExtendPath(self.last_com.gfx, pos, 1)
             self.undo_stack.push(self.last_com)
@@ -74,7 +89,7 @@ class PangoGraphicsScene(QGraphicsScene):
             self.undo_stack.push(self.last_com)
 
             if self.last_com.gfx.closed():
-                points = self.last_com.gfx.points()
+                points = self.last_com.gfx.points().copy()
                 points.append(pos)
 
                 while type(self.undo_stack.command(self.undo_stack.index()-1)) is ExtendPoly:
@@ -88,6 +103,13 @@ class PangoGraphicsScene(QGraphicsScene):
         super().mouseMoveEvent(event)
         pos = event.scenePos()
 
+        if self.tool in ("Pan", "Lasso"):
+            if event.buttons() & Qt.LeftButton and type(self.last_com) is MovePointPoly:
+                gfx = self.last_com.gfx
+                point_idx = self.last_com.point_idx
+                self.last_com = MovePointPoly(gfx, point_idx, pos)
+                self.undo_stack.push(self.last_com)
+
         if self.tool == "Path":
             self.reticle.setPos(pos)
             if event.buttons() & Qt.LeftButton:
@@ -97,6 +119,10 @@ class PangoGraphicsScene(QGraphicsScene):
 
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
+        if self.tool in ("Pan", "Lasso"):
+            if self.last_com is MovePointPoly:
+                self.undo_stack.endMacro()
+
         if self.tool == "Path":
             self.undo_stack.endMacro()
 
@@ -181,6 +207,21 @@ class ExtendPoly(QUndoCommand):
         for _ in self.points:
             self.gfx.rem_point()
         self.gfx.update()
+
+class MovePointPoly(QUndoCommand):
+    def __init__(self, gfx, point_idx, pos):
+        super().__init__()
+        self.gfx = gfx
+        self.pos = pos
+        self.point_idx = point_idx
+
+    def redo(self):
+        self.old_pos = self.gfx.points()[self.point_idx]
+        self.gfx.move_point(self.point_idx, self.pos)
+        self.gfx.update()
+
+    def undo(self):
+        self.gfx.move_point(self.point_idx, self.old_pos)
 
 class PangoGraphicsView(QGraphicsView):
     def __init__(self, parent=None):
