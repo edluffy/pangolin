@@ -11,86 +11,84 @@ class PangoItem(QStandardItem):
         self.setCheckable(True)
         self.setEditable(False)
 
-        self._color = QColor()
-        self._icon = ""
+        self._color = None
+        self._icon = None
 
     def key(self):
         return QPersistentModelIndex(self.index())
 
+    def setattrs(self, **kwargs):
+        for k,v in kwargs.items():
+            setattr(self, k, v)
+
+    @property
     def fpath(self):
         return self.data(Qt.UserRole)
     
-    def set_fpath(self, fpath):
+    @fpath.setter
+    def fpath(self, fpath):
         self.setData(fpath, Qt.UserRole)
 
+    @property
     def name(self):
         return self.data(Qt.DisplayRole)
     
-    def set_name(self, name):
+    @name.setter
+    def name(self, name):
         self.setData(name, Qt.DisplayRole)
 
-    def decoration(self):
-        return (self._icon, self._color)
+    @property
+    def color(self):
+        return self._color
 
-    def set_decoration(self, decoration=None):
-        if decoration == self.decoration():
-            return
-        if decoration is not None:
-            self._icon, self._color = decoration
-            self.setData(pango_get_icon(self._icon, self._color), Qt.DecorationRole)
-        else:
-            self._color = pango_get_palette(self.row())
+    @color.setter
+    def color(self, color):
+        if self._color != color:
+            self._color = color
+            self.decorate()
 
-        self.setData(pango_get_icon(self._icon, self._color), Qt.DecorationRole)
+    @property
+    def icon(self):
+        return self._icon
 
+    @icon.setter
+    def icon(self, icon):
+        if self._icon != icon:
+            self._icon = icon
+            self.decorate()
+
+    @property
     def visible(self):
         return self.data(Qt.CheckStateRole) == Qt.Checked
 
-    def set_visible(self, state):
+    @visible.setter
+    def visible(self, state):
         self.setData(Qt.Checked if state else Qt.Unchecked, Qt.CheckStateRole)
+
+    def decorate(self):
+        if self._color is None:
+            self._color = pango_get_palette(self.row())
+        self.setData(pango_get_icon(self._icon, self._color), Qt.DecorationRole)
 
 class PangoLabelItem(PangoItem):
     def __init__(self):
         super().__init__()
-
-    def clone(self):
-        item = PangoLabelItem()
-        item.set_name(self.name())
-        item.set_decoration(self.decoration())
-        item.set_visible(self.visible())
-        return item
-
-    def set_decoration(self, decoration=None):
         self._icon = "label"
-        super().set_decoration(decoration)
-
 
 class PangoPathItem(PangoItem):
     def __init__(self):
         super().__init__()
-
-    def set_decoration(self, decoration=None):
         self._icon = "path"
-        super().set_decoration(decoration)
-
 
 class PangoPolyItem(PangoItem):
     def __init__(self):
         super().__init__()
-
-    def set_decoration(self, decoration=None):
         self._icon = "poly"
-        super().set_decoration(decoration)
-
 
 class PangoRectItem(PangoItem):
     def __init__(self):
         super().__init__()
-
-    def set_decoration(self, decoration=None):
         self._icon = "rect"
-        super().set_decoration(decoration)
-
 
 class PangoGraphic(QGraphicsItem):
     def __init__(self, parent=None):
@@ -106,40 +104,69 @@ class PangoGraphic(QGraphicsItem):
         self._pen.setJoinStyle(Qt.RoundJoin)
         self._brush = QBrush()
  
+    def setattrs(self, **kwargs):
+        for k,v in kwargs.items():
+            setattr(self, k, v)
+
+    @property
     def fpath(self):
         return self._fpath
     
-    def set_fpath(self, fpath):
+    @fpath.setter
+    def fpath(self, fpath):
         self._fpath = fpath
         # Hijack 'ItemMatrixChanged' since not being used anyway
         if self.scene() is not None:
             self.scene().gfx_changed.emit(self, QGraphicsItem.ItemMatrixChange)
 
+    @property
     def name(self):
         return self.toolTip()
     
-    def set_name(self, name):
+    @name.setter
+    def name(self, name):
         self.setToolTip(name)
 
-    def decoration(self):
-        return (self._icon, self._pen.color())
-    
-    def set_decoration(self, decoration=None):
-        if decoration == self.decoration():
-            return
-        if decoration is not None:
-            icon, color = decoration
-            self._pen.setColor(color)
-            self._icon = icon
-        else:
-            if self.parentItem() is None:
-                self._pen.setColor(pango_get_palette(len(self.scene().items())))
-            else:
-                self._pen.setColor(self.parentItem().decoration()[1])
+    @property
+    def color(self):
+        return self._pen.color()
 
-        # Hijack 'ItemTransformHasChanged' since not being used anyway
-        if self.scene() is not None:
-            self.scene().gfx_changed.emit(self, QGraphicsItem.ItemTransformHasChanged)
+    @color.setter
+    def color(self, color):
+        if self._pen.color() != color:
+            self._pen.setColor(color)
+            self._brush.setColor(color)
+            if self.scene() is not None:
+                # Hijack 'ItemTransformHasChanged' since not being used anyway
+                self.scene().gfx_changed.emit(self, QGraphicsItem.ItemTransformHasChanged)
+
+    @property
+    def icon(self):
+        return self._icon
+    
+    @icon.setter
+    def icon(self, icon):
+        if self._icon != icon:
+            self._icon = icon
+            if self.scene() is not None:
+                # Hijack 'ItemTransformHasChanged' since not being used anyway
+                self.scene().gfx_changed.emit(self, QGraphicsItem.ItemTransformHasChanged)
+
+    @property
+    def visible(self):
+        return self.isVisible()
+
+    @visible.setter
+    def visible(self, visible):
+        self.setVisible(visible)
+
+    @property
+    def width(self):
+        return self._pen.width()
+
+    @width.setter
+    def width(self, width):
+        self._pen.setWidth(width)
 
     def itemChange(self, change, value):
         super().itemChange(change, value)
@@ -175,15 +202,10 @@ class PangoGraphic(QGraphicsItem):
         p.addPath(path)
         return p
 
-
-
 class PangoLabelGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
-
-    def set_decoration(self, decoration=None):
         self._icon = "label"
-        super().set_decoration(decoration)
 
     def paint(self, painter, option, widget):
         super().paint(painter, option, widget)
@@ -194,6 +216,7 @@ class PangoLabelGraphic(PangoGraphic):
 class PangoPathGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._icon = "path"
         self._points = []
 
     def add_point(self, pnt, action):
@@ -216,14 +239,6 @@ class PangoPathGraphic(PangoGraphic):
         else:
             return QPainterPath()
 
-    def set_width(self, width=None):
-        if width is not None:
-            self._pen.setWidth(width)
-
-    def set_decoration(self, decoration=None):
-        self._icon = "path"
-        super().set_decoration(decoration)
-
     def paint(self, painter, option, widget):
         super().paint(painter, option, widget)
         painter.drawPath(self.path())
@@ -238,6 +253,7 @@ class PangoPathGraphic(PangoGraphic):
 class PangoPolyGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._icon = "poly"
         self._points = []
         self._closed = False
 
@@ -245,6 +261,23 @@ class PangoPolyGraphic(PangoGraphic):
         self._pen.setWidth(self.w)
         self._brush.setStyle(Qt.SolidPattern)
 
+    @property
+    def points(self):
+        return self._points
+    
+    @points.setter
+    def points(self, points):
+        self._points = points
+    
+    @property
+    def closed(self):
+        return self._closed
+
+    @closed.setter
+    def closed(self, closed):
+        self._closed = closed
+
+    # TODO: Change these to property functions e.g += and -=
     def add_point(self, pnt):
         self.prepareGeometryChange()
         if len(self._points) > 1 and (QLineF(self._points[0], pnt).length() <= self.w):
@@ -261,18 +294,7 @@ class PangoPolyGraphic(PangoGraphic):
     def move_point(self, point_idx, pos):
         self.prepareGeometryChange()
         self._points[point_idx] = pos
-
-    def points(self):
-        return self._points
     
-    def closed(self):
-        return self._closed
-    
-    def set_decoration(self, decoration=None):
-        self._brush.setColor(self._pen.color())
-        self._icon = "poly"
-        super().set_decoration(decoration)
-
     def paint(self, painter, option, widget):
         super().paint(painter, option, widget)
         if self._closed:

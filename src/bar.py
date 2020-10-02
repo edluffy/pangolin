@@ -23,21 +23,27 @@ class PangoMenuBarWidget(QToolBar):
         spacer_right.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         
         # Actions
-        self.prefs_action = QAction("Prefs")
-        self.open_images_action = QAction("Open Images")
-        self.import_labels_action = QAction("Import Labels")
-        self.save_action = QAction("Save Masks")
-        self.run_action = QAction("PyTorch")
-
         self.action_group = QActionGroup(self)
-        self.action_group.addAction(self.prefs_action)
-        self.action_group.addAction(self.open_images_action)
-        self.action_group.addAction(self.import_labels_action)
-        self.action_group.addAction(self.save_action)
-        self.action_group.addAction(self.run_action)
 
-        for action in self.action_group.actions():
-            action.setIcon(pango_get_icon(action.text()))
+        self.prefs_action = QAction("Prefs")
+        self.prefs_action.setIcon(pango_get_icon("prefs"))
+        self.action_group.addAction(self.prefs_action)
+
+        self.open_images_action = QAction("Open Images")
+        self.open_images_action.setIcon(pango_get_icon("open"))
+        self.action_group.addAction(self.open_images_action)
+
+        self.import_labels_action = QAction("Import Labels")
+        self.import_labels_action.setIcon(pango_get_icon("import"))
+        self.action_group.addAction(self.import_labels_action)
+
+        self.save_action = QAction("Save Project")
+        self.save_action.setIcon(pango_get_icon("save"))
+        self.action_group.addAction(self.save_action)
+
+        self.run_action = QAction("PyTorch")
+        self.run_action.setIcon(pango_get_icon("fire"))
+        self.action_group.addAction(self.run_action)
 
         self.addAction(self.action_group.actions()[0])
         self.addWidget(spacer_left)
@@ -154,13 +160,11 @@ class PangoToolBarWidget(QToolBar):
         color = dialog.getColor()
 
         label_item = self.label_select.model().item(row, 0)
-        decoration = (label_item.decoration()[0], color)
-        label_item.set_decoration(decoration)
+        label_item.color = color
 
         for n in range(0, label_item.rowCount()):
             child = label_item.child(n, 0)
-            decoration = (child.decoration()[0], color)
-            child.set_decoration(decoration)
+            child.color = color
 
         # Refresh label (for scene reticle etc.)
         self.label_select.setCurrentIndex(0)
@@ -175,8 +179,8 @@ class PangoToolBarWidget(QToolBar):
         item = PangoLabelItem()
         root = self.label_select.model().invisibleRootItem()
         root.appendRow(item)
-        item.set_decoration()
-        item.set_name("Empty Label")
+        item.decorate()
+        item.name = "Empty Label"
 
         bottom_row = self.label_select.model().rowCount()-1
         self.label_select.setCurrentIndex(bottom_row)
@@ -249,10 +253,9 @@ class PangoToolBarWidget(QToolBar):
             super().paintEvent(event)
             item = self.model().item(self.currentIndex())
             if item is not None:
-                _, color = item.decoration()
-                if color is not None:
+                if item.color is not None:
                     self.color_display.setStyleSheet(
-                        "QLabel { background-color : "+color.name()+"}")
+                        "QLabel { background-color : "+item.color.name()+"}")
 
         def edit_text_changed(self, text):
             row = self.currentIndex()

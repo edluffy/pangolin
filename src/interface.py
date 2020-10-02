@@ -40,7 +40,7 @@ class PangoModelSceneInterface(object):
                     item = label.child(row)
                     gfx = self.map[item.key()]
 
-                    if item.fpath()==fpath:
+                    if item.fpath==fpath:
                         self.tree.setRowHidden(row, label.index(), False)
                         if gfx.scene() is not self.scene:
                             self.scene.addItem(gfx)
@@ -79,13 +79,15 @@ class PangoModelSceneInterface(object):
         for role in roles:
             #print("Item change: ", pango_item_role_debug(role))
             if role == Qt.DisplayRole:
-                gfx.set_name(item.name())
+                gfx.name = item.name
             elif role == Qt.DecorationRole:
-                gfx.set_decoration(item.decoration())
+                gfx.color = item.color
+                gfx.icon = item.icon
             elif role == Qt.CheckStateRole:
-                gfx.setVisible(item.visible())
+                gfx.visible = item.visible
             elif role == Qt.UserRole:
-                gfx.set_fpath(item.fpath())
+                gfx.icon = item.icon
+                gfx.fpath = item.fpath
 
     def gfx_changed(self, gfx, change):
         #print("Gfx change: ", pango_gfx_change_debug(change))
@@ -95,13 +97,14 @@ class PangoModelSceneInterface(object):
             item = self.create_item_from_gfx(gfx)
 
         if change == QGraphicsItem.ItemToolTipHasChanged:
-            item.set_name(gfx.name())
+            item.name = gfx.name
         elif change == QGraphicsItem.ItemTransformHasChanged:
-            item.set_decoration(gfx.decoration())
+            item.color = gfx.color
+            item.icon = gfx.icon
         elif change == QGraphicsItem.ItemVisibleHasChanged:
-            item.set_visible(gfx.isVisible())
+            item.visible = gfx.visible
         elif change == QGraphicsItem.ItemMatrixChange:
-            item.set_fpath(gfx.fpath())
+            item.fpath = gfx.fpath
 
     def item_removed(self, parent_idx, first, last):
         if parent_idx.isValid():

@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QItemSelectionModel, QModelIndex, QRectF, Qt
+from PyQt5.QtCore import QFile, QIODevice, QItemSelectionModel, QModelIndex, QRectF, QXmlStreamWriter, Qt
 from PyQt5.QtGui import QKeySequence, QPixmap, QStandardItemModel
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QShortcut, QTreeView, QUndoView,
                              QVBoxLayout, QWidget)
@@ -45,6 +45,7 @@ class MainWindow(QMainWindow):
 
         # Signals and Slots
         self.menu_bar.open_images_action.triggered.connect(self.file_widget.open)
+        self.menu_bar.save_action.triggered.connect(self.save_project)
 
         self.file_widget.file_view.activated.connect(self.switch_image)
         self.tool_bar.label_select.currentIndexChanged.connect(self.switch_label)
@@ -87,6 +88,29 @@ class MainWindow(QMainWindow):
             self.interface.scene.reset_com()
         except KeyError:
             return
+
+    def save_project(self):
+        file = QFile("/Users/edluffy/pango_test.xml")
+        file.open(QIODevice.ReadWrite)
+        stream = QXmlStreamWriter(file)
+        stream.setAutoFormatting(True)
+        stream.writeStartDocument()
+
+        root = self.interface.model.invisibleRootItem()
+        stream.writeStartElement("root")
+        for row in range(0, root.rowCount()):
+            label = root.child(row)
+            if label.hasChildren():
+                stream.writeStartElement(label.name)
+                for row in range(0, label.rowCount()):
+                    shape = label.child(row)
+                    stream.writeStartElement(shape.name)
+                    stream.writeAttribute("fpath", shape.fpath)
+                    stream.writeEndElement() # Shape
+                stream.writeEndElement() # Label
+        stream.writeEndElement() # Root
+
+        stream.writeEndDocument()
 
 
 window = MainWindow()

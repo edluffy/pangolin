@@ -31,7 +31,7 @@ class PangoGraphicsScene(QGraphicsScene):
         self.addItem(self.reticle)
 
     def update_reticle(self):
-        self.reticle.setBrush(self.label.decoration()[1])
+        self.reticle.setBrush(self.label.color)
 
     def drawBackground(self, painter, rect):
         px = QPixmap(self.fpath)
@@ -58,7 +58,7 @@ class PangoGraphicsScene(QGraphicsScene):
             gfx = self.itemAt(pos, QTransform())
             if type(gfx) is PangoPolyGraphic:
                 distances = []
-                for point in gfx.points():
+                for point in gfx.points:
                     distances.append(QLineF(point, pos).length())
 
                 if min(distances) < 20:
@@ -89,7 +89,7 @@ class PangoGraphicsScene(QGraphicsScene):
             self.undo_stack.push(self.last_com)
 
             if self.last_com.gfx.closed():
-                points = self.last_com.gfx.points().copy()
+                points = self.last_com.gfx.points.copy()
                 points.append(pos)
 
                 while type(self.undo_stack.command(self.undo_stack.index()-1)) is ExtendPoly:
@@ -139,10 +139,12 @@ class CreatePath(QUndoCommand):
 
         self.gfx = PangoPathGraphic()
         self.gfx.setParentItem(self.p_gfx)
-        self.gfx.set_decoration()
-        self.gfx.set_width(self.tool_size)
-        self.gfx.set_name(name)
-        self.gfx.set_fpath(self.gfx.scene().fpath)
+        self.gfx.setattrs(
+                color=self.p_gfx.color,
+                width=self.tool_size,
+                name=name,
+                fpath=self.gfx.scene().fpath)
+
         self.setText("+ Created "+name)
 
     def undo(self):
@@ -176,9 +178,11 @@ class CreatePoly(QUndoCommand):
 
         self.gfx = PangoPolyGraphic()
         self.gfx.setParentItem(self.p_gfx)
-        self.gfx.set_decoration()
-        self.gfx.set_name(name)
-        self.gfx.set_fpath(self.gfx.scene().fpath)
+        self.gfx.setattrs(
+                color=self.p_gfx.color,
+                name=name,
+                fpath=self.gfx.scene().fpath)
+
         self.setText("+ Created "+name)
 
     def undo(self):
@@ -197,7 +201,7 @@ class ExtendPoly(QUndoCommand):
         self.gfx.update()
 
         if self.gfx.closed():
-            self.setText("Finished "+self.gfx.name())
+            self.setText("Finished "+self.gfx.name)
         else:
             coords = "("+str(round(self.points[-1].x())) + \
                 ", "+str(round(self.points[-1].y()))+")"
@@ -216,7 +220,7 @@ class MovePointPoly(QUndoCommand):
         self.point_idx = point_idx
 
     def redo(self):
-        self.old_pos = self.gfx.points()[self.point_idx]
+        self.old_pos = self.gfx.points[self.point_idx]
         self.gfx.move_point(self.point_idx, self.pos)
         self.gfx.update()
 
@@ -269,7 +273,7 @@ class PangoGraphicsView(QGraphicsView):
 
         item = self.itemAt(event.pos())
         if hasattr(item, "name"):
-            self.coords+=item.name()
+            self.coords+=item.name
 
     def wheelEvent(self, event):
         self.setTransformationAnchor(QGraphicsView.NoAnchor)
@@ -292,7 +296,7 @@ class PangoGraphicsView(QGraphicsView):
         gfx = self.itemAt(event.pos())
         if gfx is not None:
             gfx.setSelected(True)
-            names = ', '.join([gfx.name() for gfx in self.scene().selectedItems()])
+            names = ', '.join([gfx.name) for gfx in self.scene().selectedItems()])
 
             self.del_action = QAction("Delete "+names+"?")
             self.del_action.setIcon(pango_get_icon("trash"))
