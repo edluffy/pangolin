@@ -39,7 +39,7 @@ class PangoGraphicsScene(QGraphicsScene):
 
     def reset_com(self):
         if type(self.last_com) is ExtendPoly:
-            if not self.last_com.gfx.closed():
+            if not self.last_com.gfx.closed:
                 while type(self.undo_stack.command(self.undo_stack.index()-1)) \
                        in (ExtendPoly, CreatePoly):
                     self.undo_stack.undo()
@@ -62,12 +62,12 @@ class PangoGraphicsScene(QGraphicsScene):
                     distances.append(QLineF(point, pos).length())
 
                 if min(distances) < 20:
-                    point_idx = distances.index(min(distances))
+                    p_idx = distances.index(min(distances))
 
                     self.undo_stack.endMacro()
                     self.undo_stack.beginMacro(
                             "Moving Point at "+str(pos.x())+", "+str(pos.y())+")")
-                    self.last_com = MovePointPoly(gfx, point_idx, pos)
+                    self.last_com = MovePointPoly(gfx, p_idx, pos)
                     self.undo_stack.push(self.last_com)
 
         elif self.tool == "Path":
@@ -77,7 +77,7 @@ class PangoGraphicsScene(QGraphicsScene):
 
             self.undo_stack.endMacro()
             self.undo_stack.beginMacro("Extended Path to ("+str(pos.x())+", "+str(pos.y())+")")
-            self.last_com = ExtendPath(self.last_com.gfx, pos, 1)
+            self.last_com = ExtendPath(self.last_com.gfx, pos, "move")
             self.undo_stack.push(self.last_com)
 
         elif self.tool == "Poly":
@@ -88,7 +88,7 @@ class PangoGraphicsScene(QGraphicsScene):
             self.last_com = ExtendPoly(self.last_com.gfx, [pos])
             self.undo_stack.push(self.last_com)
 
-            if self.last_com.gfx.closed():
+            if self.last_com.gfx.closed:
                 points = self.last_com.gfx.points.copy()
                 points.append(pos)
 
@@ -106,15 +106,15 @@ class PangoGraphicsScene(QGraphicsScene):
         if self.tool in ("Pan", "Lasso"):
             if event.buttons() & Qt.LeftButton and type(self.last_com) is MovePointPoly:
                 gfx = self.last_com.gfx
-                point_idx = self.last_com.point_idx
-                self.last_com = MovePointPoly(gfx, point_idx, pos)
+                p_idx = self.last_com.p_idx
+                self.last_com = MovePointPoly(gfx, p_idx, pos)
                 self.undo_stack.push(self.last_com)
 
         if self.tool == "Path":
             self.reticle.setPos(pos)
             if event.buttons() & Qt.LeftButton:
                 if type(self.last_com) is ExtendPath:
-                    self.last_com = ExtendPath(self.last_com.gfx, pos, 0)
+                    self.last_com = ExtendPath(self.last_com.gfx, pos, "line")
                     self.undo_stack.push(self.last_com)
 
     def mouseReleaseEvent(self, event):
@@ -125,7 +125,6 @@ class PangoGraphicsScene(QGraphicsScene):
 
         if self.tool == "Path":
             self.undo_stack.endMacro()
-
 
 class CreatePath(QUndoCommand):
     def __init__(self, p_gfx, tool_size, pos):
@@ -152,18 +151,20 @@ class CreatePath(QUndoCommand):
         del self.gfx
 
 class ExtendPath(QUndoCommand):
-    def __init__(self, gfx, pos, action):
+    def __init__(self, gfx, pos, motion):
         super().__init__()
         self.gfx = gfx
         self.pos = pos
-        self.action = action
+        self.motion = motion
         
     def redo(self):
-        self.gfx.add_point(self.pos, self.action)
+        self.gfx.prepareGeometryChange()
+        self.gfx.strokes.append((self.pos, self.motion))
         self.gfx.update()
 
     def undo(self):
-        _, _ = self.gfx.pop_point()
+        self.gfx.prepareGeometryChange()
+        _, _ = self.gfx.strokes.pop()
         self.gfx.update()
 
 
@@ -195,37 +196,51 @@ class ExtendPoly(QUndoCommand):
         self.gfx = gfx
         self.points = points
 
+    #TODO: move all drawing function into this file
+    #      serialize drawing commands, not properties
+    #      properties will be used for static prop grids
     def redo(self):
+        self.gfx.prepareGeometryChange()
         for point in self.points:
-            self.gfx.add_point(point)
-        self.gfx.update()
+            if (len(self.gfx.points) > 1
+                and QLineF(self.gfx.points[0], point).length() <= self.gfx.w):
+                        self.gfx.closed = True
+            else:
+                self.gfx.points.append(point)
 
-        if self.gfx.closed():
+        if self.gfx.closed:
             self.setText("Finished "+self.gfx.name)
         else:
             coords = "("+str(round(self.points[-1].x())) + \
                 ", "+str(round(self.points[-1].y()))+")"
             self.setText("Extended Poly to "+coords)
+        self.gfx.update()
 
     def undo(self):
+        self.gfx.prepareGeometryChange()
         for _ in self.points:
-            self.gfx.rem_point()
+            if len(self.gfx.points) > 1:
+                self.gfx.points.pop()
+        self.gfx.closed = False
         self.gfx.update()
 
 class MovePointPoly(QUndoCommand):
-    def __init__(self, gfx, point_idx, pos):
+    def __init__(self, gfx, p_idx, pos):
         super().__init__()
         self.gfx = gfx
         self.pos = pos
-        self.point_idx = point_idx
+        self.p_idx = p_idx
 
     def redo(self):
-        self.old_pos = self.gfx.points[self.point_idx]
-        self.gfx.move_point(self.point_idx, self.pos)
+        self.old_pos = self.gfx.points[self.p_idx]
+        self.gfx.prepareGeometryChange()
+        self.gfx.points[self.p_idx] = self.pos
         self.gfx.update()
 
     def undo(self):
-        self.gfx.move_point(self.point_idx, self.old_pos)
+        self.gfx.prepareGeometryChange()
+        self.gfx.points[self.p_idx] = self.old_pos
+        self.gfx.update()
 
 class PangoGraphicsView(QGraphicsView):
     def __init__(self, parent=None):
@@ -296,7 +311,7 @@ class PangoGraphicsView(QGraphicsView):
         gfx = self.itemAt(event.pos())
         if gfx is not None:
             gfx.setSelected(True)
-            names = ', '.join([gfx.name) for gfx in self.scene().selectedItems()])
+            names = ', '.join([gfx.name for gfx in self.scene().selectedItems()])
 
             self.del_action = QAction("Delete "+names+"?")
             self.del_action.setIcon(pango_get_icon("trash"))

@@ -97,76 +97,86 @@ class PangoGraphic(QGraphicsItem):
         self.setAcceptHoverEvents(True)
         self.setFlag(QGraphicsItem.ItemIsSelectable)
 
-        self._fpath = None
-        self._icon = ""
-        self._pen = QPen()
-        self._pen.setCapStyle(Qt.RoundCap)
-        self._pen.setJoinStyle(Qt.RoundJoin)
-        self._brush = QBrush()
- 
-    def setattrs(self, **kwargs):
-        for k,v in kwargs.items():
-            setattr(self, k, v)
+        self.props = {}
+        self.props["fpath"] = ''
+        self.props["name"] = ''
+        self.props["color"] = QColor()
+        self.props["icon"] = ''
+        self.props["visible"] = bool
+        self.props["width"] = float
 
+        self.pen = QPen()
+        self.pen.setCapStyle(Qt.RoundCap)
+        self.pen.setJoinStyle(Qt.RoundJoin)
+        self.brush = QBrush()
+ 
     @property
     def fpath(self):
-        return self._fpath
+        return self.props["fpath"]
     
     @fpath.setter
     def fpath(self, fpath):
-        self._fpath = fpath
+        self.props["fpath"] = fpath
         # Hijack 'ItemMatrixChanged' since not being used anyway
         if self.scene() is not None:
             self.scene().gfx_changed.emit(self, QGraphicsItem.ItemMatrixChange)
 
     @property
     def name(self):
-        return self.toolTip()
+        return self.props["name"]
     
     @name.setter
     def name(self, name):
+        self.props["name"] = name
         self.setToolTip(name)
 
     @property
     def color(self):
-        return self._pen.color()
+        return self.props["color"]
 
     @color.setter
     def color(self, color):
-        if self._pen.color() != color:
-            self._pen.setColor(color)
-            self._brush.setColor(color)
+        if self.props["color"] != color:
+            self.props["color"] = color
+            self.pen.setColor(color)
+            self.brush.setColor(color)
             if self.scene() is not None:
                 # Hijack 'ItemTransformHasChanged' since not being used anyway
                 self.scene().gfx_changed.emit(self, QGraphicsItem.ItemTransformHasChanged)
 
     @property
     def icon(self):
-        return self._icon
+        return self.props["icon"]
     
     @icon.setter
     def icon(self, icon):
-        if self._icon != icon:
-            self._icon = icon
+        if self.props["icon"] != icon:
+            self.props["icon"] = icon
             if self.scene() is not None:
                 # Hijack 'ItemTransformHasChanged' since not being used anyway
                 self.scene().gfx_changed.emit(self, QGraphicsItem.ItemTransformHasChanged)
 
     @property
     def visible(self):
-        return self.isVisible()
+        return self.props["visible"]
 
     @visible.setter
     def visible(self, visible):
+        self.props["visible"] = visible
         self.setVisible(visible)
 
     @property
     def width(self):
-        return self._pen.width()
+        return self.props["width"]
 
     @width.setter
     def width(self, width):
-        self._pen.setWidth(width)
+        self.props["width"] = width
+        self.pen.setWidth(width)
+
+    def setattrs(self, **kwargs):
+        for k,v in kwargs.items():
+            setattr(self, k, v)
 
     def itemChange(self, change, value):
         super().itemChange(change, value)
@@ -177,8 +187,8 @@ class PangoGraphic(QGraphicsItem):
 
     def paint(self, painter, option, widget):
         painter.setCompositionMode(QPainter.CompositionMode_Source)
-        painter.setPen(self._pen)
-        painter.setBrush(self._brush)
+        painter.setPen(self.pen)
+        painter.setBrush(self.brush)
 
         if option.state & QStyle.State_Selected:
             painter.setOpacity(0.7)
@@ -205,7 +215,7 @@ class PangoGraphic(QGraphicsItem):
 class PangoLabelGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._icon = "label"
+        self.props["icon"] = "label"
 
     def paint(self, painter, option, widget):
         super().paint(painter, option, widget)
@@ -216,25 +226,25 @@ class PangoLabelGraphic(PangoGraphic):
 class PangoPathGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._icon = "path"
-        self._points = []
+        self.props["icon"] = "path"
+        self.props["strokes"] = []
 
-    def add_point(self, pnt, action):
-        self.prepareGeometryChange()
-        self._points.append((pnt, action))
-
-    def pop_point(self):
-        self.prepareGeometryChange()
-        return self._points.pop()
+    @property
+    def strokes(self):
+        return self.props["strokes"]
+    
+    @strokes.setter
+    def strokes(self, strokes):
+        self.props["strokes"] = strokes
     
     def path(self):
-        if len(self._points) > 1:
-            path = QPainterPath(self._points[0][0])
-            for point, action in self._points[1:]:
-                if action == 0:
-                    path.lineTo(point)
+        if len(self.props["strokes"]) > 1:
+            path = QPainterPath(self.props["strokes"][0][0])
+            for pos, motion in self.props["strokes"][1:]:
+                if motion == "line":
+                    path.lineTo(pos)
                 else:
-                    path.moveTo(point)
+                    path.moveTo(pos)
             return path
         else:
             return QPainterPath()
@@ -247,75 +257,57 @@ class PangoPathGraphic(PangoGraphic):
         return self.shape().controlPointRect()
 
     def shape(self):
-        st = QPainterPathStroker(self._pen)
+        st = QPainterPathStroker(self.pen)
         return st.createStroke(self.path())
 
 class PangoPolyGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._icon = "poly"
-        self._points = []
-        self._closed = False
+        self.props["icon"] = "poly"
+        self.props["points"] = []
+        self.props["closed"] = False
 
         self.w = 10
-        self._pen.setWidth(self.w)
-        self._brush.setStyle(Qt.SolidPattern)
+        self.pen.setWidth(self.w)
+        self.brush.setStyle(Qt.SolidPattern)
 
     @property
     def points(self):
-        return self._points
+        return self.props["points"]
     
     @points.setter
     def points(self, points):
-        self._points = points
+        self.props["points"] = points
     
     @property
     def closed(self):
-        return self._closed
+        return self.props["closed"]
 
     @closed.setter
     def closed(self, closed):
-        self._closed = closed
+        self.props["closed"] = closed
 
-    # TODO: Change these to property functions e.g += and -=
-    def add_point(self, pnt):
-        self.prepareGeometryChange()
-        if len(self._points) > 1 and (QLineF(self._points[0], pnt).length() <= self.w):
-            self._closed = True
-        else:
-            self._points.append(pnt)
-
-    def rem_point(self):
-        self.prepareGeometryChange()
-        if len(self._points) > 1:
-            self._points.pop()
-            self._closed = False
-
-    def move_point(self, point_idx, pos):
-        self.prepareGeometryChange()
-        self._points[point_idx] = pos
-    
     def paint(self, painter, option, widget):
         super().paint(painter, option, widget)
-        if self._closed:
-            painter.drawPolygon(QPolygonF(self._points))
+        if self.props["closed"]:
+            painter.drawPolygon(QPolygonF(self.props["points"]))
         else:
-            for n in range(0, len(self._points)-1):
-                painter.drawLine(self._points[n], self._points[n+1])
+            for n in range(0, len(self.props["points"])-1):
+                painter.drawLine(self.props["points"][n], self.props["points"][n+1])
 
         if option.state & QStyle.State_MouseOver:
             painter.setOpacity(1)
-            for n in range(0, len(self._points)):
-                painter.drawEllipse(self._points[n].x()-5,
-                                 self._points[n].y()-5, 10, 10)
+            for n in range(0, len(self.props["points"])):
+                painter.drawEllipse(self.props["points"][n].x()-5,
+                                 self.props["points"][n].y()-5, 10, 10)
 
     def boundingRect(self):
         return self.shape().controlPointRect().adjusted(-self.w, -self.w, self.w, self.w)
 
     def shape(self):
         path = QPainterPath()
-        path.addPolygon(QPolygonF(self._points))
-        return self.shape_from_path(path, self._pen)
+        path.addPolygon(QPolygonF(self.props["points"]))
+        return self.shape_from_path(path, self.pen)
 
 class PangoRectGraphic(PangoGraphic):
     def __init__(self, parent=None):

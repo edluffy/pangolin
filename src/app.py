@@ -7,7 +7,7 @@ from bar import PangoMenuBarWidget, PangoToolBarWidget
 from dock import PangoFileWidget, PangoLabelWidget, PangoUndoWidget
 from graphics import PangoGraphicsScene, PangoGraphicsView
 from interface import PangoModelSceneInterface
-from item import PangoLabelItem
+from item import PangoGraphic, PangoLabelGraphic, PangoLabelItem
 app = QApplication([])
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
@@ -96,22 +96,34 @@ class MainWindow(QMainWindow):
         stream.setAutoFormatting(True)
         stream.writeStartDocument()
 
-        root = self.interface.model.invisibleRootItem()
-        stream.writeStartElement("root")
-        for row in range(0, root.rowCount()):
-            label = root.child(row)
-            if label.hasChildren():
+        for label in self.interface.scene.items():
+            if isinstance(label, PangoLabelGraphic):
                 stream.writeStartElement(label.name)
-                for row in range(0, label.rowCount()):
-                    shape = label.child(row)
-                    stream.writeStartElement(shape.name)
-                    stream.writeAttribute("fpath", shape.fpath)
-                    stream.writeEndElement() # Shape
+                for child in label.childItems():
+                    stream.writeStartElement(child.name)
+                    for prop, v in child.props.items():
+                        stream.writeStartElement(prop+" "+str(v))
+                        stream.writeEndElement() # Prop
+                    stream.writeEndElement() # Child
                 stream.writeEndElement() # Label
-        stream.writeEndElement() # Root
 
         stream.writeEndDocument()
 
+        #root = self.interface.model.invisibleRootItem()
+        #stream.writeStartElement("root")
+        #for row in range(0, root.rowCount()):
+        #    label = root.child(row)
+        #    if label.hasChildren():
+        #        stream.writeStartElement(label.name)
+        #        for row in range(0, label.rowCount()):
+        #            shape = label.child(row)
+        #            gfx = self.interface.map[shape.key()]
+        #            print(gfx.props)
+        #            stream.writeStartElement(shape.name)
+        #            stream.writeAttribute("fpath", shape.fpath)
+        #            stream.writeEndElement() # Shape
+        #        stream.writeEndElement() # Label
+        #stream.writeEndElement() # Root
 
 window = MainWindow()
 window.show()
