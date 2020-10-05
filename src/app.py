@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QFile, QIODevice, QItemSelectionModel, QModelIndex, QRectF, QXmlStreamWriter, Qt
-from PyQt5.QtGui import QKeySequence, QPixmap, QStandardItemModel
+from PyQt5.QtCore import QFile, QIODevice, QItemSelectionModel, QModelIndex, QPointF, QRectF, QXmlStreamWriter, Qt
+from PyQt5.QtGui import QColor, QKeySequence, QPixmap, QStandardItemModel
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QShortcut, QTreeView, QUndoView,
                              QVBoxLayout, QWidget)
 
@@ -8,6 +8,7 @@ from dock import PangoFileWidget, PangoLabelWidget, PangoUndoWidget
 from graphics import PangoGraphicsScene, PangoGraphicsView
 from interface import PangoModelSceneInterface
 from item import PangoGraphic, PangoLabelGraphic, PangoLabelItem
+from xml_handler import Xml_Handler
 app = QApplication([])
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
@@ -45,7 +46,7 @@ class MainWindow(QMainWindow):
 
         # Signals and Slots
         self.menu_bar.open_images_action.triggered.connect(self.file_widget.open)
-        self.menu_bar.save_action.triggered.connect(self.save_project)
+        self.menu_bar.save_action.triggered.connect(self.save_scene)
 
         self.file_widget.file_view.activated.connect(self.switch_image)
         self.tool_bar.label_select.currentIndexChanged.connect(self.switch_label)
@@ -65,6 +66,10 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, self.file_widget)
 
         self.addToolBar(Qt.TopToolBarArea, self.menu_bar)
+
+        # Input and Output
+        self.x_handler = Xml_Handler(QFile("/Users/edluffy/pango_test.xml"),
+                self.interface.scene)
 
         # Shortcuts
         self.sh_reset_tool = QShortcut(QKeySequence('Esc'), self)
@@ -89,41 +94,8 @@ class MainWindow(QMainWindow):
         except KeyError:
             return
 
-    def save_project(self):
-        file = QFile("/Users/edluffy/pango_test.xml")
-        file.open(QIODevice.ReadWrite)
-        stream = QXmlStreamWriter(file)
-        stream.setAutoFormatting(True)
-        stream.writeStartDocument()
-
-        for label in self.interface.scene.items():
-            if isinstance(label, PangoLabelGraphic):
-                stream.writeStartElement(label.name)
-                for child in label.childItems():
-                    stream.writeStartElement(child.name)
-                    for prop, v in child.props.items():
-                        stream.writeStartElement(prop+" "+str(v))
-                        stream.writeEndElement() # Prop
-                    stream.writeEndElement() # Child
-                stream.writeEndElement() # Label
-
-        stream.writeEndDocument()
-
-        #root = self.interface.model.invisibleRootItem()
-        #stream.writeStartElement("root")
-        #for row in range(0, root.rowCount()):
-        #    label = root.child(row)
-        #    if label.hasChildren():
-        #        stream.writeStartElement(label.name)
-        #        for row in range(0, label.rowCount()):
-        #            shape = label.child(row)
-        #            gfx = self.interface.map[shape.key()]
-        #            print(gfx.props)
-        #            stream.writeStartElement(shape.name)
-        #            stream.writeAttribute("fpath", shape.fpath)
-        #            stream.writeEndElement() # Shape
-        #        stream.writeEndElement() # Label
-        #stream.writeEndElement() # Root
+    def save_scene(self):
+        self.x_handler.write()
 
 window = MainWindow()
 window.show()

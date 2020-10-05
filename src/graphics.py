@@ -196,9 +196,6 @@ class ExtendPoly(QUndoCommand):
         self.gfx = gfx
         self.points = points
 
-    #TODO: move all drawing function into this file
-    #      serialize drawing commands, not properties
-    #      properties will be used for static prop grids
     def redo(self):
         self.gfx.prepareGeometryChange()
         for point in self.points:

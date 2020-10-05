@@ -98,10 +98,10 @@ class PangoGraphic(QGraphicsItem):
         self.setFlag(QGraphicsItem.ItemIsSelectable)
 
         self.props = {}
-        self.props["fpath"] = ''
         self.props["name"] = ''
-        self.props["color"] = QColor()
+        self.props["fpath"] = ''
         self.props["icon"] = ''
+        self.props["color"] = QColor()
         self.props["visible"] = bool
         self.props["width"] = float
 
