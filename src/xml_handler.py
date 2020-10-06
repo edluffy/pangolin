@@ -1,45 +1,52 @@
 
-from PyQt5.QtCore import QIODevice, QXmlStreamWriter
+import os.path
+import xml.etree.ElementTree as ET
 
 from item import PangoLabelGraphic
 
 class Xml_Handler():
-    def __init__(self, file, scene):
-        self.file = file
+    def __init__(self, fname, scene):
+        self.set_file(fname)
         self.scene = scene
 
-    #TODO: Change file to write to depending on image folder open
+    #TODO: Pretty print xml output
+    #      Change file to write to depending on image folder open
     #      Figure out how to append to file or change element depending on scene
+
+    def set_file(self, fname):
+        self.fname = fname
+        if not os.path.exists(fname):
+            root = ET.Element('ProjectRoot')
+            tree = ET.ElementTree(root)
+            tree.write(open(self.fname, 'wb'))
+
     def write(self):
-        self.file.open(QIODevice.ReadWrite)
-        stream = QXmlStreamWriter(self.file)
-        stream.setAutoFormatting(True)
-        stream.writeStartDocument()
-
+        tree = ET.parse(self.fname)
+        root = tree.getroot()
         for label in self.scene.items():
+            print("got here")
             if isinstance(label, PangoLabelGraphic):
-                stream.writeStartElement("Label")
+                label_element = ET.SubElement(root, "Label")
                 for gfx in label.childItems():
-                    stream.writeStartElement("Graphic")
+                    gfx_element = ET.SubElement(label_element, "Graphic")
                     for prop, v in gfx.props.items():
-                        if prop == "color":
-                            v_str = v.name()
-                        elif prop == "strokes":
-                            v_str = "["
-                            for pos, motion in v:
-                                v_str += "(("+str(pos.x())+", "+str(pos.y())+"), "+motion+") "
-                            v_str += "["
-                        else:
-                            v_str = str(v)
-                        stream.writeTextElement(prop, v_str)
-                    stream.writeEndElement() # Child
-                stream.writeEndElement() # Label
-
-        stream.writeEndDocument()
-        self.file.close()
+                        _ = ET.SubElement(gfx_element, self.get_text(prop, v))
+        tree.write(open(self.fname, 'wb'))
 
     def read(self):
         pass
+
+    def get_text(self, prop, v):
+        if prop == "color":
+            v_str = v.name()
+        elif prop == "strokes":
+            v_str = "["
+            for pos, motion in v:
+                v_str += "(("+str(pos.x())+", "+str(pos.y())+"), "+motion+") "
+            v_str += "["
+        else:
+            v_str = str(v)
+        return v_str
 
         #root = self.interface.model.invisibleRootItem()
         #stream.writeStartElement("root")

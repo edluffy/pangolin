@@ -68,7 +68,7 @@ class MainWindow(QMainWindow):
         self.addToolBar(Qt.TopToolBarArea, self.menu_bar)
 
         # Input and Output
-        self.x_handler = Xml_Handler(QFile("/Users/edluffy/pango_test.xml"),
+        self.x_handler = Xml_Handler("/Users/edluffy/pango_test.xml",
                 self.interface.scene)
 
         # Shortcuts
