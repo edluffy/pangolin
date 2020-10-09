@@ -86,8 +86,14 @@ class PangoModelSceneInterface(object):
             elif role == Qt.CheckStateRole:
                 gfx.visible = item.visible
             elif role == Qt.UserRole:
-                gfx.icon = item.icon
                 gfx.fpath = item.fpath
+
+            # Sync Hidden "_" Properties 
+            for prop, value in item.__dict__.items():
+                if prop.startswith("_"):
+                    if value is not None and value != getattr(gfx, prop[1:]):
+                        print(prop, value)
+                        setattr(gfx, prop[1:], value)
 
     def gfx_changed(self, gfx, change):
         #print("Gfx change: ", pango_gfx_change_debug(change))
@@ -98,13 +104,16 @@ class PangoModelSceneInterface(object):
 
         if change == QGraphicsItem.ItemToolTipHasChanged:
             item.name = gfx.name
-        elif change == QGraphicsItem.ItemTransformHasChanged:
-            item.color = gfx.color
-            item.icon = gfx.icon
         elif change == QGraphicsItem.ItemVisibleHasChanged:
             item.visible = gfx.visible
-        elif change == QGraphicsItem.ItemMatrixChange:
-            item.fpath = gfx.fpath
+
+        # Sync Hidden "_" Properties 
+        for prop, value in gfx.__dict__.items():
+            if prop.startswith("_"):
+                #print(prop, value)
+                #print(getattr(item, prop[1:]))
+                if value is not None and value != getattr(item, prop[1:]):
+                    setattr(item, prop[1:], value)
 
     def item_removed(self, parent_idx, first, last):
         if parent_idx.isValid():

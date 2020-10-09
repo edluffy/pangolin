@@ -138,8 +138,8 @@ class CreatePath(QUndoCommand):
 
         self.gfx = PangoPathGraphic()
         self.gfx.setParentItem(self.p_gfx)
+        self.gfx.decorate()
         self.gfx.setattrs(
-                color=self.p_gfx.color,
                 width=self.tool_size,
                 name=name,
                 fpath=self.gfx.scene().fpath)

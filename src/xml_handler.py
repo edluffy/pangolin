@@ -1,6 +1,6 @@
 
 import os.path
-import xml.etree.ElementTree as ET
+import xml.etree.cElementTree as ET
 
 from item import PangoLabelGraphic
 
@@ -21,17 +21,24 @@ class Xml_Handler():
             tree.write(open(self.fname, 'wb'))
 
     def write(self):
-        tree = ET.parse(self.fname)
-        root = tree.getroot()
         for label in self.scene.items():
-            print("got here")
             if isinstance(label, PangoLabelGraphic):
-                label_element = ET.SubElement(root, "Label")
                 for gfx in label.childItems():
-                    gfx_element = ET.SubElement(label_element, "Graphic")
-                    for prop, v in gfx.props.items():
-                        _ = ET.SubElement(gfx_element, self.get_text(prop, v))
-        tree.write(open(self.fname, 'wb'))
+                    for k, v in gfx.__dict__.items():
+                        if k.startswith("_"):
+                            print(k)
+
+        #tree = ET.parse(self.fname)
+        #root = tree.getroot()
+        #for label in self.scene.items():
+        #    print("got here")
+        #    if isinstance(label, PangoLabelGraphic):
+        #        label_element = ET.SubElement(root, "Label")
+        #        for gfx in label.childItems():
+        #            gfx_element = ET.SubElement(label_element, "Graphic")
+        #            for prop, v in gfx.props.items():
+        #                _ = ET.SubElement(gfx_element, self.get_text(prop, v))
+        #tree.write(open(self.fname, 'wb'))
 
     def read(self):
         pass
