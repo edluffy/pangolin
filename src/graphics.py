@@ -164,7 +164,8 @@ class ExtendPath(QUndoCommand):
 
     def undo(self):
         self.gfx.prepareGeometryChange()
-        _, _ = self.gfx.strokes.pop()
+        if len(self.gfx.strokes) > 0:
+            _, _ = self.gfx.strokes.pop()
         self.gfx.update()
 
 

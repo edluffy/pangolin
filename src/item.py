@@ -53,9 +53,8 @@ class PangoItem(QStandardItem):
 
     @color.setter
     def color(self, color):
-        if self._color != color:
-            self._color = color
-            self.decorate()
+        self._color = color
+        self.decorate()
 
     @property
     def icon(self):
@@ -63,9 +62,8 @@ class PangoItem(QStandardItem):
 
     @icon.setter
     def icon(self, icon):
-        if self._icon != icon:
-            self._icon = icon
-            self.decorate()
+        self._icon = icon
+        self.decorate()
 
     @property
     def width(self):
@@ -73,8 +71,7 @@ class PangoItem(QStandardItem):
     
     @width.setter
     def width(self, width):
-        if self._width != width:
-            self._width = width
+        self._width = width
 
     def decorate(self):
         if self.parent() is not None:
@@ -92,7 +89,7 @@ class PangoPathItem(PangoItem):
     def __init__(self):
         super().__init__()
         self._icon = "path"
-        self._strokes = None
+        self._strokes = []
 
     @property
     def strokes(self):
@@ -179,10 +176,9 @@ class PangoGraphic(QGraphicsItem):
 
     @color.setter
     def color(self, color):
-        if self._color != color:
-            self._color = color
-            self.pen.setColor(color)
-            self.brush.setColor(color)
+        self._color = color
+        self.pen.setColor(color)
+        self.brush.setColor(color)
 
     @property
     def icon(self):
@@ -190,8 +186,7 @@ class PangoGraphic(QGraphicsItem):
     
     @icon.setter
     def icon(self, icon):
-        if self._icon != icon:
-            self._icon = icon
+        self._icon = icon
 
     @property
     def width(self):
@@ -262,7 +257,7 @@ class PangoPathGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._icon = "path"
-        self._strokes = None
+        self._strokes = []
 
     @property
     def strokes(self):
@@ -299,7 +294,7 @@ class PangoPolyGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._icon = "poly"
-        self._points = None
+        self._points = []
         self._closed = None
 
         self.w = 10

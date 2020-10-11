@@ -92,7 +92,6 @@ class PangoModelSceneInterface(object):
             for prop, value in item.__dict__.items():
                 if prop.startswith("_"):
                     if value is not None and value != getattr(gfx, prop[1:]):
-                        print(prop, value)
                         setattr(gfx, prop[1:], value)
 
     def gfx_changed(self, gfx, change):

@@ -69,7 +69,7 @@ class MainWindow(QMainWindow):
 
         # Input and Output
         self.x_handler = Xml_Handler("/Users/edluffy/pango_test.xml",
-                self.interface.scene)
+                self.interface.model)
 
         # Shortcuts
         self.sh_reset_tool = QShortcut(QKeySequence('Esc'), self)

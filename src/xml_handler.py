@@ -1,15 +1,20 @@
 
 import os.path
 import xml.etree.cElementTree as ET
+from xml.dom import minidom
 
 from item import PangoLabelGraphic
 
 class Xml_Handler():
-    def __init__(self, fname, scene):
+    def __init__(self, fname, model):
         self.set_file(fname)
-        self.scene = scene
+        self.model = model
 
-    #TODO: Pretty print xml output
+        self.p_list = ["name", "fpath", "visible", 
+                       "color", "icon", "width", 
+                       "strokes", "points", "closed"]
+        
+    #TODO:
     #      Change file to write to depending on image folder open
     #      Figure out how to append to file or change element depending on scene
 
@@ -21,53 +26,38 @@ class Xml_Handler():
             tree.write(open(self.fname, 'wb'))
 
     def write(self):
-        for label in self.scene.items():
-            if isinstance(label, PangoLabelGraphic):
-                for gfx in label.childItems():
-                    for k, v in gfx.__dict__.items():
-                        if k.startswith("_"):
-                            print(k)
+        tree = ET.parse(self.fname)
+        root_item = self.model.invisibleRootItem()
+        root_element = tree.getroot()
 
-        #tree = ET.parse(self.fname)
-        #root = tree.getroot()
-        #for label in self.scene.items():
-        #    print("got here")
-        #    if isinstance(label, PangoLabelGraphic):
-        #        label_element = ET.SubElement(root, "Label")
-        #        for gfx in label.childItems():
-        #            gfx_element = ET.SubElement(label_element, "Graphic")
-        #            for prop, v in gfx.props.items():
-        #                _ = ET.SubElement(gfx_element, self.get_text(prop, v))
-        #tree.write(open(self.fname, 'wb'))
+        for row in range(0, root_item.rowCount()):
+            label_item = root_item.child(row)
+            if label_item.hasChildren():
+                for row in range(0, label_item.rowCount()):
+                    shape_item = label_item.child(row)
+                    shape_element = ET.SubElement(root_element, "Shape")
+                    for prop in self.p_list:
+                        if hasattr(shape_item, prop):
+                            value = self.prop_to_str(shape_item, prop)
+                            _ = ET.SubElement(shape_element, prop, attrib={'value':value})
 
-    def read(self):
-        pass
+        
+        f = open(self.fname, "w")
+        f.write(self.prettify(root_element))
+        f.close()
 
-    def get_text(self, prop, v):
+    def prettify(self, elem):
+        elem_str = ET.tostring(elem)
+        return minidom.parseString(elem_str).toprettyxml(indent = "   ")
+
+    def prop_to_str(self, item, prop):
         if prop == "color":
-            v_str = v.name()
+            p_str = getattr(item, prop).name()
         elif prop == "strokes":
-            v_str = "["
-            for pos, motion in v:
-                v_str += "(("+str(pos.x())+", "+str(pos.y())+"), "+motion+") "
-            v_str += "["
+            p_str = "["
+            for pos, motion in getattr(item, prop):
+                p_str += "(("+str(pos.x())+", "+str(pos.y())+"), "+motion+") "
+            p_str += "["
         else:
-            v_str = str(v)
-        return v_str
-
-        #root = self.interface.model.invisibleRootItem()
-        #stream.writeStartElement("root")
-        #for row in range(0, root.rowCount()):
-        #    label = root.child(row)
-        #    if label.hasChildren():
-        #        stream.writeStartElement(label.name)
-        #        for row in range(0, label.rowCount()):
-        #            shape = label.child(row)
-        #            gfx = self.interface.map[shape.key()]
-        #            print(gfx.props)
-        #            stream.writeStartElement(shape.name)
-        #            stream.writeAttribute("fpath", shape.fpath)
-        #            stream.writeEndElement() # Shape
-        #        stream.writeEndElement() # Label
-        #stream.writeEndElement() # Root
-
+            p_str = str(getattr(item, prop))
+        return p_str
