@@ -1,7 +1,8 @@
-
+import re
 import os.path
 import xml.etree.cElementTree as ET
 from xml.dom import minidom
+from PyQt5.QtCore import QPointF
 
 from PyQt5.QtGui import QColor
 
@@ -19,6 +20,7 @@ class Xml_Handler():
     #TODO:
     #      Change file to write to depending on image folder open
     #      Figure out how to append to file or change element depending on scene
+    #      Handle each variable individually
 
     def set_file(self, fname):
         self.fname = fname
@@ -53,10 +55,13 @@ class Xml_Handler():
 
         for label_elem in root_elem.iter("Label"):
             label_item = PangoLabelItem()
-            label_item.setattrs()
-            for p_name, p_str in label_elem.attrib:
-                setattr(label_item, p_name, self.str_to_prop(label_item, p_str))
+            self.copy_props_to_item(label_elem, label_item)
             root_item.appendRow(label_item)
+
+            #for shape_elem in label_elem.iter("Shape"):
+            #    shape_item = PangoLabelItem()
+            #    self.copy_props_to_item(shape_elem, shape_item)
+            #    root_item.appendRow(shape_item)
 
 
     def prettify(self, elem):
@@ -64,42 +69,51 @@ class Xml_Handler():
         return minidom.parseString(elem_str).toprettyxml(indent = "   ")
 
     def copy_props_to_elem(self, item, elem):
-        for p_name in self.p_list:
-            if hasattr(item, p_name):
-                p_str = self.prop_to_str(item, p_name)
-                _ = ET.SubElement(elem, p_name, attrib={'value':p_str})
+        for p_type in self.p_list:
+            if hasattr(item, p_type):
+                p_str = self.prop_to_str(p_type, item)
+                _ = ET.SubElement(elem, p_type, attrib={'value':p_str})
 
-    def copy_props_to_item(self, elem, item):
-        for p_name, p_str in elem.attrib:
-            if hasattr(item, p_name):
-                value = self.str_to_prop(p_name, p_str)
+    def copy_props_to_item(self, shape_elem, item):
+        for elem in shape_elem.iter():
+            p_type = elem.tag
+            p_str = elem.get('value')
+            if hasattr(item, p_type):
+                prop = self.str_to_prop(p_type, p_str)
+                print(prop)
+                setattr(item, p_type, prop)
 
-    def prop_to_str(self, item, p_name):
-        if p_name == "color":
-            p_str = getattr(item, p_name).name()
-        elif p_name == "strokes":
+    def prop_to_str(self, p_type, item):
+        if p_type == "color":
+            p_str = getattr(item, p_type).name()
+        elif p_type == "strokes":
             p_str = "["
-            for pos, motion in getattr(item, p_name):
-                p_str += "(("+str(pos.x())+", "+str(pos.y())+"), "+motion+") "
-            p_str += "["
+            for pos, motion in getattr(item, p_type):
+                p_str += "("+str(pos.x())+" "+str(pos.y())+", "+motion+") "
+            p_str += "]"
         else:
-            p_str = str(getattr(item, p_name))
+            p_str = str(getattr(item, p_type))
         return p_str
     
-    #TODO: Handle each variable individually
-    def str_to_prop(self, p_name, p_str):
-        if p_name == "visible":
+    def str_to_prop(self, p_type, p_str):
+        if p_str=="None":
+            return None
+        if p_type == "visible":
             prop = bool(p_str)
-        elif p_name == "color":
+        elif p_type == "color":
             prop = QColor(p_str)
-        elif p_name == "width":
+        elif p_type == "width":
             prop = float(p_str)
-        elif p_name == "strokes":
-            pass
-        elif p_name == "points":
-            pass
-        elif p_name == "closed":
-            pass
+        elif p_type == "strokes":
+            prop = []
+            for stroke in re.findall("\((.*?)\)", p_str):
+                pos, motion = stroke.split(", ")
+                x, y = pos.split(" ")
+                prop.append((QPointF(x, y), motion))
+        elif p_type == "closed":
+            prop = bool(p_str)
         else:
             prop = p_str
+
+        return prop
 

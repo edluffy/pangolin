@@ -41,6 +41,10 @@ class PangoMenuBarWidget(QToolBar):
         self.save_action.setIcon(pango_get_icon("save"))
         self.action_group.addAction(self.save_action)
 
+        self.load_action = QAction("Load Project")
+        self.load_action.setIcon(pango_get_icon("load"))
+        self.action_group.addAction(self.load_action)
+
         self.run_action = QAction("PyTorch")
         self.run_action.setIcon(pango_get_icon("fire"))
         self.action_group.addAction(self.run_action)

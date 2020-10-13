@@ -33,6 +33,10 @@ class MainWindow(QMainWindow):
         self.undo_view = QUndoView()
         self.undo_view.setStack(self.interface.scene.undo_stack)
 
+        # Serialisation
+        self.x_handler = Xml_Handler("/Users/edluffy/pango_test.xml",
+                self.interface.model)
+
         # Dock widgets
         self.label_widget = PangoLabelWidget("Labels", self.tree_view)
         self.undo_widget = PangoUndoWidget("History", self.undo_view)
@@ -46,7 +50,8 @@ class MainWindow(QMainWindow):
 
         # Signals and Slots
         self.menu_bar.open_images_action.triggered.connect(self.file_widget.open)
-        self.menu_bar.save_action.triggered.connect(self.save_scene)
+        self.menu_bar.save_action.triggered.connect(self.x_handler.write)
+        self.menu_bar.load_action.triggered.connect(self.x_handler.read)
 
         self.file_widget.file_view.activated.connect(self.switch_image)
         self.tool_bar.label_select.currentIndexChanged.connect(self.switch_label)
@@ -66,10 +71,6 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, self.file_widget)
 
         self.addToolBar(Qt.TopToolBarArea, self.menu_bar)
-
-        # Input and Output
-        self.x_handler = Xml_Handler("/Users/edluffy/pango_test.xml",
-                self.interface.model)
 
         # Shortcuts
         self.sh_reset_tool = QShortcut(QKeySequence('Esc'), self)
@@ -93,9 +94,6 @@ class MainWindow(QMainWindow):
             self.interface.scene.reset_com()
         except KeyError:
             return
-
-    def save_scene(self):
-        self.x_handler.write()
 
 window = MainWindow()
 window.show()
