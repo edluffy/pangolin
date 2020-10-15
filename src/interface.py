@@ -128,6 +128,7 @@ class PangoModelSceneInterface(object):
         idx = QModelIndex(self.map.inverse[gfx])
         self.model.removeRow(idx.row(), idx.parent())
 
+    #TODO: Use reflection here
     def create_item_from_gfx(self, gfx):
         if type(gfx) is PangoLabelGraphic:
             item = PangoLabelItem()
@@ -152,6 +153,7 @@ class PangoModelSceneInterface(object):
         return item
 
     def create_gfx_from_item(self, item):
+        print("creating gfx from item")
         if type(item) is PangoLabelItem:
             gfx = PangoLabelGraphic()
         elif type(item) is PangoPathItem:
