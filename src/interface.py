@@ -7,7 +7,7 @@ from bidict import bidict
 from graphics import PangoGraphicsScene
 
 from item import PangoGraphic, PangoItem, PangoLabelGraphic, PangoLabelItem, PangoPathGraphic, PangoPathItem, PangoPolyGraphic, PangoPolyItem, PangoRectGraphic, PangoRectItem
-from utils import PangoShapeType, pango_gfx_change_debug, pango_item_role_debug
+from utils import pango_gfx_change_debug, pango_item_role_debug
 
 """ PangoModelSceneInterface promotes loose coupling by keeping model/view and 
    scene/view from referring to each other explicitly """
@@ -109,8 +109,6 @@ class PangoModelSceneInterface(object):
         # Sync Hidden "_" Properties 
         for prop, value in gfx.__dict__.items():
             if prop.startswith("_"):
-                #print(prop, value)
-                #print(getattr(item, prop[1:]))
                 if value is not None and value != getattr(item, prop[1:]):
                     setattr(item, prop[1:], value)
 
@@ -153,7 +151,6 @@ class PangoModelSceneInterface(object):
         return item
 
     def create_gfx_from_item(self, item):
-        print("creating gfx from item")
         if type(item) is PangoLabelItem:
             gfx = PangoLabelGraphic()
         elif type(item) is PangoPathItem:

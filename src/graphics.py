@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QAction, QGraphicsEllipseItem, QGraphicsItem, QGrap
                              QGraphicsScene, QGraphicsView, QMenu, QUndoCommand, QUndoStack)
 
 from item import PangoGraphic, PangoPathGraphic, PangoPolyGraphic, PangoRectGraphic
-from utils import PangoShapeType, pango_get_icon, pango_gfx_change_debug, pango_item_role_debug
+from utils import pango_get_icon, pango_gfx_change_debug, pango_item_role_debug
 
 
 class PangoGraphicsScene(QGraphicsScene):
@@ -22,7 +22,14 @@ class PangoGraphicsScene(QGraphicsScene):
         self.tool = None
         self.tool_size = 10
 
+        self.full_clear()
+
+    def full_clear(self):
+        self.undo_stack.clear()
+        self.clear()
         self.init_reticle()
+        self.reset_com()
+        self.tool_reset.emit()
 
     def init_reticle(self):
         self.reticle = QGraphicsEllipseItem(-5, -5, 10, 10)

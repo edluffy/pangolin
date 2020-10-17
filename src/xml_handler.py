@@ -5,34 +5,44 @@ from xml.dom import minidom
 from PyQt5.QtCore import QPointF
 
 from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QMessageBox
 
 from item import PangoLabelGraphic, PangoLabelItem, PangoPathItem, PangoPolyItem, PangoRectItem
 
 class Xml_Handler():
-    def __init__(self, fname, model):
-        self.set_file(fname)
+    def __init__(self, model):
         self.model = model
 
         self.p_list = ["name", "fpath", "visible", 
                        "color", "icon", "width", 
                        "strokes", "points", "closed"]
         
-    #TODO:
-    #      Change file to write to depending on image folder open
-    #      Figure out how to append to file or change element depending on scene
-    #      Handle each variable individually
+    #TODO: properly serialize polygon tool
+    #      add load file dialog
+          
+    def check_file(self, fname):
+        if os.path.exists(fname):
+            dialog = QMessageBox()
+            dialog.setText("Pango project file exists, overwrite?")
+            dialog.setInformativeText("Located at: "+fname)
+            dialog.setStandardButtons(QMessageBox.Save | QMessageBox.Cancel)
+            dialog.setDefaultButton(QMessageBox.Save)
 
-    def set_file(self, fname):
-        self.fname = fname
-        if not os.path.exists(fname):
-            root = ET.Element('InvisibleRootItem')
-            tree = ET.ElementTree(root)
-            tree.write(open(self.fname, 'wb'))
+            if dialog.exec() == QMessageBox.Cancel:
+                return False
 
-    def write(self):
-        tree = ET.parse(self.fname)
+        return True
+    
+    def load_file(self):
+        pass
+        # add dialog here
+
+    def write(self, fname):
+        if not self.check_file(fname):
+            return
+
         root_item = self.model.invisibleRootItem()
-        root_elem = tree.getroot()
+        root_elem = ET.Element('InvisibleRootItem')
 
         for row in range(0, root_item.rowCount()):
             label_item = root_item.child(row)
@@ -44,7 +54,7 @@ class Xml_Handler():
                     shape_elem = ET.SubElement(label_elem, type(shape_item).__name__)
                     self.copy_props_to_elem(shape_item, shape_elem)
         
-        f = open(self.fname, "w")
+        f = open(fname, "w")
         f.write(self.prettify(root_elem))
         f.close()
 
@@ -66,8 +76,8 @@ class Xml_Handler():
             p_str = str(getattr(item, p_type))
         return p_str
 
-    def read(self):
-        tree = ET.parse(self.fname)
+    def read(self, fname):
+        tree = ET.parse(fname)
         root_item = self.model.invisibleRootItem()
         root_elem = tree.getroot()
 
@@ -79,8 +89,6 @@ class Xml_Handler():
             for shape_elem in label_elem:
                 if shape_elem.tag.startswith("Pango"):
                     try:
-                        #TODO: have a list of valid item types,
-                        #      check if exists (or no for label attr)
                         shape_item = globals()[shape_elem.tag]()
                     except KeyError:
                         print("Read error - unknown item type", shape_elem.tag)
@@ -95,6 +103,8 @@ class Xml_Handler():
             if p_str is not None and hasattr(item, p_type):
                 prop = self.str_to_prop(p_type, p_str)
                 setattr(item, p_type, prop)
+
+        item.decorate() # Mostly for triggering refresh
     
     def str_to_prop(self, p_type, p_str):
         if p_str=="None":

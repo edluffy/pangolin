@@ -18,6 +18,7 @@ pango_palette = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
 
 pango_app_icon_color = QColor("grey")
 
+
 def pango_get_palette(n):
     return pango_palette[n % len(pango_palette)]
 
@@ -28,14 +29,6 @@ def pango_get_icon(name, color=None):
     px.fill(pango_app_icon_color if color is None else color)
     px.setMask(mask)
     return QIcon(px)
-
-
-class PangoShapeType(Enum):
-    Default = QGraphicsItem.UserType +1
-    Path = QGraphicsItem.UserType + 2
-    Rect = QGraphicsItem.UserType + 3
-    Poly = QGraphicsItem.UserType + 4
-
 
 def pango_item_role_debug(role):
     return role_list[role]

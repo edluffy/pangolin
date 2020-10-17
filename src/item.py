@@ -3,7 +3,7 @@ from PyQt5.QtGui import QBrush, QColor, QIcon, QPainter, QPainterPath, QPainterP
 from PyQt5.QtWidgets import (QAbstractGraphicsShapeItem, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPathItem,
                              QGraphicsPolygonItem, QGraphicsRectItem, QStyle)
 
-from utils import PangoShapeType, pango_get_icon, pango_get_palette
+from utils import pango_get_icon, pango_get_palette
 
 class PangoItem(QStandardItem):
     def __init__ (self):

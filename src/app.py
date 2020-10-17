@@ -1,6 +1,7 @@
+import os
 from PyQt5.QtCore import QFile, QIODevice, QItemSelectionModel, QModelIndex, QPointF, QRectF, QXmlStreamWriter, Qt
 from PyQt5.QtGui import QColor, QKeySequence, QPixmap, QStandardItemModel
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QShortcut, QTreeView, QUndoView,
+from PyQt5.QtWidgets import (QApplication, QFileDialog, QMainWindow, QMessageBox, QShortcut, QTreeView, QUndoView,
                              QVBoxLayout, QWidget)
 
 from bar import PangoMenuBarWidget, PangoToolBarWidget
@@ -34,8 +35,7 @@ class MainWindow(QMainWindow):
         self.undo_view.setStack(self.interface.scene.undo_stack)
 
         # Serialisation
-        self.x_handler = Xml_Handler("/Users/edluffy/pango_test.xml",
-                self.interface.model)
+        self.x_handler = Xml_Handler(self.interface.model)
 
         # Dock widgets
         self.label_widget = PangoLabelWidget("Labels", self.tree_view)
@@ -50,8 +50,8 @@ class MainWindow(QMainWindow):
 
         # Signals and Slots
         self.menu_bar.open_images_action.triggered.connect(self.file_widget.open)
-        self.menu_bar.save_action.triggered.connect(self.x_handler.write)
-        self.menu_bar.load_action.triggered.connect(self.x_handler.read)
+        self.menu_bar.save_action.triggered.connect(self.save_project)
+        self.menu_bar.load_action.triggered.connect(self.load_project)
 
         self.file_widget.file_view.activated.connect(self.switch_image)
         self.tool_bar.label_select.currentIndexChanged.connect(self.switch_label)
@@ -76,6 +76,20 @@ class MainWindow(QMainWindow):
         self.sh_reset_tool = QShortcut(QKeySequence('Esc'), self)
         #self.sh_reset_tool.activated.connect(self.scene.reset_tool)
         
+    def save_project(self):
+        path = self.file_widget.file_model.rootPath()
+        if len(path) > 1:
+            self.x_handler.write(path+"/pango.xml")
+
+
+    def load_project(self):
+        self.interface.map.clear()
+        self.interface.model.clear()
+        self.interface.scene.full_clear()
+
+        path = self.file_widget.file_model.rootPath()
+        self.x_handler.read(path+"/pango.xml")
+        self.switch_label(0)
 
     def switch_image(self, idx):
         fpath = idx.model().filePath(idx)
@@ -88,6 +102,8 @@ class MainWindow(QMainWindow):
 
     def switch_label(self, row):
         item = self.interface.model.item(row)
+        if item is None:
+            return
         try:
             self.interface.scene.label = self.interface.map[item.key()]
             self.interface.scene.update_reticle()
