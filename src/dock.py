@@ -41,7 +41,6 @@ class PangoUndoWidget(PangoDockWidget):
 
         self.setWidget(self.undo_view)
 
-
 class PangoFileWidget(PangoDockWidget):
     def __init__(self, title, parent=None):
         super().__init__(title, parent)
@@ -58,16 +57,6 @@ class PangoFileWidget(PangoDockWidget):
         self.file_view.setIconSize(QSize(150, 150))
 
         self.setWidget(self.file_view)
-
-    def open(self):
-        dialog = QFileDialog()
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
-        dialog.exec()
-
-        if dialog.result():
-            self.file_model.setRootPath(dialog.directory().absolutePath())
-            self.file_view.setRootIndex(self.file_model.index(self.file_model.rootPath()))
-
 
 class ThumbnailProvider(QFileIconProvider):
     def __init__(self):

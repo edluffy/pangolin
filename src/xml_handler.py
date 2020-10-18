@@ -20,27 +20,7 @@ class Xml_Handler():
     #TODO: properly serialize polygon tool
     #      add load file dialog
           
-    def check_file(self, fname):
-        if os.path.exists(fname):
-            dialog = QMessageBox()
-            dialog.setText("Pango project file exists, overwrite?")
-            dialog.setInformativeText("Located at: "+fname)
-            dialog.setStandardButtons(QMessageBox.Save | QMessageBox.Cancel)
-            dialog.setDefaultButton(QMessageBox.Save)
-
-            if dialog.exec() == QMessageBox.Cancel:
-                return False
-
-        return True
-    
-    def load_file(self):
-        pass
-        # add dialog here
-
     def write(self, fname):
-        if not self.check_file(fname):
-            return
-
         root_item = self.model.invisibleRootItem()
         root_elem = ET.Element('InvisibleRootItem')
 

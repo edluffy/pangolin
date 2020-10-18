@@ -49,11 +49,11 @@ class MainWindow(QMainWindow):
         self.tool_bar.label_select.setModel(self.interface.model)
 
         # Signals and Slots
-        self.menu_bar.open_images_action.triggered.connect(self.file_widget.open)
+        self.menu_bar.open_images_action.triggered.connect(self.load_images)
         self.menu_bar.save_action.triggered.connect(self.save_project)
         self.menu_bar.load_action.triggered.connect(self.load_project)
 
-        self.file_widget.file_view.activated.connect(self.switch_image)
+        self.file_widget.file_view.selectionModel().currentChanged.connect(self.switch_image)
         self.tool_bar.label_select.currentIndexChanged.connect(self.switch_label)
 
         # Layouts
@@ -77,22 +77,72 @@ class MainWindow(QMainWindow):
         #self.sh_reset_tool.activated.connect(self.scene.reset_tool)
         
     def save_project(self):
-        path = self.file_widget.file_model.rootPath()
-        if len(path) > 1:
-            self.x_handler.write(path+"/pango.xml")
+        folder_path = self.file_widget.file_model.rootPath()
+        if folder_path != "." and os.path.exists(folder_path):
+            dialog = QMessageBox()
+            dialog.setText("Pango project file exists, overwrite?")
+            dialog.setInformativeText("Located at: "+folder_path)
+            dialog.setStandardButtons(QMessageBox.Save | QMessageBox.Cancel)
+            dialog.setDefaultButton(QMessageBox.Save)
 
+            if dialog.exec() == QMessageBox.Save:
+                self.x_handler.write(folder_path+"/pango.xml")
 
     def load_project(self):
-        self.interface.map.clear()
-        self.interface.model.clear()
-        self.interface.scene.full_clear()
+        folder_path = self.file_widget.file_model.rootPath()
+        if folder_path != ".":
+            if os.path.exists(folder_path+"/pango.xml"):
+                dialog = QMessageBox()
+                dialog.setText("Existing pango project file found in image folder, load?")
+                dialog.setInformativeText("Located at: "+folder_path)
+                dialog.setStandardButtons(QMessageBox.Open | QMessageBox.Close)
+                dialog.setDefaultButton(QMessageBox.Open)
 
-        path = self.file_widget.file_model.rootPath()
-        self.x_handler.read(path+"/pango.xml")
-        self.switch_label(0)
+                if dialog.exec() == QMessageBox.Open:
+                    self.x_handler.read(folder_path+"/pango.xml")
+                    return
 
-    def switch_image(self, idx):
-        fpath = idx.model().filePath(idx)
+        dialog = QFileDialog()
+        dialog.setDefaultSuffix("xml")
+        dialog.exec()
+
+        if dialog.result():
+            print(dialog.directory().absolutePath())
+
+            self.interface.map.clear()
+            self.interface.model.clear()
+            self.interface.scene.full_clear()
+
+            #self.x_handler.read(path+"/pango.xml")
+            self.switch_label(0)
+
+    def load_images(self):
+        dialog = QFileDialog()
+        dialog.setFileMode(QFileDialog.DirectoryOnly)
+
+        if dialog.exec():
+            folder_path = dialog.directory().absolutePath()
+
+            self.file_widget.file_model.setRootPath(folder_path)
+            root_idx = self.file_widget.file_model.index(folder_path)
+
+            self.file_widget.file_view.setRootIndex(root_idx)
+            #self.file_widget.file_view.selectionModel().setCurrentIndex(
+            #        self.file_widget.file_view.rootIndex(), QItemSelectionModel.Select)
+            #self.file_widget.file_view.rootIndex()
+
+            if os.path.exists(folder_path+"/pango.xml"):
+                dialog = QMessageBox()
+                dialog.setText("Existing Project found in image folder, load?")
+                dialog.setInformativeText("Located at: "+folder_path)
+                dialog.setStandardButtons(QMessageBox.Open | QMessageBox.Close)
+                dialog.setDefaultButton(QMessageBox.Open)
+
+                if dialog.exec() == QMessageBox.Open:
+                    self.x_handler.read(folder_path+"/pango.xml")
+
+    def switch_image(self, c_idx, p_idx):
+        fpath = self.file_widget.file_model.filePath(c_idx)
         self.interface.filter_tree(fpath)
         self.interface.scene.reset_com()
         self.interface.scene.fpath = fpath
