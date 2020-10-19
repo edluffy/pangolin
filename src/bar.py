@@ -13,8 +13,8 @@ class PangoMenuBarWidget(QToolBar):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMovable(False)
-        self.setIconSize(QSize(24, 24))
-        self.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        self.setIconSize(QSize(16, 16))
+        self.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
 
         # Widgets
         spacer_left = QWidget()
@@ -50,7 +50,7 @@ class PangoMenuBarWidget(QToolBar):
         self.action_group.addAction(self.run_action)
 
         self.addAction(self.action_group.actions()[0])
-        self.addWidget(spacer_left)
+        #self.addWidget(spacer_left)
         self.addActions(self.action_group.actions()[1:-1])
         self.addWidget(spacer_right)
         self.addAction(self.action_group.actions()[-1])

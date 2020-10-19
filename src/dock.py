@@ -15,7 +15,7 @@ class PangoDockWidget(QDockWidget):
         self.bg = QWidget()
         self.setWidget(self.bg)
 
-        #self.setTitleBarWidget(QWidget())
+        self.setTitleBarWidget(QWidget())
 
 class PangoLabelWidget(PangoDockWidget):
     def __init__(self, title, tree_view, parent=None):

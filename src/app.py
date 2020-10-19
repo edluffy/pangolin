@@ -36,6 +36,7 @@ class MainWindow(QMainWindow):
 
         # Serialisation
         self.x_handler = Xml_Handler(self.interface.model)
+        self.project_file = None
 
         # Dock widgets
         self.label_widget = PangoLabelWidget("Labels", self.tree_view)
@@ -77,43 +78,36 @@ class MainWindow(QMainWindow):
         #self.sh_reset_tool.activated.connect(self.scene.reset_tool)
         
     def save_project(self):
-        folder_path = self.file_widget.file_model.rootPath()
-        if folder_path != "." and os.path.exists(folder_path):
+        # Create new xml project file
+        if self.project_file is None or not os.path.exists(self.project_file):
+            dialog = QFileDialog()
+            dialog.setFileMode(QFileDialog.ExistingFile)
+            dialog.setNameFilter("XML files (*.xml)")
+
+        #folder_path = self.file_widget.file_model.rootPath()
+
+    def load_project(self):
+        # Save before loading new project
+        if self.project_file is not None:
             dialog = QMessageBox()
-            dialog.setText("Pango project file exists, overwrite?")
-            dialog.setInformativeText("Located at: "+folder_path)
-            dialog.setStandardButtons(QMessageBox.Save | QMessageBox.Cancel)
+            dialog.setText("Save changes to current project?")
+            dialog.setStandardButtons(QMessageBox.Save | QMessageBox.No)
             dialog.setDefaultButton(QMessageBox.Save)
 
             if dialog.exec() == QMessageBox.Save:
-                self.x_handler.write(folder_path+"/pango.xml")
-
-    def load_project(self):
-        folder_path = self.file_widget.file_model.rootPath()
-        if folder_path != ".":
-            if os.path.exists(folder_path+"/pango.xml"):
-                dialog = QMessageBox()
-                dialog.setText("Existing pango project file found in image folder, load?")
-                dialog.setInformativeText("Located at: "+folder_path)
-                dialog.setStandardButtons(QMessageBox.Open | QMessageBox.Close)
-                dialog.setDefaultButton(QMessageBox.Open)
-
-                if dialog.exec() == QMessageBox.Open:
-                    self.x_handler.read(folder_path+"/pango.xml")
-                    return
+                self.save_project()
 
         dialog = QFileDialog()
-        dialog.setDefaultSuffix("xml")
-        dialog.exec()
+        dialog.setFileMode(QFileDialog.ExistingFile)
+        dialog.setNameFilter("XML files (*.xml)")
 
-        if dialog.result():
-            print(dialog.directory().absolutePath())
-
+        if dialog.exec():
             self.interface.map.clear()
             self.interface.model.clear()
             self.interface.scene.full_clear()
 
-            #self.x_handler.read(path+"/pango.xml")
+            self.project_file = dialog.selectedFiles()[0]
+            self.x_handler.read(self.project_file)
             self.switch_label(0)
 
     def load_images(self):
@@ -127,9 +121,6 @@ class MainWindow(QMainWindow):
             root_idx = self.file_widget.file_model.index(folder_path)
 
             self.file_widget.file_view.setRootIndex(root_idx)
-            #self.file_widget.file_view.selectionModel().setCurrentIndex(
-            #        self.file_widget.file_view.rootIndex(), QItemSelectionModel.Select)
-            #self.file_widget.file_view.rootIndex()
 
             if os.path.exists(folder_path+"/pango.xml"):
                 dialog = QMessageBox()
