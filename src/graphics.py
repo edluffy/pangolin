@@ -230,7 +230,7 @@ class ExtendShape(QUndoCommand):
         self.data = data
         # Expected data:
         # PangoPathGraphic - 'pos', 'motion'
-        # PangoPolyGraphic - 'points'
+        # PangoPolyGraphic - 'pos'
 
     def redo(self):
         self.gfx.prepareGeometryChange()
@@ -239,9 +239,9 @@ class ExtendShape(QUndoCommand):
             self.gfx.strokes.append((self.data["pos"], self.data["motion"]))
         elif type(self.gfx) is PangoPolyGraphic:
             if len(self.gfx.points) > 1: # Check for closure
-                for point in self.data["points"]:
-                    if QLineF(self.gfx.points[0], point).length() <= self.gfx.w:
-                            self.gfx.closed = True
+                if QLineF(self.gfx.points[0], self.data["pos"]).length() <= self.gfx.w:
+                    self.gfx.closed = True
+            self.gfx.points.append(self.data["pos"])
 
         self.gfx.update()
 

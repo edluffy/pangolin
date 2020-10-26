@@ -91,8 +91,9 @@ class PangoModelSceneInterface(object):
             # Sync Hidden "_" Properties 
             for prop, value in item.__dict__.items():
                 if prop.startswith("_"):
-                    if value is not None and value != getattr(gfx, prop[1:]):
-                        setattr(gfx, prop[1:], value)
+                    if value is not None and value != []:
+                        if value != getattr(gfx, prop[1:]):
+                            setattr(gfx, prop[1:], value)
 
     def gfx_changed(self, gfx, change):
         #print("Gfx change: ", pango_gfx_change_debug(change))
@@ -109,8 +110,9 @@ class PangoModelSceneInterface(object):
         # Sync Hidden "_" Properties 
         for prop, value in gfx.__dict__.items():
             if prop.startswith("_"):
-                if value is not None and value != getattr(item, prop[1:]):
-                    setattr(item, prop[1:], value)
+                if value is not None and value != []:
+                    if value != getattr(item, prop[1:]):
+                        setattr(item, prop[1:], value)
 
     def item_removed(self, parent_idx, first, last):
         if parent_idx.isValid():
