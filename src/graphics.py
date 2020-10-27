@@ -16,7 +16,6 @@ class PangoGraphicsScene(QGraphicsScene):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.undo_stack = QUndoStack()
-        self.last_com = None
         self.fpath = None
         self.label = PangoGraphic()
 
@@ -46,18 +45,30 @@ class PangoGraphicsScene(QGraphicsScene):
         painter.drawPixmap(0, 0, px)
 
     def reset_com(self):
-        #TODO: Create general way to stop command halfway
-        #if type(self.last_com) is ExtendPoly:
-        #    if not self.last_com.gfx.closed:
-        #        while type(self.undo_stack.command(self.undo_stack.index()-1)) \
-        #               in (ExtendPoly, CreatePoly):
-        #            self.undo_stack.undo()
-        #            self.undo_stack.command(self.undo_stack.index()).setObsolete(True)
+        if type(self.focus_shape()) is PangoPolyGraphic:
+            if not self.focus_shape().closed:
+                self.unravel_shape()
 
-                # Refresh changes made to stack
-        #        self.undo_stack.push(QUndoCommand())
-        #        self.undo_stack.undo()
-        self.last_com = None
+        while self.focus_shape() is not None:
+            self.focus_shape().setSelected(False)
+
+    # Undo all commands for last shape (including creation)
+    def unravel_shape(self):
+        while type(self.undo_stack.command(self.undo_stack.index()-1))\
+                is not CreateShape:
+            self.undo_stack.undo()
+            self.undo_stack.command(self.undo_stack.index()).setObsolete(True)
+
+        self.undo_stack.undo() # Remove CreateShape
+        self.undo_stack.command(self.undo_stack.index()).setObsolete(True)
+        self.undo_stack.push(QUndoCommand()) # Refresh changes made to stack
+        self.undo_stack.undo()
+
+    def focus_shape(self):
+        if len(self.selectedItems()) > 0:
+            return self.selectedItems()[0]
+        else:
+            return None
 
     def mousePressEvent(self, event):
         pos = event.scenePos()
@@ -66,40 +77,52 @@ class PangoGraphicsScene(QGraphicsScene):
             super().mousePressEvent(event)
 
         elif self.tool == "Path":
-            if type(self.last_com) is not ExtendShape:
-                self.last_com = CreateShape(self.label, PangoPathGraphic,
+            if type(self.focus_shape()) is not PangoPathGraphic:
+                com = CreateShape(self.label, PangoPathGraphic,
                         {'pos': pos, 'width': self.tool_size})
-                self.undo_stack.push(self.last_com)
+                self.undo_stack.push(com)
 
             ## START PATH EXTENSION MACRO
-            self.undo_stack.beginMacro("Extended "+self.last_com.gfx.name) 
-            self.last_com = ExtendShape(self.last_com.gfx, 
+            self.undo_stack.beginMacro("Extended "+self.focus_shape().name) 
+            com = ExtendShape(self.focus_shape(), 
                     {'pos': pos, 'motion': "move"})
-            self.undo_stack.push(self.last_com)
+            self.undo_stack.push(com)
 
         elif self.tool == "Poly":
-            if type(self.last_com) is not ExtendShape:
-                self.last_com = CreateShape(self.label, PangoPolyGraphic,
-                        {'pos': pos})
-                self.undo_stack.push(self.last_com)
+            if type(self.focus_shape()) is not PangoPolyGraphic:
+                com = CreateShape(self.label, PangoPolyGraphic, {'pos': pos})
+                self.undo_stack.push(com)
 
-            self.last_com = ExtendShape(self.last_com.gfx, {'pos': pos})
-            self.undo_stack.push(self.last_com)
+            com = ExtendShape(self.focus_shape(), {'pos': pos})
+            self.undo_stack.push(com)
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
         pos = event.scenePos()
 
         if self.tool in ("Pan", "Lasso"):
-            pass
+            gfx = self.itemAt(pos, QTransform())
+            #if hasattr(gfx, "points"):
+            #    distances = []
+            #    for point in gfx.points:
+            #        distances.append(QLineF(point, pos).length())
+
+            #    if min(distances) < 20:
+            #        idx = distances.index(min(distances))
+
+            #        ## START MOVE POINT MACRO
+            #        self.undo_stack.beginMacro(
+            #                "Moved point "+str(idx)+" in "+self.gfx.name)
+            #        self.last_com = MovePointShape(gfx, idx, pos)
+            #        self.undo_stack.push(self.last_com)        
 
         elif self.tool == "Path":
             self.reticle.setPos(pos)
             if event.buttons() & Qt.LeftButton:
-                if type(self.last_com) is ExtendShape:
-                    self.last_com = ExtendShape(self.last_com.gfx,
+                if type(self.focus_shape()) is PangoPathGraphic:
+                    com = ExtendShape(self.focus_shape(),
                             {'pos': pos, 'motion': "line"})
-                    self.undo_stack.push(self.last_com)
+                    self.undo_stack.push(com)
 
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
@@ -110,77 +133,6 @@ class PangoGraphicsScene(QGraphicsScene):
         if self.tool == "Path":
             self.undo_stack.endMacro()
 
-        #if self.tool in ("Pan", "Lasso"):
-        #    super().mousePressEvent(event)
-        #    gfx = self.itemAt(pos, QTransform())
-        #    if type(gfx) is PangoPolyGraphic:
-        #        distances = []
-        #        for point in gfx.points:
-        #            distances.append(QLineF(point, pos).length())
-
-        #        if min(distances) < 20:
-        #            p_idx = distances.index(min(distances))
-
-        #            self.undo_stack.endMacro()
-        #            self.undo_stack.beginMacro(
-        #                    "Moving Point at "+str(pos.x())+", "+str(pos.y())+")")
-        #            self.last_com = MovePointPoly(gfx, p_idx, pos)
-        #            self.undo_stack.push(self.last_com)
-
-        #elif self.tool == "Path":
-        #    if type(self.last_com) is not ExtendPath:
-        #        self.last_com = CreatePath(self.label, self.tool_size, pos)
-        #        self.undo_stack.push(self.last_com)
-
-        #    self.undo_stack.endMacro()
-        #    self.undo_stack.beginMacro("Extended Path to ("+str(pos.x())+", "+str(pos.y())+")")
-        #    self.last_com = ExtendPath(self.last_com.gfx, pos, "move")
-        #    self.undo_stack.push(self.last_com)
-
-        #elif self.tool == "Poly":
-        #    if type(self.last_com) is not ExtendPoly:
-        #        self.last_com = CreatePoly(self.label, pos)
-        #        self.undo_stack.push(self.last_com)
-
-        #    self.last_com = ExtendPoly(self.last_com.gfx, [pos])
-        #    self.undo_stack.push(self.last_com)
-
-        #    if self.last_com.gfx.closed:
-        #        points = self.last_com.gfx.points.copy()
-        #        points.append(pos)
-
-        #        while type(self.undo_stack.command(self.undo_stack.index()-1)) is ExtendPoly:
-        #            self.undo_stack.undo()
-        #        self.undo_stack.push(ExtendPoly(self.last_com.gfx, points))
-        #        self.tool_reset.emit()
-        #        self.reset_com()
-
-    #def mouseMoveEvent(self, event):
-    #    super().mouseMoveEvent(event)
-    #    pos = event.scenePos()
-
-    #    if self.tool in ("Pan", "Lasso"):
-    #        if event.buttons() & Qt.LeftButton and type(self.last_com) is MovePointPoly:
-    #            gfx = self.last_com.gfx
-    #            p_idx = self.last_com.p_idx
-    #            self.last_com = MovePointPoly(gfx, p_idx, pos)
-    #            self.undo_stack.push(self.last_com)
-
-    #    elif self.tool == "Path":
-    #        self.reticle.setPos(pos)
-    #        if event.buttons() & Qt.LeftButton:
-    #            if type(self.last_com) is ExtendPath:
-    #                self.last_com = ExtendPath(self.last_com.gfx, pos, "line")
-    #                self.undo_stack.push(self.last_com)
-
-    #def mouseReleaseEvent(self, event):
-    #    super().mouseReleaseEvent(event)
-    #    if self.tool in ("Pan", "Lasso"):
-    #        if self.last_com is MovePointPoly:
-    #            self.undo_stack.endMacro()
-
-    #    if self.tool == "Path":
-    #        self.undo_stack.endMacro()
 
 class CreateShape(QUndoCommand):
     def __init__(self, p_gfx, clss, data):
@@ -196,6 +148,7 @@ class CreateShape(QUndoCommand):
         self.gfx = self.clss()
         self.gfx.setParentItem(self.p_gfx)
         self.gfx.decorate()
+        self.gfx.setSelected(True)
 
         for attr, val in self.data.items():
             setattr(self.gfx, attr, val)
@@ -207,21 +160,36 @@ class CreateShape(QUndoCommand):
 
         self.setText("Created "+self.gfx.name)
 
+    #TODO: Fix selecting deleted item
     def undo(self):
+        self.gfx.setSelected(False)
         self.gfx.scene().gfx_removed.emit(self.gfx)
         del self.gfx
 
-class MoveShape(QUndoCommand):
-    def __init__(self, gfx, pos):
+class MovePointShape(QUndoCommand):
+    def __init__(self, gfx, data):
         super().__init__()
         self.gfx = gfx
-        self.pos = pos
+        self.data = data
+        # Expected data:
+        # PangoPolyGraphic - 'pos', 'idx'
+        # PangoRectGraphic - 'pos', 'idx'
 
     def redo(self):
-        pass
+        self.gfx.prepareGeometryChange()
+        self.gfx.setSelected(True)
+
+        self.data["old_pos"] = self.gfx.points[self.data["idx"]]
+        self.gfx.points[self.data["idx"]] = self.data["pos"]
+
+        self.gfx.update()
 
     def undo(self):
-        pass
+        self.gfx.prepareGeometryChange()
+
+        self.gfx.points[self.data["idx"]] = self.data["old_pos"]
+
+        self.gfx.update()
 
 class ExtendShape(QUndoCommand):
     def __init__(self, gfx, data):
@@ -234,14 +202,23 @@ class ExtendShape(QUndoCommand):
 
     def redo(self):
         self.gfx.prepareGeometryChange()
+        self.gfx.setSelected(True)
 
         if type(self.gfx) is PangoPathGraphic:
             self.gfx.strokes.append((self.data["pos"], self.data["motion"]))
+
         elif type(self.gfx) is PangoPolyGraphic:
             if len(self.gfx.points) > 1: # Check for closure
                 if QLineF(self.gfx.points[0], self.data["pos"]).length() <= self.gfx.w:
                     self.gfx.closed = True
-            self.gfx.points.append(self.data["pos"])
+
+            if self.gfx.closed:
+                self.setText("Finished "+self.gfx.name)
+            else:
+                p = self.data["pos"]
+                self.gfx.points.append(p)
+                self.setText("Extended "+self.gfx.name+" to ("
+                        +str(round(p.x()))+", "+str(round(p.y()))+")")
 
         self.gfx.update()
 
@@ -249,112 +226,15 @@ class ExtendShape(QUndoCommand):
         self.gfx.prepareGeometryChange()
 
         if type(self.gfx) is PangoPathGraphic:
-            if len(self.gfx.strokes) > 0:
-                _, _ = self.gfx.strokes.pop()
+            _, _ = self.gfx.strokes.pop()
+
         elif type(self.gfx) is PangoPolyGraphic:
-            for _ in self.gfx.points:
-                if len(self.gfx.points) > 1:
-                    self.gfx.points.pop()
-            self.gfx.closed = False
+            if self.gfx.closed:
+                self.gfx.closed = False
+            else:
+                _ = self.gfx.points.pop()
 
         self.gfx.update()
-
-
-#class CreatePath(QUndoCommand):
-#    def __init__(self, p_gfx, tool_size, pos):
-#        super().__init__()
-#        self.p_gfx = p_gfx
-#        self.tool_size = tool_size
-#        self.pos = pos
-#
-#    def redo(self):
-#        name = "Path at ("+str(round(self.pos.x()))+", "+str(round(self.pos.y()))+")"
-#
-#        self.gfx = PangoPathGraphic()
-#        self.gfx.setParentItem(self.p_gfx)
-#        self.gfx.decorate()
-#        self.gfx.setattrs(
-#                width=self.tool_size,
-#                name=name,
-#                fpath=self.gfx.scene().fpath)
-#
-#        self.setText("+ Created "+name)
-#
-#    def undo(self):
-#        self.gfx.scene().gfx_removed.emit(self.gfx)
-#        del self.gfx
-
-#class ExtendPath(QUndoCommand):
-#    def __init__(self, gfx, pos, motion):
-#        super().__init__()
-#        self.gfx = gfx
-#        self.pos = pos
-#        self.motion = motion
-#        
-#    def redo(self):
-#        self.gfx.prepareGeometryChange()
-#        self.gfx.strokes.append((self.pos, self.motion))
-#        self.gfx.update()
-#
-#    def undo(self):
-#        self.gfx.prepareGeometryChange()
-#        if len(self.gfx.strokes) > 0:
-#            _, _ = self.gfx.strokes.pop()
-#        self.gfx.update()
-
-
-#class CreatePoly(QUndoCommand):
-#    def __init__(self, p_gfx, pos):
-#        super().__init__()
-#        self.p_gfx = p_gfx
-#        self.pos = pos
-#    
-#    def redo(self):
-#        name = "Poly at ("+str(round(self.pos.x()))+", "+str(round(self.pos.y()))+")"
-#
-#        self.gfx = PangoPolyGraphic()
-#        self.gfx.setParentItem(self.p_gfx)
-#        self.gfx.setattrs(
-#                color=self.p_gfx.color,
-#                name=name,
-#                fpath=self.gfx.scene().fpath)
-#
-#        self.setText("+ Created "+name)
-#
-#    def undo(self):
-#        self.gfx.scene().gfx_removed.emit(self.gfx)
-#        del self.gfx
-
-#class ExtendPoly(QUndoCommand):
-#    def __init__(self, gfx, points):
-#        super().__init__()
-#        self.gfx = gfx
-#        self.points = points
-#
-#    def redo(self):
-#        self.gfx.prepareGeometryChange()
-#        # Check for closure
-#        if len(self.gfx.points) > 1:
-#            for point in self.points:
-#                if QLineF(self.gfx.points[0], point).length() <= self.gfx.w:
-#                        self.gfx.closed = True
-#
-#        if self.gfx.closed:
-#            self.setText("Finished "+self.gfx.name)
-#        else:
-#            self.gfx.points.extend(self.points)
-#            coords = "("+str(round(self.points[-1].x())) + \
-#                ", "+str(round(self.points[-1].y()))+")"
-#            self.setText("Extended Poly to "+coords)
-#        self.gfx.update()
-#
-#    def undo(self):
-#        self.gfx.prepareGeometryChange()
-#        for _ in self.points:
-#            if len(self.gfx.points) > 1:
-#                self.gfx.points.pop()
-#        self.gfx.closed = False
-#        self.gfx.update()
 
 class MovePointPoly(QUndoCommand):
     def __init__(self, gfx, p_idx, pos):

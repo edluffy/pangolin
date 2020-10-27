@@ -325,7 +325,7 @@ class PangoPolyGraphic(PangoGraphic):
             for n in range(0, len(self._points)-1):
                 painter.drawLine(self._points[n], self._points[n+1])
 
-        if option.state & QStyle.State_MouseOver:
+        if self.isSelected():
             painter.setOpacity(1)
             for n in range(0, len(self._points)):
                 painter.drawEllipse(self._points[n].x()-5,
