@@ -32,7 +32,7 @@ class MainWindow(QMainWindow):
         self.graphics_view.setScene(self.interface.scene)
 
         self.undo_view = QUndoView()
-        self.undo_view.setStack(self.interface.scene.undo_stack)
+        self.undo_view.setStack(self.interface.scene.c_stack)
 
         # Serialisation
         self.x_handler = Xml_Handler(self.interface.model)
@@ -137,7 +137,7 @@ class MainWindow(QMainWindow):
         self.interface.filter_tree(fpath)
         self.interface.scene.reset_com()
         self.interface.scene.fpath = fpath
-        self.interface.scene.undo_stack.clear()
+        self.interface.scene.c_stack.clear()
         self.interface.scene.setSceneRect(QRectF(QPixmap(fpath).rect()))
         self.graphics_view.fitInView(self.interface.scene.sceneRect(), Qt.KeepAspectRatio)
 
