@@ -92,7 +92,7 @@ class PangoGraphicsScene(QGraphicsScene):
                     {'pos': pos, 'width': self.tool_size}, self))
 
             self.c_stack_top().e_stack.push(
-                    ExtendShape({'pos': pos, 'motion': "move"}, self.c_stack_top().e_stack))
+                    ExtendPath(pos, "move", self.c_stack_top().e_stack))
 
         elif self.tool == "Poly":
             if self.c_stack_top().clss is not PangoPolyGraphic:
@@ -100,7 +100,7 @@ class PangoGraphicsScene(QGraphicsScene):
                         CreateShape(PangoPolyGraphic, {'pos': pos}, self))
 
             self.c_stack_top().e_stack.push(
-                    ExtendShape({'pos': pos}, self.c_stack_top().e_stack))
+                    ExtendPoly(pos, self.c_stack_top().e_stack))
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
@@ -126,7 +126,7 @@ class PangoGraphicsScene(QGraphicsScene):
             self.reticle.setPos(pos)
             if event.buttons() & Qt.LeftButton and self.c_stack_top().clss is PangoPathGraphic:
                 self.c_stack_top().e_stack.push(
-                        ExtendShape({'pos': pos, 'motion': "line"}, self.c_stack_top().e_stack))
+                        ExtendPath(pos, "line", self.c_stack_top().e_stack))
 
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
@@ -134,8 +134,11 @@ class PangoGraphicsScene(QGraphicsScene):
             pass
 
 class CreateShape(QUndoCommand):
-    def __init__(self):
+    def __init__(self, clss=None, data=None, scene=None):
         super().__init__()
+        self.scene = scene
+        self.clss = clss
+        self.data = data
         # Expected data:
         # PangoPathGraphic - 'pos', 'width'
         # PangoPolyGraphic - 'pos' 
@@ -143,43 +146,43 @@ class CreateShape(QUndoCommand):
         self.e_stack = QUndoStack()
 
     def redo(self):
-        self.gfx.setSelected(True)
-        self.e_stack.gfx = self.gfx
-        self.e_stack.setIndex(self.e_stack.count())
+        if (self.clss and self.data) is not None:
+            self.gfx = self.clss()
+            self.copy_data()
+            self.gfx.setSelected(True)
+
+            self.e_stack.gfx = self.gfx
+            self.e_stack.setIndex(self.e_stack.count())
+
+            self.setText("Created "+self.shape_name()+" at "+self.shape_coords())
 
     def undo(self):
         self.gfx.setSelected(False)
-        scene = self.gfx.scene()
-        scene.removeItem(self.gfx)
-        scene.gfx_removed.emit(self.gfx)
+        self.scene.removeItem(self.gfx)
+        self.scene.gfx_removed.emit(self.gfx)
         self.e_stack.setIndex(0)
         del self.gfx
 
-    def init_gfx(self, clss):
-        self.gfx = clss()
+    def copy_data(self):
         self.gfx.setParentItem(self.scene.label)
+        self.gfx.name = self.shape_name()+" at "+self.shape_coords()
+        self.gfx.fpath = self.gfx.scene().fpath
         self.gfx.decorate()
         for attr, val in self.data.items():
             setattr(self.gfx, attr, val)
 
-    def set_text(self, p, clss):
-        n = clss.__name__.replace("Pango", "").replace("Graphic", "")
-        self.gfx.name = n+" at ("+str(round(p.x()))+", "+str(round(p.y()))+")"
-        self.gfx.fpath = self.gfx.scene().fpath
-        self.setText("Created "+self.gfx.name)
+    def shape_name(self):
+        if self.clss is not None:
+            return self.clss.__name__.replace("Pango", "").replace("Graphic", "")
+        else:
+            return "Undefined"
 
-class CreatePath(QUndoCommand):
-    def __init__(self, pos, width):
-        super().__init__()
-        self.pos = pos
-        self.width = width
-
-    def redo(self):
-        self.set_text(self.pos, PangoPathGraphic)
-        self.create_gfx(self.pos, )
-
-class CreatePoly(QUndoCommand):
-    def __init__(self, pos):
+    def shape_coords(self):
+        if self.data["pos"] is not None:
+            return " at ("+str(round(self.data["pos"].x()))\
+                  +", "+str(round(self.data["pos"].y()))+")"
+        else:
+            return "(~, ~)"
 
 class EditStack(QUndoStack):
     def __init__(self):

@@ -13,6 +13,7 @@ class PangoDockWidget(QDockWidget):
         self.setContentsMargins(0, 0, 0, 0)
 
         self.bg = QWidget()
+        self.bg_layout = QVBoxLayout(self.bg)
         self.setWidget(self.bg)
 
         self.setTitleBarWidget(QWidget())
@@ -31,15 +32,24 @@ class PangoLabelWidget(PangoDockWidget):
         self.setWidget(self.tree_view)
 
 class PangoUndoWidget(PangoDockWidget):
-    def __init__(self, title, undo_view, parent=None):
+    def __init__(self, title, undo_view, sub_undo_view, parent=None):
         super().__init__(title, parent)
         self.setFixedWidth(250)
         self.undo_view = undo_view
+        self.sub_undo_view = sub_undo_view
 
         self.undo_view.setCleanIcon(pango_get_icon("save_masks"))
         self.undo_view.setEmptyLabel("Last save state")
+        self.undo_view.entered.connect(self.switch_sub_undo_stack)
 
-        self.setWidget(self.undo_view)
+        self.bg_layout.addWidget(self.undo_view)
+        self.bg_layout.addWidget(self.sub_undo_view)
+
+    def switch_sub_undo_stack(self, idx):
+        print(idx.row())
+        print(idx)
+        #print(self.undo_view.stack().command(idx.row()).e_stack)
+        #self.undo_view.setStack(self.interface.scene.c_stack.e_stack)
 
 class PangoFileWidget(PangoDockWidget):
     def __init__(self, title, parent=None):

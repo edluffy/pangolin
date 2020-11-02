@@ -33,6 +33,7 @@ class MainWindow(QMainWindow):
 
         self.undo_view = QUndoView()
         self.undo_view.setStack(self.interface.scene.c_stack)
+        self.sub_undo_view = QUndoView()
 
         # Serialisation
         self.x_handler = Xml_Handler(self.interface.model)
@@ -40,7 +41,7 @@ class MainWindow(QMainWindow):
 
         # Dock widgets
         self.label_widget = PangoLabelWidget("Labels", self.tree_view)
-        self.undo_widget = PangoUndoWidget("History", self.undo_view)
+        self.undo_widget = PangoUndoWidget("History", self.undo_view, self.sub_undo_view)
         self.file_widget = PangoFileWidget("Files")
 
         # Menu and toolbars
