@@ -69,8 +69,8 @@ class MainWindow(QMainWindow):
         self.bg_layout.addWidget(self.graphics_view)
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.label_widget)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.undo_widget)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.file_widget)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.undo_widget)
 
         self.addToolBar(Qt.TopToolBarArea, self.menu_bar)
 

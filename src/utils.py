@@ -18,7 +18,6 @@ pango_palette = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
 
 pango_app_icon_color = QColor("grey")
 
-
 def pango_get_palette(n):
     return pango_palette[n % len(pango_palette)]
 

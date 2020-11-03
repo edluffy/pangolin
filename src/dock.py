@@ -1,7 +1,7 @@
-from PyQt5.QtCore import QEvent, QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtCore import QEvent, QPoint, QRect, QSize, Qt, pyqtSignal
+from PyQt5.QtGui import QColor, QIcon, QPixmap
 from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QFileIconProvider,
-                             QFileSystemModel, QListView, QStyle, QStyleOptionViewItem, QStyledItemDelegate, QTreeView, QVBoxLayout, QWidget)
+                             QFileSystemModel, QItemDelegate, QListView, QStyle, QStyleOptionViewItem, QStyledItemDelegate, QTreeView, QVBoxLayout, QWidget)
 
 from utils import pango_get_icon
 
@@ -34,22 +34,53 @@ class PangoLabelWidget(PangoDockWidget):
 class PangoUndoWidget(PangoDockWidget):
     def __init__(self, title, undo_view, sub_undo_view, parent=None):
         super().__init__(title, parent)
-        self.setFixedWidth(250)
+        self.setFixedHeight(24)
         self.undo_view = undo_view
         self.sub_undo_view = sub_undo_view
 
         self.undo_view.setCleanIcon(pango_get_icon("save_masks"))
         self.undo_view.setEmptyLabel("Last save state")
         self.undo_view.entered.connect(self.switch_sub_undo_stack)
+        self.undo_view.setFlow(QListView.LeftToRight)
 
-        self.bg_layout.addWidget(self.undo_view)
-        self.bg_layout.addWidget(self.sub_undo_view)
+        #self.bg_layout.addWidget(self.undo_view)
+        self.setWidget(self.undo_view)
+
+        idx = self.undo_view.model().index(1, 0)
+        print(self.undo_view.model().data(idx))
+        self.undo_view.setItemDelegate(self.IconDelegate(self))
+
+        #self.bg_layout.addWidget(self.sub_undo_view)
 
     def switch_sub_undo_stack(self, idx):
         print(idx.row())
         print(idx)
         #print(self.undo_view.stack().command(idx.row()).e_stack)
         #self.undo_view.setStack(self.interface.scene.c_stack.e_stack)
+
+    class IconDelegate(QItemDelegate):
+        def __init__(self, parent):
+            super().__init__(parent)
+
+        def paint(self, painter, option, idx):
+            super().paint(painter, option, idx)
+
+            text = idx.data()
+
+            if text.startswith("Created "):
+                shape_name = text.split("Created ", 1)[1].split()[0].lower()
+                icon = pango_get_icon(shape_name, QColor(192, 212, 244))
+            else:
+                icon = pango_get_icon("save")
+
+
+            rect = QRect(QPoint(), option.decorationSize)
+            rect.moveCenter(option.rect.center())
+            icon.paint(painter, rect, Qt.AlignVCenter)
+
+        def sizeHint(self, option, idx):
+            return QSize(32, 24)
+
 
 class PangoFileWidget(PangoDockWidget):
     def __init__(self, title, parent=None):
