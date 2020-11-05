@@ -15,9 +15,10 @@ class PangoGraphicsScene(QGraphicsScene):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.c_stack = QUndoStack()
+        self.stack = QUndoStack()
         self.fpath = None
         self.label = PangoGraphic()
+        self.shape = PangoGraphic()
 
         self.tool = None
         self.tool_size = 10
@@ -25,7 +26,7 @@ class PangoGraphicsScene(QGraphicsScene):
         self.full_clear()
 
     def full_clear(self):
-        self.c_stack.clear()
+        self.stack.clear()
         self.clear()
         self.init_reticle()
         self.reset_com()
@@ -54,15 +55,16 @@ class PangoGraphicsScene(QGraphicsScene):
 
     # Undo all commands for last shape (including creation)
     def unravel_shape(self):
-        while type(self.c_stack.command(self.c_stack.index()-1))\
+        while type(self.stack.command(self.stack.index()-1))\
                 is not CreateShape:
-            self.c_stack.undo()
-            self.c_stack.command(self.c_stack.index()).setObsolete(True)
+            self.stack.undo()
+            self.stack.command(self.stack.index()).setObsolete(True)
 
-        self.c_stack.undo() # Remove CreateShape
-        self.c_stack.command(self.c_stack.index()).setObsolete(True)
-        self.c_stack.push(QUndoCommand()) # Refresh changes made to stack
-        self.c_stack.undo()
+        self.stack.undo() # Remove CreateShape
+        self.stack.command(self.stack.index()).setObsolete(True)
+        self.stack.push(QUndoCommand()) # Refresh changes made to stack
+
+        print(self.stack.command(self.stack.index()))
 
     def focus_shape(self):
         if len(self.selectedItems()) > 0:
@@ -70,44 +72,44 @@ class PangoGraphicsScene(QGraphicsScene):
         else:
             return None
 
-    def c_stack_top(self):
-        print(self.c_stack.index())
-        if self.c_stack.index() > 0:
-            return self.c_stack.command(self.c_stack.index()-1)
-        else:
-            return CreateShape()
+    def event(self, event):
+        if self.tool == "Path":
+            self.path_handler(event)
+        if self.tool == "Poly":
+            self.poly_handler(event)
+        return False
     
-    def e_stack_top(self):
-        return self.c_stack_top().e_stack.command(self.c_stack.index()-1)
+    def path_handler(self, event):
+        if event.type() == QEvent.GraphicsSceneMousePress:
+            if type(self.shape) is not PangoPathGraphic:
+                self.stack.push(CreateShape(PangoPathGraphic, 
+                    {'pos': event.scenePos(), 'width': self.tool_size}, self))
 
-    def mousePressEvent(self, event):
-        pos = event.scenePos()
+            self.stack.push(ExtendPath(event.scenePos(), "move", self.shape))
 
-        if self.tool in ("Pan", "Lasso"):
-            super().mousePressEvent(event)
+        elif event.type() == QEvent.GraphicsSceneMouseMove:
+            self.reticle.setPos(event.scenePos())
+            if event.buttons() & Qt.LeftButton and type(self.shape) is PangoPathGraphic:
+                self.stack.push(ExtendPath(event.scenePos(), "line", self.shape))
 
-        elif self.tool == "Path":
-            if self.c_stack_top().clss is not PangoPathGraphic:
-                self.c_stack.push(CreateShape(PangoPathGraphic, 
-                    {'pos': pos, 'width': self.tool_size}, self))
+        elif event.type() == QEvent.GraphicsSceneMouseRelease:
+            pass
 
-            self.c_stack_top().e_stack.push(
-                    ExtendPath(pos, "move", self.c_stack_top().e_stack))
+    def poly_handler(self, event):
+        if event.type() == QEvent.GraphicsSceneMousePress:
+            if type(self.shape) is not PangoPolyGraphic:
+                self.stack.push(
+                        CreateShape(PangoPolyGraphic, {'pos': event.scenePos()}, self))
 
-        elif self.tool == "Poly":
-            if self.c_stack_top().clss is not PangoPolyGraphic:
-                self.c_stack.push(
-                        CreateShape(PangoPolyGraphic, {'pos': pos}, self))
+            self.stack.push(ExtendPoly(event.scenePos(), self.shape))
 
-            self.c_stack_top().e_stack.push(
-                    ExtendPoly(pos, self.c_stack_top().e_stack))
+        elif event.type() == QEvent.GraphicsSceneMouseMove:
+            pass
 
-    def mouseMoveEvent(self, event):
-        super().mouseMoveEvent(event)
-        pos = event.scenePos()
+        elif event.type() == QEvent.GraphicsSceneMouseRelease:
+            pass
 
-        if self.tool in ("Pan", "Lasso"):
-            gfx = self.itemAt(pos, QTransform())
+            #gfx = self.itemAt(pos, QTransform())
             #if hasattr(gfx, "points"):
             #    distances = []
             #    for point in gfx.points:
@@ -122,19 +124,9 @@ class PangoGraphicsScene(QGraphicsScene):
             #        self.last_com = MovePointShape(gfx, idx, pos)
             #        self.c_stack.push(self.last_com)        
 
-        elif self.tool == "Path":
-            self.reticle.setPos(pos)
-            if event.buttons() & Qt.LeftButton and self.c_stack_top().clss is PangoPathGraphic:
-                self.c_stack_top().e_stack.push(
-                        ExtendPath(pos, "line", self.c_stack_top().e_stack))
-
-    def mouseReleaseEvent(self, event):
-        super().mouseReleaseEvent(event)
-        if self.tool in ("Pan", "Lasso"):
-            pass
 
 class CreateShape(QUndoCommand):
-    def __init__(self, clss=None, data=None, scene=None):
+    def __init__(self, clss, data, scene=None):
         super().__init__()
         self.scene = scene
         self.clss = clss
@@ -143,24 +135,18 @@ class CreateShape(QUndoCommand):
         # PangoPathGraphic - 'pos', 'width'
         # PangoPolyGraphic - 'pos' 
 
-        self.e_stack = QUndoStack()
-
     def redo(self):
-        if (self.clss and self.data) is not None:
-            self.gfx = self.clss()
-            self.copy_data()
-            self.gfx.setSelected(True)
+        self.gfx = self.clss()
+        self.copy_data()
+        self.gfx.setSelected(True)
 
-            self.e_stack.gfx = self.gfx
-            self.e_stack.setIndex(self.e_stack.count())
-
-            self.setText("Created "+self.shape_name()+" at "+self.shape_coords())
+        self.scene.shape = self.gfx
+        self.setText("Created "+self.shape_name()+" at "+self.shape_coords())
 
     def undo(self):
         self.gfx.setSelected(False)
         self.scene.removeItem(self.gfx)
         self.scene.gfx_removed.emit(self.gfx)
-        self.e_stack.setIndex(0)
         del self.gfx
 
     def copy_data(self):
@@ -184,74 +170,69 @@ class CreateShape(QUndoCommand):
         else:
             return "(~, ~)"
 
-class EditStack(QUndoStack):
-    def __init__(self):
-        super().__init__()
-        self.gfx = None
-
 class ExtendPath(QUndoCommand):
-    def __init__(self, pos, motion, stack):
+    def __init__(self, pos, motion, gfx):
         super().__init__()
-        self.stack = stack
+        self.gfx = gfx
         self.pos = pos
         self.motion = motion
 
     def redo(self):
-        self.stack.gfx.prepareGeometryChange()
-        self.stack.gfx.strokes.append((self.pos, self.motion))
-        self.stack.gfx.update()
+        self.gfx.prepareGeometryChange()
+        self.gfx.strokes.append((self.pos, self.motion))
+        self.gfx.update()
 
     def undo(self):
-        self.stack.gfx.prepareGeometryChange()
-        _, _ = self.stack.gfx.strokes.pop()
-        self.stack.gfx.update()
+        self.gfx.prepareGeometryChange()
+        _, _ = self.gfx.strokes.pop()
+        self.gfx.update()
 
 class ExtendPoly(QUndoCommand):
-    def __init__(self, pos, stack):
+    def __init__(self, pos, gfx):
         super().__init__()
-        self.stack = stack
+        self.gfx = gfx
         self.pos = pos
 
     def redo(self):
-        self.stack.gfx.prepareGeometryChange()
-        if len(self.stack.gfx.points) > 1: # Check for closure
-            if QLineF(self.stack.gfx.points[0], self.pos).length() <= self.stack.gfx.w:
-                self.stack.gfx.closed = True
+        self.gfx.prepareGeometryChange()
+        if len(self.gfx.points) > 1: # Check for closure
+            if QLineF(self.gfx.points[0], self.pos).length() <= self.gfx.w:
+                self.gfx.closed = True
 
-        if self.stack.gfx.closed:
-            self.setText("Finished "+self.stack.gfx.name)
+        if self.gfx.closed:
+            self.setText("Finished "+self.gfx.name)
         else:
             p = self.pos
-            self.stack.gfx.points.append(p)
-            self.setText("Extended "+self.stack.gfx.name+" to ("
+            self.gfx.points.append(p)
+            self.setText("Extended "+self.gfx.name+" to ("
                     +str(round(p.x()))+", "+str(round(p.y()))+")")
-        self.stack.gfx.update()
+        self.gfx.update()
 
     def undo(self):
-        self.stack.gfx.prepareGeometryChange()
-        if self.stack.gfx.closed:
-            self.stack.gfx.closed = False
+        self.gfx.prepareGeometryChange()
+        if self.gfx.closed:
+            self.gfx.closed = False
         else:
-            _ = self.stack.gfx.points.pop()
-        self.stack.gfx.update()
+            _ = self.gfx.points.pop()
+        self.gfx.update()
 
 class MovePointShape(QUndoCommand):
-    def __init__(self, pos, idx, stack):
+    def __init__(self, pos, idx, gfx):
         super().__init__()
-        self.stack = stack
+        self.gfx = gfx
         self.pos = pos
         self.idx = idx
 
     def redo(self):
-        self.stack.gfx.prepareGeometryChange()
-        self.old_pos = self.stack.gfx.points[self.idx]
-        self.stack.gfx.points[self.idx] = self.pos
-        self.stack.gfx.update()
+        self.gfx.prepareGeometryChange()
+        self.old_pos = self.gfx.points[self.idx]
+        self.gfx.points[self.idx] = self.pos
+        self.gfx.update()
 
     def undo(self):
-        self.stack.gfx.prepareGeometryChange()
-        self.stack.gfx.points[self.idx] = self.old_pos
-        self.stack.gfx.update()
+        self.gfx.prepareGeometryChange()
+        self.gfx.points[self.idx] = self.old_pos
+        self.gfx.update()
 
 
 class MovePointPoly(QUndoCommand):

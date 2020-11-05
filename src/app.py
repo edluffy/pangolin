@@ -32,8 +32,7 @@ class MainWindow(QMainWindow):
         self.graphics_view.setScene(self.interface.scene)
 
         self.undo_view = QUndoView()
-        self.undo_view.setStack(self.interface.scene.c_stack)
-        self.sub_undo_view = QUndoView()
+        self.undo_view.setStack(self.interface.scene.stack)
 
         # Serialisation
         self.x_handler = Xml_Handler(self.interface.model)
@@ -41,7 +40,7 @@ class MainWindow(QMainWindow):
 
         # Dock widgets
         self.label_widget = PangoLabelWidget("Labels", self.tree_view)
-        self.undo_widget = PangoUndoWidget("History", self.undo_view, self.sub_undo_view)
+        self.undo_widget = PangoUndoWidget("History", self.undo_view)
         self.file_widget = PangoFileWidget("Files")
 
         # Menu and toolbars
@@ -69,8 +68,8 @@ class MainWindow(QMainWindow):
         self.bg_layout.addWidget(self.graphics_view)
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.label_widget)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.undo_widget)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.file_widget)
-        self.addDockWidget(Qt.BottomDockWidgetArea, self.undo_widget)
 
         self.addToolBar(Qt.TopToolBarArea, self.menu_bar)
 
@@ -138,7 +137,7 @@ class MainWindow(QMainWindow):
         self.interface.filter_tree(fpath)
         self.interface.scene.reset_com()
         self.interface.scene.fpath = fpath
-        self.interface.scene.c_stack.clear()
+        self.interface.scene.stack.clear()
         self.interface.scene.setSceneRect(QRectF(QPixmap(fpath).rect()))
         self.graphics_view.fitInView(self.interface.scene.sceneRect(), Qt.KeepAspectRatio)
 
