@@ -18,7 +18,6 @@ class PangoGraphicsScene(QGraphicsScene):
         self.stack = QUndoStack()
         self.fpath = None
         self.label = PangoGraphic()
-        self.shape = PangoGraphic()
 
         self.tool = None
         self.tool_size = 10
@@ -46,15 +45,12 @@ class PangoGraphicsScene(QGraphicsScene):
         painter.drawPixmap(0, 0, px)
 
     def reset_com(self):
-        if type(self.focus_shape()) is PangoPolyGraphic:
-            if not self.focus_shape().closed:
-                self.unravel_shape()
-
-        while self.focus_shape() is not None:
-            self.focus_shape().setSelected(False)
+        if type(self.active_shape()) is PangoPolyGraphic\
+        and not self.active_shape().closed:
+            self.unravel_last_com()
 
     # Undo all commands for last shape (including creation)
-    def unravel_shape(self):
+    def unravel_last_com(self):
         while type(self.stack.command(self.stack.index()-1))\
                 is not CreateShape:
             self.stack.undo()
@@ -66,42 +62,55 @@ class PangoGraphicsScene(QGraphicsScene):
 
         print(self.stack.command(self.stack.index()))
 
-    def focus_shape(self):
-        if len(self.selectedItems()) > 0:
-            return self.selectedItems()[0]
+    def active_shape(self, clss=None):
+        s_items = self.selectedItems()
+        if clss is not None and len(s_items) > 0 and type(s_items[0]) is clss:
+            return s_items[0]
+        elif self.stack.command(self.stack.index()-1) is not None:
+            self.clearSelection()
+            return self.stack.command(self.stack.index()-1).gfx
         else:
             return None
 
     def event(self, event):
         if self.tool == "Path":
             self.path_handler(event)
+            return True
         if self.tool == "Poly":
             self.poly_handler(event)
-        return False
+            return True
+        else:
+            return False
     
     def path_handler(self, event):
+        shape = self.active_shape(PangoPathGraphic)
         if event.type() == QEvent.GraphicsSceneMousePress:
-            if type(self.shape) is not PangoPathGraphic:
+            if type(shape) is not PangoPathGraphic:
                 self.stack.push(CreateShape(PangoPathGraphic, 
-                    {'pos': event.scenePos(), 'width': self.tool_size}, self))
+                    {'pos': event.scenePos(), 'width': self.tool_size}, self.label))
 
-            self.stack.push(ExtendPath(event.scenePos(), "move", self.shape))
+            self.stack.beginMacro("Added stroke to "+self.active_shape().name)
+            self.stack.push(ExtendPath(event.scenePos(), "move", shape))
 
         elif event.type() == QEvent.GraphicsSceneMouseMove:
             self.reticle.setPos(event.scenePos())
-            if event.buttons() & Qt.LeftButton and type(self.shape) is PangoPathGraphic:
-                self.stack.push(ExtendPath(event.scenePos(), "line", self.shape))
+            if event.buttons() & Qt.LeftButton and type(shape) is PangoPathGraphic:
+                self.stack.push(ExtendPath(event.scenePos(), "line", shape))
 
         elif event.type() == QEvent.GraphicsSceneMouseRelease:
-            pass
+            self.stack.endMacro()
+
 
     def poly_handler(self, event):
-        if event.type() == QEvent.GraphicsSceneMousePress:
-            if type(self.shape) is not PangoPolyGraphic:
-                self.stack.push(
-                        CreateShape(PangoPolyGraphic, {'pos': event.scenePos()}, self))
+        shape = self.active_shape(PangoPolyGraphic)
 
-            self.stack.push(ExtendPoly(event.scenePos(), self.shape))
+        if event.type() == QEvent.GraphicsSceneMousePress:
+            if type(shape) is not PangoPolyGraphic:
+                self.stack.push(
+                        CreateShape(PangoPolyGraphic, {'pos': event.scenePos()}, self.label))
+
+            if not shape.closed:
+                self.stack.push(ExtendPoly(event.scenePos(), self.shape))
 
         elif event.type() == QEvent.GraphicsSceneMouseMove:
             pass
@@ -126,9 +135,9 @@ class PangoGraphicsScene(QGraphicsScene):
 
 
 class CreateShape(QUndoCommand):
-    def __init__(self, clss, data, scene=None):
+    def __init__(self, clss, data, p_gfx):
         super().__init__()
-        self.scene = scene
+        self.p_gfx = p_gfx
         self.clss = clss
         self.data = data
         # Expected data:
@@ -137,38 +146,30 @@ class CreateShape(QUndoCommand):
 
     def redo(self):
         self.gfx = self.clss()
-        self.copy_data()
-        self.gfx.setSelected(True)
-
-        self.scene.shape = self.gfx
-        self.setText("Created "+self.shape_name()+" at "+self.shape_coords())
-
-    def undo(self):
-        self.gfx.setSelected(False)
-        self.scene.removeItem(self.gfx)
-        self.scene.gfx_removed.emit(self.gfx)
-        del self.gfx
-
-    def copy_data(self):
-        self.gfx.setParentItem(self.scene.label)
+        self.gfx.setParentItem(self.p_gfx)
         self.gfx.name = self.shape_name()+" at "+self.shape_coords()
         self.gfx.fpath = self.gfx.scene().fpath
         self.gfx.decorate()
         for attr, val in self.data.items():
             setattr(self.gfx, attr, val)
 
+        self.gfx.setSelected(True)
+        self.setText("Created "+self.shape_name()+" at "+self.shape_coords())
+
+    def undo(self):
+        scene = self.gfx.scene
+
+        self.gfx.setSelected(False)
+        scene.removeItem(self.gfx)
+        scene.gfx_removed.emit(self.gfx)
+        del self.gfx
+
     def shape_name(self):
-        if self.clss is not None:
-            return self.clss.__name__.replace("Pango", "").replace("Graphic", "")
-        else:
-            return "Undefined"
+        return self.clss.__name__.replace("Pango", "").replace("Graphic", "")
 
     def shape_coords(self):
-        if self.data["pos"] is not None:
-            return " at ("+str(round(self.data["pos"].x()))\
-                  +", "+str(round(self.data["pos"].y()))+")"
-        else:
-            return "(~, ~)"
+        return "("+str(round(self.data["pos"].x()))\
+              +", "+str(round(self.data["pos"].y()))+")"
 
 class ExtendPath(QUndoCommand):
     def __init__(self, pos, motion, gfx):
