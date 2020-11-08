@@ -84,7 +84,7 @@ class Xml_Handler():
                 prop = self.str_to_prop(p_type, p_str)
                 setattr(item, p_type, prop)
 
-        item.decorate() # Mostly for triggering refresh
+        item.set_icon() # Mostly for triggering refresh
     
     def str_to_prop(self, p_type, p_str):
         if p_str=="None":

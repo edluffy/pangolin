@@ -1,6 +1,5 @@
-from PyQt5.QtCore import (QItemSelectionModel, QModelIndex,
-                          QPersistentModelIndex, QRectF, QSortFilterProxyModel, Qt)
-from PyQt5.QtGui import QPixmap, QStandardItemModel
+from PyQt5.QtCore import QItemSelectionModel, QModelIndex, QPersistentModelIndex, Qt
+from PyQt5.QtGui import QStandardItemModel
 from PyQt5.QtWidgets import QGraphicsItem
 
 from bidict import bidict
@@ -32,23 +31,38 @@ class PangoModelSceneInterface(object):
         if self.tree.selectionModel() is not None:
             self.tree.selectionModel().selectionChanged.connect(self.item_selection_changed)
 
-    def filter_tree(self, fpath):
-        for row in range(0, self.model.rowCount()):
-            label = self.model.item(row)
-            if label.hasChildren():
-                for row in range(0, label.rowCount()):
-                    item = label.child(row)
-                    gfx = self.map[item.key()]
+    def filter_tree(self, fpath=None):
+        self.fpath = fpath
+        root_item = self.model.invisibleRootItem()
 
-                    if item.fpath==fpath:
-                        self.tree.setRowHidden(row, label.index(), False)
-                        if gfx.scene() is not self.scene:
-                            self.scene.addItem(gfx)
-                    else:
-                        self.tree.setRowHidden(row, label.index(), True)
-                        if gfx.scene() is self.scene:
-                            self.scene.removeItem(gfx)
+        # Filtering labels
+        for i in range(0, root_item.rowCount()):
+            label_item = root_item.child(i)
+            label_gfx = self.map[label_item.key()]
 
+            if label_item.fpath==self.fpath:
+                self.tree.setRowHidden(i, root_item, False)
+                if label_gfx.scene() is not self.scene:
+                    self.scene.addItem(label_gfx)
+            else:
+                self.tree.setRowHidden(i, label_item.index(), True)
+                if label_gfx.scene() is self.scene:
+                    self.scene.removeItem(label_gfx)
+
+            # Filtering shapes
+            for j in range(0, label_item.rowCount()):
+                shape_item = label_item.child(j)
+                shape_gfx = self.map[shape_item.key()]
+
+                if label_item.fpath==self.fpath:
+                    self.tree.setRowHidden(j, shape_item.index(), False)
+                    if shape_gfx.scene() is not self.scene:
+                        self.scene.addItem(shape_gfx)
+                else:
+                    self.tree.setRowHidden(j, shape_item.index(), True)
+                    if shape_gfx.scene() is self.scene:
+                        self.scene.removeItem(shape_gfx)
+    
     def item_selection_changed(self):
         new = [self.map[QPersistentModelIndex(idx)] for idx in self.tree.selectedIndexes()]
         old = self.scene.selectedItems()
@@ -76,24 +90,22 @@ class PangoModelSceneInterface(object):
         except KeyError:
             gfx = self.create_gfx_from_item(item)
 
-        for role in roles:
+        #for role in roles:
             #print("Item change: ", pango_item_role_debug(role))
-            if role == Qt.DisplayRole:
-                gfx.name = item.name
-            elif role == Qt.DecorationRole:
-                gfx.color = item.color
-                gfx.icon = item.icon
-            elif role == Qt.CheckStateRole:
-                gfx.visible = item.visible
-            elif role == Qt.UserRole:
-                gfx.fpath = item.fpath
+            #if role == Qt.DisplayRole:
+            #    gfx.name = item.name
+            #elif role == Qt.CheckStateRole:
+            #    gfx.visible = item.visible
+            #elif role == Qt.DecorationRole:
+            #    if hasattr(gfx, "color"):
+            #        gfx.color = item.color
 
-            # Sync Hidden "_" Properties 
+            # Sync properties 
             for prop, value in item.__dict__.items():
-                if prop.startswith("_"):
-                    if value is not None and value != []:
-                        if value != getattr(gfx, prop[1:]):
-                            setattr(gfx, prop[1:], value)
+                print(prop)
+                if value is not None and value != []:
+                    if value != getattr(gfx, prop):
+                        setattr(gfx, prop, value)
 
     def gfx_changed(self, gfx, change):
         #print("Gfx change: ", pango_gfx_change_debug(change))
@@ -102,17 +114,16 @@ class PangoModelSceneInterface(object):
         except KeyError:
             item = self.create_item_from_gfx(gfx)
 
-        if change == QGraphicsItem.ItemToolTipHasChanged:
-            item.name = gfx.name
-        elif change == QGraphicsItem.ItemVisibleHasChanged:
-            item.visible = gfx.visible
+        #if change == QGraphicsItem.ItemToolTipHasChanged:
+        #    item.name = gfx.name
+        #elif change == QGraphicsItem.ItemVisibleHasChanged:
+        #    item.visible = gfx.visible
 
-        # Sync Hidden "_" Properties 
+        # Sync properties 
         for prop, value in gfx.__dict__.items():
-            if prop.startswith("_"):
-                if value is not None and value != []:
-                    if value != getattr(item, prop[1:]):
-                        setattr(item, prop[1:], value)
+            if value is not None and value != []:
+                if value != getattr(item, prop):
+                    setattr(item, prop, value)
 
     def item_removed(self, parent_idx, first, last):
         if parent_idx.isValid():

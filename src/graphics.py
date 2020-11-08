@@ -17,7 +17,8 @@ class PangoGraphicsScene(QGraphicsScene):
         super().__init__(parent)
         self.stack = QUndoStack()
         self.fpath = None
-        self.label = PangoGraphic()
+        self.active_label = PangoGraphic()
+        self.active_shape = PangoGraphic()
 
         self.tool = None
         self.tool_size = 10
@@ -38,19 +39,19 @@ class PangoGraphicsScene(QGraphicsScene):
         self.addItem(self.reticle)
 
     def update_reticle(self):
-        self.reticle.setBrush(self.label.color)
+        self.reticle.setBrush(self.active_label.color)
 
     def drawBackground(self, painter, rect):
         px = QPixmap(self.fpath)
         painter.drawPixmap(0, 0, px)
 
     def reset_com(self):
-        if type(self.active_shape()) is PangoPolyGraphic\
-        and not self.active_shape().closed:
-            self.unravel_last_com()
+        if type(self.active_shape) is PangoPolyGraphic\
+        and not self.active_shape.closed:
+            self.unravel_last_shape()
 
     # Undo all commands for last shape (including creation)
-    def unravel_last_com(self):
+    def unravel_last_shape(self):
         while type(self.stack.command(self.stack.index()-1))\
                 is not CreateShape:
             self.stack.undo()
@@ -61,16 +62,6 @@ class PangoGraphicsScene(QGraphicsScene):
         self.stack.push(QUndoCommand()) # Refresh changes made to stack
 
         print(self.stack.command(self.stack.index()))
-
-    def active_shape(self, clss=None):
-        s_items = self.selectedItems()
-        if clss is not None and len(s_items) > 0 and type(s_items[0]) is clss:
-            return s_items[0]
-        elif self.stack.command(self.stack.index()-1) is not None:
-            self.clearSelection()
-            return self.stack.command(self.stack.index()-1).gfx
-        else:
-            return None
 
     def event(self, event):
         if self.tool == "Path":
@@ -83,34 +74,31 @@ class PangoGraphicsScene(QGraphicsScene):
             return False
     
     def path_handler(self, event):
-        shape = self.active_shape(PangoPathGraphic)
         if event.type() == QEvent.GraphicsSceneMousePress:
-            if type(shape) is not PangoPathGraphic:
+            if type(self.active_shape) is not PangoPathGraphic:
                 self.stack.push(CreateShape(PangoPathGraphic, 
-                    {'pos': event.scenePos(), 'width': self.tool_size}, self.label))
+                    {'pos': event.scenePos(), 'width': self.tool_size}, self.active_label))
 
-            self.stack.beginMacro("Added stroke to "+self.active_shape().name)
-            self.stack.push(ExtendPath(event.scenePos(), "move", shape))
+            self.stack.beginMacro("Added stroke to "+self.active_shape.name)
+            self.stack.push(ExtendPath(event.scenePos(), "move", self.active_shape))
 
         elif event.type() == QEvent.GraphicsSceneMouseMove:
             self.reticle.setPos(event.scenePos())
-            if event.buttons() & Qt.LeftButton and type(shape) is PangoPathGraphic:
-                self.stack.push(ExtendPath(event.scenePos(), "line", shape))
+            if event.buttons() & Qt.LeftButton and type(self.active_shape) is PangoPathGraphic:
+                self.stack.push(ExtendPath(event.scenePos(), "line", self.active_shape))
 
         elif event.type() == QEvent.GraphicsSceneMouseRelease:
             self.stack.endMacro()
 
 
     def poly_handler(self, event):
-        shape = self.active_shape(PangoPolyGraphic)
-
         if event.type() == QEvent.GraphicsSceneMousePress:
-            if type(shape) is not PangoPolyGraphic:
+            if type(self.active_shape) is not PangoPolyGraphic:
                 self.stack.push(
-                        CreateShape(PangoPolyGraphic, {'pos': event.scenePos()}, self.label))
+                        CreateShape(PangoPolyGraphic, {'pos': event.scenePos()}, self.active_label))
 
-            if not shape.closed:
-                self.stack.push(ExtendPoly(event.scenePos(), self.shape))
+            if not self.active_shape.closed:
+                self.stack.push(ExtendPoly(event.scenePos(), self.active_shape))
 
         elif event.type() == QEvent.GraphicsSceneMouseMove:
             pass
@@ -144,25 +132,28 @@ class CreateShape(QUndoCommand):
         # PangoPathGraphic - 'pos', 'width'
         # PangoPolyGraphic - 'pos' 
 
-    def redo(self):
         self.gfx = self.clss()
         self.gfx.setParentItem(self.p_gfx)
         self.gfx.name = self.shape_name()+" at "+self.shape_coords()
-        self.gfx.fpath = self.gfx.scene().fpath
-        self.gfx.decorate()
+        self.gfx.fpath = self.p_gfx.scene().fpath
+        self.gfx.set_icon()
         for attr, val in self.data.items():
             setattr(self.gfx, attr, val)
 
-        self.gfx.setSelected(True)
         self.setText("Created "+self.shape_name()+" at "+self.shape_coords())
 
-    def undo(self):
-        scene = self.gfx.scene
+    def redo(self):
+        scene = self.p_gfx.scene()
 
-        self.gfx.setSelected(False)
+        scene.addItem(self.gfx)
+        scene.active_shape = self.gfx
+
+    def undo(self):
+        scene = self.p_gfx.scene()
+
         scene.removeItem(self.gfx)
         scene.gfx_removed.emit(self.gfx)
-        del self.gfx
+        #del self.gfx
 
     def shape_name(self):
         return self.clss.__name__.replace("Pango", "").replace("Graphic", "")

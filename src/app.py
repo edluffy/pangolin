@@ -146,11 +146,31 @@ class MainWindow(QMainWindow):
         if item is None:
             return
         try:
-            self.interface.scene.label = self.interface.map[item.key()]
+            self.interface.scene.active_label = self.interface.map[item.key()]
             self.interface.scene.update_reticle()
             self.interface.scene.reset_com()
         except KeyError:
             return
+
+    def add_label(self):
+        f_model = self.file_widget.file_model
+        i_model = self.interface.model
+
+        for row in range(0, f_model.rowCount()):
+            label = PangoLabelItem()
+            label.name = "Empty Label"
+            label.fpath = f_model.filePath(f_model.index(row, 0))
+            label.set_icon()
+            i_model.appendRow(label)
+        
+        self.interface.filter_tree()
+
+    def del_label(self):
+        i_model = self.interface.model
+
+
+    def copy_labels(self):
+
 
 window = MainWindow()
 window.show()

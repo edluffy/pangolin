@@ -183,7 +183,7 @@ class PangoToolBarWidget(QToolBar):
         item = PangoLabelItem()
         root = self.label_select.model().invisibleRootItem()
         root.appendRow(item)
-        item.decorate()
+        item.set_icon()
         item.name = "Empty Label"
 
         bottom_row = self.label_select.model().rowCount()-1
