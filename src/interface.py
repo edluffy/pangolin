@@ -62,6 +62,24 @@ class PangoModelSceneInterface(object):
                     self.tree.setRowHidden(j, shape_item.index(), True)
                     if shape_gfx.scene() is self.scene:
                         self.scene.removeItem(shape_gfx)
+
+    def copy_labels_tree(self, new_fpath, old_fpath):
+        old_label_items = []
+        new_label_items = []
+
+        root_item = self.model.invisibleRootItem()
+        for i in range(0, root_item.rowCount()):
+            label_item = root_item.child(i)
+            if label_item.fpath == new_fpath:
+                new_label_items.append(label_item)
+            elif label_item.fpath == old_fpath:
+                old_label_items.append(label_item)
+
+        print(old_label_items)
+
+    def del_labels_tree(self):
+        i_model = self.interface.model
+
     
     def item_selection_changed(self):
         new = [self.map[QPersistentModelIndex(idx)] for idx in self.tree.selectedIndexes()]
@@ -100,12 +118,18 @@ class PangoModelSceneInterface(object):
             #    if hasattr(gfx, "color"):
             #        gfx.color = item.color
 
+            if type(item) is PangoLabelItem:
+                if item.fpath is None:
+                    item.fpath = self.scene.fpath
+
             # Sync properties 
-            for prop, value in item.__dict__.items():
-                print(prop)
-                if value is not None and value != []:
-                    if value != getattr(gfx, prop):
-                        setattr(gfx, prop, value)
+            props = ["name", "visible", "fpath", "color", "strokes", "width"]
+            for prop in props:
+                if hasattr(item, prop):
+                    value = getattr(item, prop)
+                    if value is not None and value != []:
+                        if value != getattr(gfx, prop):
+                            setattr(gfx, prop, value)
 
     def gfx_changed(self, gfx, change):
         #print("Gfx change: ", pango_gfx_change_debug(change))
@@ -119,11 +143,18 @@ class PangoModelSceneInterface(object):
         #elif change == QGraphicsItem.ItemVisibleHasChanged:
         #    item.visible = gfx.visible
 
+        if type(gfx) is PangoLabelGraphic:
+            if gfx.fpath is None:
+                gfx.fpath = self.scene.fpath
+
         # Sync properties 
-        for prop, value in gfx.__dict__.items():
-            if value is not None and value != []:
-                if value != getattr(item, prop):
-                    setattr(item, prop, value)
+        props = ["name", "visible", "fpath", "color", "strokes", "width"]
+        for prop in props:
+            if hasattr(gfx, prop):
+                value = getattr(gfx, prop)
+                if value is not None and value != []:
+                    if value != getattr(item, prop):
+                        setattr(item, prop, value)
 
     def item_removed(self, parent_idx, first, last):
         if parent_idx.isValid():

@@ -135,10 +135,9 @@ class CreateShape(QUndoCommand):
         self.gfx = self.clss()
         self.gfx.setParentItem(self.p_gfx)
         self.gfx.name = self.shape_name()+" at "+self.shape_coords()
-        self.gfx.fpath = self.p_gfx.scene().fpath
-        self.gfx.set_icon()
         for attr, val in self.data.items():
-            setattr(self.gfx, attr, val)
+            if attr != "pos":
+                setattr(self.gfx, attr, val)
 
         self.setText("Created "+self.shape_name()+" at "+self.shape_coords())
 

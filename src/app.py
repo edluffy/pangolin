@@ -133,12 +133,17 @@ class MainWindow(QMainWindow):
                     self.x_handler.read(folder_path+"/pango.xml")
 
     def switch_image(self, c_idx, p_idx):
-        fpath = self.file_widget.file_model.filePath(c_idx)
-        self.interface.filter_tree(fpath)
+        new_fpath = self.file_widget.file_model.filePath(c_idx)
+        old_fpath = self.file_widget.file_model.filePath(p_idx)
+
+        self.tool_bar.label_select.fpath = new_fpath
+
+        self.interface.copy_labels_tree(new_fpath, old_fpath)
+        self.interface.filter_tree(new_fpath)
         self.interface.scene.reset_com()
-        self.interface.scene.fpath = fpath
+        self.interface.scene.fpath = new_fpath
         self.interface.scene.stack.clear()
-        self.interface.scene.setSceneRect(QRectF(QPixmap(fpath).rect()))
+        self.interface.scene.setSceneRect(QRectF(QPixmap(new_fpath).rect()))
         self.graphics_view.fitInView(self.interface.scene.sceneRect(), Qt.KeepAspectRatio)
 
     def switch_label(self, row):
@@ -151,26 +156,6 @@ class MainWindow(QMainWindow):
             self.interface.scene.reset_com()
         except KeyError:
             return
-
-    def add_label(self):
-        f_model = self.file_widget.file_model
-        i_model = self.interface.model
-
-        for row in range(0, f_model.rowCount()):
-            label = PangoLabelItem()
-            label.name = "Empty Label"
-            label.fpath = f_model.filePath(f_model.index(row, 0))
-            label.set_icon()
-            i_model.appendRow(label)
-        
-        self.interface.filter_tree()
-
-    def del_label(self):
-        i_model = self.interface.model
-
-
-    def copy_labels(self):
-
 
 window = MainWindow()
 window.show()
