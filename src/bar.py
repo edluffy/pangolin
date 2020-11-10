@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox,
 from graphics import PangoGraphicsScene
 
 from item import PangoLabelItem
-from utils import pango_get_icon
+from utils import pango_get_icon, pango_get_palette
 
 
 class PangoMenuBarWidget(QToolBar):
@@ -183,8 +183,10 @@ class PangoToolBarWidget(QToolBar):
         item = PangoLabelItem()
         root = self.label_select.model().invisibleRootItem()
         root.appendRow(item)
-        item.set_icon()
         item.name = "Empty Label"
+        item.visible = True
+        item.color = pango_get_palette(item.row())
+        item.set_icon()
 
         bottom_row = self.label_select.model().rowCount()-1
         self.label_select.setCurrentIndex(bottom_row)

@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QItemSelectionModel, QModelIndex, QPersistentModelIndex, Qt
-from PyQt5.QtGui import QStandardItemModel
+from PyQt5.QtGui import QColor, QStandardItemModel
 from PyQt5.QtWidgets import QGraphicsItem
 
 from bidict import bidict
@@ -108,16 +108,6 @@ class PangoModelSceneInterface(object):
         except KeyError:
             gfx = self.create_gfx_from_item(item)
 
-        #for role in roles:
-            #print("Item change: ", pango_item_role_debug(role))
-            #if role == Qt.DisplayRole:
-            #    gfx.name = item.name
-            #elif role == Qt.CheckStateRole:
-            #    gfx.visible = item.visible
-            #elif role == Qt.DecorationRole:
-            #    if hasattr(gfx, "color"):
-            #        gfx.color = item.color
-
             if type(item) is PangoLabelItem:
                 if item.fpath is None:
                     item.fpath = self.scene.fpath
@@ -127,9 +117,14 @@ class PangoModelSceneInterface(object):
             for prop in props:
                 if hasattr(item, prop):
                     value = getattr(item, prop)
-                    if value is not None and value != []:
-                        if value != getattr(gfx, prop):
-                            setattr(gfx, prop, value)
+
+                    # No overwriting with empty values
+                    if value is None or value==[] or value==""\
+                            or (type(value) is QColor and value.name()=="#00000"):
+                        return
+
+                    if value != getattr(gfx, prop):
+                        setattr(gfx, prop, value)
 
     def gfx_changed(self, gfx, change):
         #print("Gfx change: ", pango_gfx_change_debug(change))
@@ -137,11 +132,6 @@ class PangoModelSceneInterface(object):
             item = self.model.itemFromIndex(QModelIndex(self.map.inverse[gfx]))
         except KeyError:
             item = self.create_item_from_gfx(gfx)
-
-        #if change == QGraphicsItem.ItemToolTipHasChanged:
-        #    item.name = gfx.name
-        #elif change == QGraphicsItem.ItemVisibleHasChanged:
-        #    item.visible = gfx.visible
 
         if type(gfx) is PangoLabelGraphic:
             if gfx.fpath is None:
@@ -152,9 +142,14 @@ class PangoModelSceneInterface(object):
         for prop in props:
             if hasattr(gfx, prop):
                 value = getattr(gfx, prop)
-                if value is not None and value != []:
-                    if value != getattr(item, prop):
-                        setattr(item, prop, value)
+
+                # No overwriting with empty values
+                if value is None or value==[] or value==""\
+                        or (type(value) is QColor and value == QColor()):
+                    return
+
+                if value != getattr(item, prop):
+                    setattr(item, prop, value)
 
     def item_removed(self, parent_idx, first, last):
         if parent_idx.isValid():

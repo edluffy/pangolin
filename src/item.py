@@ -35,14 +35,12 @@ class PangoItem(QStandardItem):
 
     def set_icon(self):
         icon = type(self).__name__.replace("Pango", "").replace("Item", "").lower()
+        p_item = self.parent()
 
         if hasattr(self, "color"):
             self.setData(pango_get_icon(icon, self.color), Qt.DecorationRole)
-        else:
-            p_item = self.parent()
-            if p_item is not None:
-                if hasattr(p_item, "color"):
-                    self.setData(pango_get_icon(icon, p_item.color), Qt.DecorationRole)
+        elif p_item is not None and hasattr(p_item, "color"):
+            self.setData(pango_get_icon(icon, p_item.color), Qt.DecorationRole)
 
 class PangoLabelItem(PangoItem):
     def __init__(self):
