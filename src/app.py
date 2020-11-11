@@ -136,10 +136,8 @@ class MainWindow(QMainWindow):
         new_fpath = self.file_widget.file_model.filePath(c_idx)
         old_fpath = self.file_widget.file_model.filePath(p_idx)
 
-        self.tool_bar.label_select.fpath = new_fpath
-
         self.interface.copy_labels_tree(new_fpath, old_fpath)
-        self.interface.filter_tree(new_fpath)
+        self.interface.filter_tree(new_fpath, old_fpath)
         self.interface.scene.reset_com()
         self.interface.scene.fpath = new_fpath
         self.interface.scene.stack.clear()

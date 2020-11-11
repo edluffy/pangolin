@@ -135,6 +135,7 @@ class CreateShape(QUndoCommand):
         self.gfx = self.clss()
         self.gfx.setParentItem(self.p_gfx)
         self.gfx.name = self.shape_name()+" at "+self.shape_coords()
+        self.gfx.visible = True
         for attr, val in self.data.items():
             if attr != "pos":
                 setattr(self.gfx, attr, val)

@@ -13,6 +13,12 @@ class PangoItem(QStandardItem):
     def key(self):
         return QPersistentModelIndex(self.index())
 
+    def children(self):
+        children = []
+        for i in range(0, self.rowCount()):
+            children.append(self.child(i))
+        return children
+    
     def setattrs(self, **kwargs):
         for k,v in kwargs.items():
             setattr(self, k, v)
@@ -48,6 +54,14 @@ class PangoLabelItem(PangoItem):
         self.fpath = None
         self.color = QColor()
 
+    def unique_row(self):
+        root = self.model().invisibleRootItem()
+        row = 0
+        for i in range(0, root.rowCount()):
+            if root.child(i).fpath == self.fpath:
+                row+=1
+        return row
+
 class PangoPathItem(PangoItem):
     def __init__(self):
         super().__init__()
@@ -80,8 +94,8 @@ class PangoGraphic(QGraphicsItem):
         return self.toolTip()
 
     @name.setter
-    def name(self, visible):
-        self.setToolTip(visible)
+    def name(self, name):
+        self.setToolTip(name)
 
     @property
     def visible(self):
@@ -107,9 +121,8 @@ class PangoGraphic(QGraphicsItem):
             pen.setWidth(10) # Temp - change this to scale with qgraphicsview
 
         p_gfx = self.parentItem()
-        if p_gfx is not None:
-            if hasattr(p_gfx, "color"):
-                pen.setColor(p_gfx.color)
+        if p_gfx is not None and hasattr(p_gfx, "color"):
+            pen.setColor(p_gfx.color)
         return pen
 
     def get_brush(self):
@@ -117,9 +130,8 @@ class PangoGraphic(QGraphicsItem):
         brush.setStyle(Qt.SolidPattern)
 
         p_gfx = self.parentItem()
-        if p_gfx is not None:
-            if hasattr(p_gfx, "color"):
-                brush.setColor(p_gfx.color)
+        if p_gfx is not None and hasattr(p_gfx, "color"):
+            brush.setColor(p_gfx.color)
         return brush
 
     def paint(self, painter, option, widget):

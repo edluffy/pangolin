@@ -6,7 +6,7 @@ from bidict import bidict
 from graphics import PangoGraphicsScene
 
 from item import PangoGraphic, PangoItem, PangoLabelGraphic, PangoLabelItem, PangoPathGraphic, PangoPathItem, PangoPolyGraphic, PangoPolyItem, PangoRectGraphic, PangoRectItem
-from utils import pango_gfx_change_debug, pango_item_role_debug
+from utils import pango_get_valid_props, pango_gfx_change_debug, pango_item_role_debug
 
 """ PangoModelSceneInterface promotes loose coupling by keeping model/view and 
    scene/view from referring to each other explicitly """
@@ -31,55 +31,72 @@ class PangoModelSceneInterface(object):
         if self.tree.selectionModel() is not None:
             self.tree.selectionModel().selectionChanged.connect(self.item_selection_changed)
 
-    def filter_tree(self, fpath=None):
-        self.fpath = fpath
-        root_item = self.model.invisibleRootItem()
+    def filter_tree(self, new_fpath, old_fpath):
+        old = [item.key() for item in self.find_in_tree("fpath", old_fpath, 1, True)]
+        new = [item.key() for item in self.find_in_tree("fpath", new_fpath, 1, True)]
 
-        # Filtering labels
-        for i in range(0, root_item.rowCount()):
-            label_item = root_item.child(i)
-            label_gfx = self.map[label_item.key()]
+        for key in new:
+            item = self.model.itemFromIndex(QModelIndex(key))
+            gfx = self.map[key]
 
-            if label_item.fpath==self.fpath:
-                self.tree.setRowHidden(i, root_item, False)
-                if label_gfx.scene() is not self.scene:
-                    self.scene.addItem(label_gfx)
+            if item.parent() is None:
+                self.tree.setRowHidden(item.row(), QModelIndex(), False)
             else:
-                self.tree.setRowHidden(i, label_item.index(), True)
-                if label_gfx.scene() is self.scene:
-                    self.scene.removeItem(label_gfx)
+                self.tree.setRowHidden(item.row(), item.parent().index(), False)
 
-            # Filtering shapes
-            for j in range(0, label_item.rowCount()):
-                shape_item = label_item.child(j)
-                shape_gfx = self.map[shape_item.key()]
+            if gfx.scene() is not self.scene:
+                self.scene.addItem(gfx)
 
-                if label_item.fpath==self.fpath:
-                    self.tree.setRowHidden(j, shape_item.index(), False)
-                    if shape_gfx.scene() is not self.scene:
-                        self.scene.addItem(shape_gfx)
-                else:
-                    self.tree.setRowHidden(j, shape_item.index(), True)
-                    if shape_gfx.scene() is self.scene:
-                        self.scene.removeItem(shape_gfx)
+        for key in old:
+            item = self.model.itemFromIndex(QModelIndex(key))
+            gfx = self.map[key]
+
+            if item.parent() is None:
+                self.tree.setRowHidden(item.row(), QModelIndex(), True)
+            else:
+                self.tree.setRowHidden(item.row(), item.parent().index(), True)
+
+            if gfx.scene() is self.scene:
+                self.scene.removeItem(gfx)
 
     def copy_labels_tree(self, new_fpath, old_fpath):
-        old_label_items = []
-        new_label_items = []
+        old = [item.name for item in self.find_in_tree("fpath", old_fpath, 1)]
+        new = [item.name for item in self.find_in_tree("fpath", new_fpath, 1)]
 
-        root_item = self.model.invisibleRootItem()
-        for i in range(0, root_item.rowCount()):
-            label_item = root_item.child(i)
-            if label_item.fpath == new_fpath:
-                new_label_items.append(label_item)
-            elif label_item.fpath == old_fpath:
-                old_label_items.append(label_item)
+        for name in set(old)-set(new):
+            ms = self.find_in_tree("name", name, 1)
+            if ms is not None:
+                label = ms[0]
+                dupe_label = globals()[type(label).__name__]()
+                self.model.appendRow(dupe_label)
 
-        print(old_label_items)
+                for prop in pango_get_valid_props(): 
+                    if hasattr(dupe_label, prop):
+                        setattr(dupe_label, prop, getattr(label, prop))
+                dupe_label.fpath = new_fpath
+                dupe_label.set_icon()
 
     def del_labels_tree(self):
         i_model = self.interface.model
 
+    def find_in_tree(self, prop, value, levels=2, inclusive=False):
+        matches = []
+        root = self.model.invisibleRootItem()
+        if levels > 0: # (Labels)
+            for i in range(0, root.rowCount()):
+                item = root.child(i)
+                if getattr(item, prop) == value:
+                    matches.append(item)
+                    if inclusive:
+                        matches.extend(item.children())
+                if levels > 1: # (Shapes)
+                    for i in range(0, item.rowCount()):
+                        item_child = item.child(i)
+                        if getattr(item_child, prop) == value:
+                            matches.append(item_child)
+                            if inclusive:
+                                matches.extend(item_child.children())
+        return matches
     
     def item_selection_changed(self):
         new = [self.map[QPersistentModelIndex(idx)] for idx in self.tree.selectedIndexes()]
@@ -108,23 +125,18 @@ class PangoModelSceneInterface(object):
         except KeyError:
             gfx = self.create_gfx_from_item(item)
 
-            if type(item) is PangoLabelItem:
-                if item.fpath is None:
-                    item.fpath = self.scene.fpath
+        # Sync properties 
+        for prop in pango_get_valid_props():
+            if hasattr(item, prop):
+                value = getattr(item, prop)
 
-            # Sync properties 
-            props = ["name", "visible", "fpath", "color", "strokes", "width"]
-            for prop in props:
-                if hasattr(item, prop):
-                    value = getattr(item, prop)
+                # No overwriting with empty values
+                if value is None or value==[] or value==""\
+                        or (type(value) is QColor and value == QColor()):
+                    return
 
-                    # No overwriting with empty values
-                    if value is None or value==[] or value==""\
-                            or (type(value) is QColor and value.name()=="#00000"):
-                        return
-
-                    if value != getattr(gfx, prop):
-                        setattr(gfx, prop, value)
+                if value != getattr(gfx, prop):
+                    setattr(gfx, prop, value)
 
     def gfx_changed(self, gfx, change):
         #print("Gfx change: ", pango_gfx_change_debug(change))
@@ -132,14 +144,10 @@ class PangoModelSceneInterface(object):
             item = self.model.itemFromIndex(QModelIndex(self.map.inverse[gfx]))
         except KeyError:
             item = self.create_item_from_gfx(gfx)
-
-        if type(gfx) is PangoLabelGraphic:
-            if gfx.fpath is None:
-                gfx.fpath = self.scene.fpath
+            item.set_icon()
 
         # Sync properties 
-        props = ["name", "visible", "fpath", "color", "strokes", "width"]
-        for prop in props:
+        for prop in pango_get_valid_props():
             if hasattr(gfx, prop):
                 value = getattr(gfx, prop)
 
@@ -165,18 +173,9 @@ class PangoModelSceneInterface(object):
         idx = QModelIndex(self.map.inverse[gfx])
         self.model.removeRow(idx.row(), idx.parent())
 
-    #TODO: Use reflection here
     def create_item_from_gfx(self, gfx):
-        if type(gfx) is PangoLabelGraphic:
-            item = PangoLabelItem()
-        elif type(gfx) is PangoPathGraphic:
-            item = PangoPathItem()
-        elif type(gfx) is PangoPolyGraphic:
-            item = PangoPolyItem()
-        elif type(gfx) is PangoRectGraphic:
-            item = PangoRectItem()
-        else:
-            item = PangoItem()
+        class_name = type(gfx).__name__.replace("Graphic", "Item")
+        item = globals()[class_name]()
 
         # Add to model, then map
         if gfx.parentItem() is not None:
@@ -190,16 +189,8 @@ class PangoModelSceneInterface(object):
         return item
 
     def create_gfx_from_item(self, item):
-        if type(item) is PangoLabelItem:
-            gfx = PangoLabelGraphic()
-        elif type(item) is PangoPathItem:
-            gfx = PangoPathGraphic()
-        elif type(item) is PangoPolyItem:
-            gfx = PangoPolyGraphic()
-        elif type(item) is PangoRectItem:
-            gfx = PangoRectGraphic()
-        else:
-            gfx = PangoGraphic()
+        class_name = type(item).__name__.replace("Item", "Graphic")
+        gfx = globals()[class_name]()
 
         # Map, then add to scene
         self.map[item.key()] = gfx
