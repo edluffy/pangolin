@@ -50,6 +50,8 @@ class PangoGraphicsScene(QGraphicsScene):
         and not self.active_shape.closed:
             self.unravel_last_shape()
 
+        self.active_shape = PangoGraphic()
+
     # Undo all commands for last shape (including creation)
     def unravel_last_shape(self):
         while type(self.stack.command(self.stack.index()-1))\
@@ -64,15 +66,26 @@ class PangoGraphicsScene(QGraphicsScene):
         print(self.stack.command(self.stack.index()))
 
     def event(self, event):
-        if self.tool == "Path":
+        if self.tool == "Pan":
+            self.select_handler(event)
+            return True
+        elif self.tool == "Path":
             self.path_handler(event)
             return True
-        if self.tool == "Poly":
+        elif self.tool == "Poly":
             self.poly_handler(event)
             return True
         else:
             return False
     
+    def select_handler(self, event):
+        if event.type() == QEvent.GraphicsSceneMousePress:
+            gfx = self.itemAt(event.scenePos(), QTransform())
+            if gfx is not None:
+                if gfx.parentItem() != self.active_label:
+                    pass
+
+
     def path_handler(self, event):
         if event.type() == QEvent.GraphicsSceneMousePress:
             if type(self.active_shape) is not PangoPathGraphic:
@@ -105,6 +118,7 @@ class PangoGraphicsScene(QGraphicsScene):
 
         elif event.type() == QEvent.GraphicsSceneMouseRelease:
             pass
+
 
             #gfx = self.itemAt(pos, QTransform())
             #if hasattr(gfx, "points"):

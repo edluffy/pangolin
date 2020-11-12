@@ -1,8 +1,7 @@
-from PyQt5.QtCore import QPoint, QSize, Qt, pyqtSignal
+from PyQt5.QtCore import QModelIndex, QPoint, QSize, Qt, pyqtSignal, QSortFilterProxyModel
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox,
-                             QLabel, QSizePolicy, QSpinBox, QStatusBar, QStyle, QStyleOptionComboBox,
-                             QToolBar, QWidget)
+                             QLabel, QSizePolicy, QSpinBox, QStatusBar, QStyle, QStyleOptionComboBox, QToolBar, QWidget)
 from graphics import PangoGraphicsScene
 
 from item import PangoLabelItem
@@ -174,6 +173,17 @@ class PangoToolBarWidget(QToolBar):
         self.label_select.setCurrentIndex(0)
         self.label_select.setCurrentIndex(row)
 
+    def filter_label_select(self, new_fpath):
+        for row in range(0, self.label_select.count()):
+            item = self.label_select.model().item(row, 0)
+            self.label_select.view().setRowHidden(row, item.fpath!=self.scene.fpath)
+        self.label_select.model().sort(0)
+
+        # Select first valid label
+        for row in range(0, self.label_select.count()):
+            if self.label_select.view().isRowHidden(row) is False:
+                self.label_select.setCurrentIndex(row)
+
     def add_label(self):
         if not self.label_select.isEnabled():
             self.label_select.setEnabled(True)
@@ -186,7 +196,7 @@ class PangoToolBarWidget(QToolBar):
         item.fpath = self.scene.fpath
         item.name = "Empty Label "+str(item.unique_row())
         item.visible = True
-        item.color = pango_get_palette(item.unique_row())
+        item.color = pango_get_palette(item.unique_row()-1)
         item.set_icon()
 
         bottom_row = self.label_select.model().rowCount()-1

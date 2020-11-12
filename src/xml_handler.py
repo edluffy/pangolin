@@ -8,38 +8,46 @@ from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox
 
 from item import PangoLabelGraphic, PangoLabelItem, PangoPathItem, PangoPolyItem, PangoRectItem
+from utils import pango_get_valid_props
 
 class Xml_Handler():
     def __init__(self, model):
         self.model = model
 
-        self.p_list = ["name", "fpath", "visible", 
-                       "color", "icon", "width", 
-                       "strokes", "points", "closed"]
-        
     #TODO: properly serialize polygon tool
     #      add load file dialog
           
     def write(self, fname):
         root_item = self.model.invisibleRootItem()
-        root_elem = ET.Element('InvisibleRootItem')
+        root_elem = ET.Element('Project Root')
 
+        # Grab edited fpaths
+        fpaths = []
         for row in range(0, root_item.rowCount()):
-            label_item = root_item.child(row)
-            label_elem = ET.SubElement(root_elem, type(label_item).__name__)
-            self.copy_props_to_elem(label_item, label_elem)
-            if label_item.hasChildren():
-                for row in range(0, label_item.rowCount()):
-                    shape_item = label_item.child(row)
-                    shape_elem = ET.SubElement(label_elem, type(shape_item).__name__)
-                    self.copy_props_to_elem(shape_item, shape_elem)
+            fp = root_item.child(row).fpath
+            if fp not in fpaths:
+                fpaths.append(fp)
+
+        for fpath in fpaths:
+            fpath_elem = ET.SubElement(root_elem, "File")
+            #fpath_elem.text = fpath
+
+            for row in range(0, root_item.rowCount()):
+                if root_item.child(row).fpath == fpath:
+                    label_item = root_item.child(row)
+                    label_elem = ET.SubElement(fpath_elem, type(label_item).__name__)
+                    self.copy_props_to_elem(label_item, label_elem)
+                    for row in range(0, label_item.rowCount()):
+                        shape_item = label_item.child(row)
+                        shape_elem = ET.SubElement(label_elem, type(shape_item).__name__)
+                        self.copy_props_to_elem(shape_item, shape_elem)
         
         f = open(fname, "w")
         f.write(self.prettify(root_elem))
         f.close()
 
     def copy_props_to_elem(self, item, elem):
-        for p_type in self.p_list:
+        for p_type in pango_get_valid_props():
             if hasattr(item, p_type):
                 p_str = self.prop_to_str(p_type, item)
                 _ = ET.SubElement(elem, p_type, attrib={'value':p_str})
@@ -110,5 +118,6 @@ class Xml_Handler():
 
     def prettify(self, elem):
         elem_str = ET.tostring(elem)
+        print(elem_str)
         return minidom.parseString(elem_str).toprettyxml(indent = "   ")
 

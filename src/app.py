@@ -83,6 +83,10 @@ class MainWindow(QMainWindow):
             dialog = QFileDialog()
             dialog.setFileMode(QFileDialog.ExistingFile)
             dialog.setNameFilter("XML files (*.xml)")
+            self.project_file = dialog.getSaveFileName(self, "Save Project")[0]
+
+        self.x_handler.write(self.project_file)
+
 
         #folder_path = self.file_widget.file_model.rootPath()
 
@@ -136,24 +140,25 @@ class MainWindow(QMainWindow):
         new_fpath = self.file_widget.file_model.filePath(c_idx)
         old_fpath = self.file_widget.file_model.filePath(p_idx)
 
-        self.interface.copy_labels_tree(new_fpath, old_fpath)
-        self.interface.filter_tree(new_fpath, old_fpath)
-        self.interface.scene.reset_com()
         self.interface.scene.fpath = new_fpath
+        self.interface.scene.reset_com()
         self.interface.scene.stack.clear()
         self.interface.scene.setSceneRect(QRectF(QPixmap(new_fpath).rect()))
         self.graphics_view.fitInView(self.interface.scene.sceneRect(), Qt.KeepAspectRatio)
 
+        self.interface.copy_labels_tree(new_fpath, old_fpath)
+        self.interface.filter_tree(new_fpath, old_fpath)
+        self.tool_bar.filter_label_select(new_fpath)
+
     def switch_label(self, row):
         item = self.interface.model.item(row)
-        if item is None:
-            return
         try:
             self.interface.scene.active_label = self.interface.map[item.key()]
-            self.interface.scene.update_reticle()
-            self.interface.scene.reset_com()
         except KeyError:
             return
+
+        self.interface.scene.update_reticle()
+        self.interface.scene.reset_com()
 
 window = MainWindow()
 window.show()
