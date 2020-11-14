@@ -36,7 +36,7 @@ class MainWindow(QMainWindow):
 
         # Serialisation
         self.x_handler = Xml_Handler(self.interface.model)
-        self.project_file = None
+        self.project_file = ""
 
         # Dock widgets
         self.label_widget = PangoLabelWidget("Labels", self.tree_view)
@@ -78,41 +78,47 @@ class MainWindow(QMainWindow):
         #self.sh_reset_tool.activated.connect(self.scene.reset_tool)
         
     def save_project(self):
-        # Create new xml project file
-        if self.project_file is None or not os.path.exists(self.project_file):
-            dialog = QFileDialog()
-            dialog.setFileMode(QFileDialog.ExistingFile)
-            dialog.setNameFilter("XML files (*.xml)")
-            self.project_file = dialog.getSaveFileName(self, "Save Project")[0]
+        if self.project_file != "":
+            default = self.project_file
+        else:
+            default = self.file_widget.file_model.rootPath()+"/pango_project.xml"
 
-        self.x_handler.write(self.project_file)
+        self.project_file = QFileDialog().getSaveFileName(
+            self, "Save Project", default, "XML files (*.xml)")[0]
 
-
-        #folder_path = self.file_widget.file_model.rootPath()
+        if self.project_file != "":
+            self.x_handler.write(self.project_file)
 
     def load_project(self):
-        # Save before loading new project
-        if self.project_file is not None:
-            dialog = QMessageBox()
-            dialog.setText("Save changes to current project?")
-            dialog.setStandardButtons(QMessageBox.Save | QMessageBox.No)
-            dialog.setDefaultButton(QMessageBox.Save)
-
-            if dialog.exec() == QMessageBox.Save:
+        if self.project_file != "":
+            result = self.unsaved_changes_dialog()
+            if result == QMessageBox.Cancel:
+                return
+            elif result == QMessageBox.Save:
                 self.save_project()
 
-        dialog = QFileDialog()
-        dialog.setFileMode(QFileDialog.ExistingFile)
-        dialog.setNameFilter("XML files (*.xml)")
+        # Clear project
+        self.project_file = ""
+        self.interface.map.clear()
+        self.interface.model.clear()
+        self.interface.scene.full_clear()
 
-        if dialog.exec():
-            self.interface.map.clear()
-            self.interface.model.clear()
-            self.interface.scene.full_clear()
 
-            self.project_file = dialog.selectedFiles()[0]
+        default = self.file_widget.file_model.rootPath()
+        self.project_file, _ = QFileDialog().getOpenFileName(
+                self, "Load Project", default, "XML files (*.xml)")
+
+        if self.project_file != "":
             self.x_handler.read(self.project_file)
-            self.switch_label(0)
+            #self.switch_label(0)
+
+    def unsaved_changes_dialog(self):
+        dialog = QMessageBox()
+        dialog.setText("The project has been modified.")
+        dialog.setInformativeText("Do you want to save your changes?")
+        dialog.setStandardButtons(QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
+        dialog.setDefaultButton(QMessageBox.Save)
+        return dialog.exec()
 
     def load_images(self):
         dialog = QFileDialog()
@@ -135,6 +141,9 @@ class MainWindow(QMainWindow):
 
                 if dialog.exec() == QMessageBox.Open:
                     self.x_handler.read(folder_path+"/pango.xml")
+
+    def export_images(self):
+        pass
 
     def switch_image(self, c_idx, p_idx):
         new_fpath = self.file_widget.file_model.filePath(c_idx)

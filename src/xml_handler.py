@@ -30,17 +30,17 @@ class Xml_Handler():
 
         for fpath in fpaths:
             fpath_elem = ET.SubElement(root_elem, "File")
-            #fpath_elem.text = fpath
+            fpath_elem.text = "hello world"
 
-            for row in range(0, root_item.rowCount()):
-                if root_item.child(row).fpath == fpath:
-                    label_item = root_item.child(row)
-                    label_elem = ET.SubElement(fpath_elem, type(label_item).__name__)
-                    self.copy_props_to_elem(label_item, label_elem)
-                    for row in range(0, label_item.rowCount()):
-                        shape_item = label_item.child(row)
-                        shape_elem = ET.SubElement(label_elem, type(shape_item).__name__)
-                        self.copy_props_to_elem(shape_item, shape_elem)
+            #for row in range(0, root_item.rowCount()):
+            #    if root_item.child(row).fpath == fpath:
+            #        label_item = root_item.child(row)
+            #        label_elem = ET.SubElement(fpath_elem, type(label_item).__name__)
+            #        self.copy_props_to_elem(label_item, label_elem)
+            #        for row in range(0, label_item.rowCount()):
+            #            shape_item = label_item.child(row)
+            #            shape_elem = ET.SubElement(label_elem, type(shape_item).__name__)
+            #            self.copy_props_to_elem(shape_item, shape_elem)
         
         f = open(fname, "w")
         f.write(self.prettify(root_elem))
