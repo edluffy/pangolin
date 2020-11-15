@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QEvent, QPoint, QRect, QSize, Qt, pyqtSignal
+from PyQt5.QtCore import QDir, QEvent, QPoint, QRect, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QBrush, QColor, QIcon, QPixmap
 from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QFileIconProvider,
                              QFileSystemModel, QItemDelegate, QListView, QStyle, QStyleOptionViewItem, QStyledItemDelegate, QTreeView, QVBoxLayout, QWidget)
@@ -72,6 +72,9 @@ class PangoFileWidget(PangoDockWidget):
         self.setFixedWidth(160)
 
         self.file_model = QFileSystemModel()
+        self.file_model.setFilter(QDir.Files | QDir.NoDotAndDotDot)
+        self.file_model.setNameFilters(["*.jpg", "*.png"])
+        self.file_model.setNameFilterDisables(False)
         self.thumbnail_provider = ThumbnailProvider()
         self.file_model.setIconProvider(self.thumbnail_provider)
 

@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QGraphicsItem, QStyle
 
 from utils import pango_get_icon
 
+
 class PangoItem(QStandardItem):
     def __init__ (self):
         super().__init__()
@@ -14,15 +15,20 @@ class PangoItem(QStandardItem):
         return QPersistentModelIndex(self.index())
 
     def children(self):
-        children = []
-        for i in range(0, self.rowCount()):
-            children.append(self.child(i))
-        return children
+        return [self.child(i) for i in range(0, self.rowCount())]
     
     def setattrs(self, **kwargs):
-        for k,v in kwargs.items():
-            setattr(self, k, v)
+        for k, v in kwargs.items():
+            if v != getattr(self, k):
+                setattr(self, k, v)
 
+    def getattrs(self):
+        return {
+            k: getattr(self, k) 
+            for k in ["name", "visible", "fpath", "color", "strokes", "width"] 
+            if hasattr(self, k)
+        }
+    
     @property
     def name(self):
         return self.data(Qt.DisplayRole)
@@ -47,6 +53,22 @@ class PangoItem(QStandardItem):
             self.setData(pango_get_icon(icon, self.color), Qt.DecorationRole)
         elif p_item is not None and hasattr(p_item, "color"):
             self.setData(pango_get_icon(icon, p_item.color), Qt.DecorationRole)
+
+    def __getstate__(self):
+        return {
+            **self.getattrs(),
+            '_PangoItem__parent': self.parent()
+        }
+
+    def __setstate__(self, state):
+        self.__init__()
+        parent = state['_PangoItem__parent']
+        if parent is not None:
+            parent.appendRow(self)
+
+        del state['_PangoItem__parent']
+        self.setattrs(**state)
+        self.set_icon()
 
 class PangoLabelItem(PangoItem):
     def __init__(self):
@@ -86,8 +108,16 @@ class PangoGraphic(QGraphicsItem):
         self.setFlag(QGraphicsItem.ItemIsSelectable)
 
     def setattrs(self, **kwargs):
-        for k,v in kwargs.items():
-            setattr(self, k, v)
+        for k, v in kwargs.items():
+            if v != getattr(self, k):
+                setattr(self, k, v)
+
+    def getattrs(self):
+        return {
+            k: getattr(self, k) 
+            for k in ["name", "visible", "fpath", "color", "strokes", "width"] 
+            if hasattr(self, k)
+        }
 
     @property
     def name(self):
@@ -154,6 +184,21 @@ class PangoGraphic(QGraphicsItem):
         p = ps.createStroke(path)
         p.addPath(path)
         return p
+
+    def __getstate__(self):
+        return {
+            **self.getattrs(),
+            '_PangoGraphic__parent': self.parentItem()
+        }
+
+    def __setstate__(self, state):
+        self.__init__()
+        parent = state['_PangoGraphic__parent']
+        if parent is not None:
+            self.setParentItem(parent)
+            
+        del state['_PangoGraphic__parent']
+        self.setattrs(**state)
 
 class PangoLabelGraphic(PangoGraphic):
     def __init__(self, parent=None):

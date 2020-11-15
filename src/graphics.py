@@ -135,8 +135,66 @@ class PangoGraphicsScene(QGraphicsScene):
             #        self.last_com = MovePointShape(gfx, idx, pos)
             #        self.c_stack.push(self.last_com)        
 
+class UndoCommand(QUndoCommand):
+    """
+    For pickling
+    """
+    def __init__(self, text="test", parent=None):
+        QUndoCommand.__init__(self, text, parent)
+        self.__parent = parent
+        self.__initialized = True
 
-class CreateShape(QUndoCommand):
+        # defined and initialized in __setstate__
+        # self.__child_states = {}
+
+    def __getstate__(self):
+        return {
+            **{k: v for k, v in self.__dict__.items()},
+            '_UndoCommand__initialized': False,
+            '_UndoCommand__text': self.text(),
+            '_UndoCommand__children':
+                [self.child(i) for i in range(self.childCount())]
+        }
+
+    def __setstate__(self, state):
+        if hasattr(self, '_UndoCommand__initialized') and \
+                self.__initialized:
+            return
+
+        text = state['_UndoCommand__text']
+        parent = state['_UndoCommand__parent']  # type: UndoCommand
+
+        if parent is not None and \
+                (not hasattr(parent, '_UndoCommand__initialized') or
+                 not parent.__initialized):
+            # will be initialized in parent's __setstate__
+            if not hasattr(parent, '_UndoCommand__child_states'):
+                setattr(parent, '_UndoCommand__child_states', {})
+            parent.__child_states[self] = state
+            return
+
+        # init must be called on unpickle-time to recreate Qt object
+        UndoCommand.__init__(self, text, parent)
+        for child in state['_UndoCommand__children']:
+            child.__setstate__(self.__child_states[child])
+
+        self.__dict__ = {k: v for k, v in state.items()}
+
+    @staticmethod
+    def from_QUndoCommand(qc: QUndoCommand, parent=None):
+        if type(qc) == QUndoCommand:
+            qc.__class__ = UndoCommand
+            qc.__initialized = True
+
+        qc.__parent = parent
+
+        children = [qc.child(i) for i in range(qc.childCount())]
+        for child in children:
+            UndoCommand.from_QUndoCommand(child, parent=qc)
+
+        return qc
+
+class CreateShape(UndoCommand):
     def __init__(self, clss, data, p_gfx):
         super().__init__()
         self.p_gfx = p_gfx
@@ -176,7 +234,7 @@ class CreateShape(QUndoCommand):
         return "("+str(round(self.data["pos"].x()))\
               +", "+str(round(self.data["pos"].y()))+")"
 
-class ExtendPath(QUndoCommand):
+class ExtendPath(UndoCommand):
     def __init__(self, pos, motion, gfx):
         super().__init__()
         self.gfx = gfx
@@ -193,7 +251,7 @@ class ExtendPath(QUndoCommand):
         _, _ = self.gfx.strokes.pop()
         self.gfx.update()
 
-class ExtendPoly(QUndoCommand):
+class ExtendPoly(UndoCommand):
     def __init__(self, pos, gfx):
         super().__init__()
         self.gfx = gfx
@@ -222,7 +280,7 @@ class ExtendPoly(QUndoCommand):
             _ = self.gfx.points.pop()
         self.gfx.update()
 
-class MovePointShape(QUndoCommand):
+class MovePointShape(UndoCommand):
     def __init__(self, pos, idx, gfx):
         super().__init__()
         self.gfx = gfx
@@ -241,7 +299,7 @@ class MovePointShape(QUndoCommand):
         self.gfx.update()
 
 
-class MovePointPoly(QUndoCommand):
+class MovePointPoly(UndoCommand):
     def __init__(self, gfx, p_idx, pos):
         super().__init__()
         self.gfx = gfx

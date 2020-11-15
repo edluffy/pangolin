@@ -6,7 +6,7 @@ from bidict import bidict
 from graphics import PangoGraphicsScene
 
 from item import PangoGraphic, PangoItem, PangoLabelGraphic, PangoLabelItem, PangoPathGraphic, PangoPathItem, PangoPolyGraphic, PangoPolyItem, PangoRectGraphic, PangoRectItem
-from utils import pango_get_valid_props, pango_gfx_change_debug, pango_item_role_debug
+from utils import pango_gfx_change_debug, pango_item_role_debug
 
 """ PangoModelSceneInterface promotes loose coupling by keeping model/view and 
    scene/view from referring to each other explicitly """
@@ -70,9 +70,7 @@ class PangoModelSceneInterface(object):
                 dupe_label = globals()[type(label).__name__]()
                 self.model.appendRow(dupe_label)
 
-                for prop in pango_get_valid_props(): 
-                    if hasattr(dupe_label, prop):
-                        setattr(dupe_label, prop, getattr(label, prop))
+                dupe_label.setattrs(**label.getattrs())
                 dupe_label.fpath = new_fpath
                 dupe_label.set_icon()
 
@@ -126,17 +124,9 @@ class PangoModelSceneInterface(object):
             gfx = self.create_gfx_from_item(item)
 
         # Sync properties 
-        for prop in pango_get_valid_props():
-            if hasattr(item, prop):
-                value = getattr(item, prop)
-
-                # No overwriting with empty values
-                if value is None or value==[] or value==""\
-                        or (type(value) is QColor and value == QColor()):
-                    return
-
-                if value != getattr(gfx, prop):
-                    setattr(gfx, prop, value)
+        for k, v in item.getattrs().items():
+            if not(v is None or v==[] or v=="" or (type(v) is QColor and v==QColor())):
+                setattr(gfx, k, v)
 
     def gfx_changed(self, gfx, change):
         #print("Gfx change: ", pango_gfx_change_debug(change))
@@ -147,17 +137,9 @@ class PangoModelSceneInterface(object):
             item.set_icon()
 
         # Sync properties 
-        for prop in pango_get_valid_props():
-            if hasattr(gfx, prop):
-                value = getattr(gfx, prop)
-
-                # No overwriting with empty values
-                if value is None or value==[] or value==""\
-                        or (type(value) is QColor and value == QColor()):
-                    return
-
-                if value != getattr(item, prop):
-                    setattr(item, prop, value)
+        for k, v in gfx.getattrs().items():
+            if not(v is None or v==[] or v=="" or v==0 or (type(v) is QColor and v==QColor())):
+                setattr(item, k, v)
 
     def item_removed(self, parent_idx, first, last):
         if parent_idx.isValid():
