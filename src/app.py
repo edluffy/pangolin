@@ -1,7 +1,7 @@
 import os, pickle
 from PyQt5.QtCore import QDir, QFile, QIODevice, QItemSelectionModel, QModelIndex, QPointF, QRectF, QXmlStreamWriter, Qt
 from PyQt5.QtGui import QColor, QKeySequence, QPixmap, QStandardItemModel
-from PyQt5.QtWidgets import (QApplication, QFileDialog, QMainWindow, QMessageBox, QShortcut, QTreeView, QUndoView,
+from PyQt5.QtWidgets import (QApplication, QFileDialog, QFileSystemModel, QMainWindow, QMessageBox, QShortcut, QTreeView, QUndoStack, QUndoView,
                              QVBoxLayout, QWidget)
 
 from bar import PangoMenuBarWidget, PangoToolBarWidget
@@ -19,10 +19,11 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setWindowTitle("Pangolin")
         self.setUnifiedTitleAndToolBarOnMac(True)
-        self.setGeometry(50, 50, 1000, 675)
+        self.setGeometry(50, 50, 1200, 675)
 
         # Models and Views
         self.interface = PangoModelSceneInterface()
+        self.change_stacks = {}
 
         self.tree_view = QTreeView()
         self.tree_view.setUniformRowHeights(True)
@@ -33,11 +34,6 @@ class MainWindow(QMainWindow):
         self.graphics_view.setScene(self.interface.scene)
 
         self.undo_view = QUndoView()
-        self.undo_view.setStack(self.interface.scene.stack)
-
-        # Serialisation
-        self.x_handler = Xml_Handler(self.interface.model)
-        self.project_file = ""
 
         # Dock widgets
         self.label_widget = PangoLabelWidget("Labels", self.tree_view)
@@ -89,20 +85,23 @@ class MainWindow(QMainWindow):
         self.interface.scene.reset_com()
 
     def switch_image(self, c_idx, p_idx):
-        print("switching image")
-        new_fpath = self.file_widget.file_model.filePath(c_idx)
-        old_fpath = self.file_widget.file_model.filePath(p_idx)
+        c_fpath = self.file_widget.file_model.filePath(c_idx)
+        p_fpath = self.file_widget.file_model.filePath(p_idx)
 
-        print(c_idx.row(), p_idx.row())
-        self.interface.scene.fpath = new_fpath
+        self.interface.scene.fpath = c_fpath
         self.interface.scene.reset_com()
-        self.interface.scene.stack.clear()
-        self.interface.scene.setSceneRect(QRectF(QPixmap(new_fpath).rect()))
+        self.interface.scene.setSceneRect(QRectF(QPixmap(c_fpath).rect()))
         self.graphics_view.fitInView(self.interface.scene.sceneRect(), Qt.KeepAspectRatio)
 
-        self.interface.copy_labels_tree(new_fpath, old_fpath)
-        self.interface.filter_tree(new_fpath, old_fpath)
-        self.tool_bar.filter_label_select(new_fpath)
+        # Handling unsaved changes
+        if c_fpath not in self.change_stacks.keys():
+            self.change_stacks[c_fpath] = QUndoStack()
+        self.undo_view.setStack(self.change_stacks[c_fpath])
+        self.interface.scene.stack = self.change_stacks[c_fpath]
+
+        self.interface.copy_labels_tree(c_fpath, p_fpath)
+        self.interface.filter_tree(c_fpath, p_fpath)
+        self.tool_bar.filter_label_select(c_fpath)
 
     def load_images(self, action=None, fpath=None):
         if fpath is None:
@@ -114,26 +113,6 @@ class MainWindow(QMainWindow):
             self.file_widget.file_model.setRootPath(fpath)
             root_idx = self.file_widget.file_model.index(fpath)
             self.file_widget.file_view.setRootIndex(root_idx)
-
-            pf = os.path.join(fpath, "pango_project.p")
-            if os.path.exists(pf):
-                self.load_project(pfile=pf)
-
-            self.switch_label(0)
-
-            r_idx = self.file_widget.file_view.rootIndex()
-            self.file_widget.file_model.fetchMore(r_idx)
-            idx0 = self.file_widget.file_model.index(0, 0, r_idx)
-            idx1 = self.file_widget.file_model.index(1, 0, r_idx)
-            self.file_widget.file_model.fetchMore(idx0)
-
-            self.file_widget.file_model.fetchMore(idx1)
-            self.file_widget.file_view.setCurrentIndex(idx1)
-            self.file_widget.file_view.setCurrentIndex(idx0)
-            self.file_widget.file_view.setCurrentIndex(
-                    self.file_widget.file_model.index(QDir.currentPath()))
-            self.file_widget.file_view.selectionModel().currentChanged.emit(idx0, idx1)
-
 
     def save_project(self, action=None, pfile=None):
         if pfile is None:
@@ -151,11 +130,6 @@ class MainWindow(QMainWindow):
             for k in self.interface.map.keys():
                 pickle_items.append(self.interface.model.itemFromIndex(QModelIndex(k)))
             pickle.dump(pickle_items, open(pfile, "wb"))
-
-            #pickle_commands = []
-            #for n in range(0, self.interface.scene.stack.count()):
-            #    commands.append(self.interface.scene.stack.command(n))
-            #pickle.dump(pickle_commands, open(fname, "wb"))
 
     def load_project(self, action=None, pfile=None):
         if pfile is None:

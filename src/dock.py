@@ -42,28 +42,28 @@ class PangoUndoWidget(PangoDockWidget):
 
         self.setWidget(self.undo_view)
 
-    class IconDelegate(QItemDelegate):
-        def __init__(self, parent):
-            super().__init__(parent)
+    #class IconDelegate(QItemDelegate):
+    #    def __init__(self, parent):
+    #        super().__init__(parent)
 
-        def paint(self, painter, option, idx):
-            super().paint(painter, option, idx)
+    #    def paint(self, painter, option, idx):
+    #        super().paint(painter, option, idx)
 
-            text = idx.data()
+    #        text = idx.data()
 
-            if text.startswith("Created "):
-                shape_name = text.split("Created ", 1)[1].split()[0].lower()
-                icon = pango_get_icon(shape_name)
-            else:
-                icon = pango_get_icon("save")
+    #        if text.startswith("Created "):
+    #            shape_name = text.split("Created ", 1)[1].split()[0].lower()
+    #            icon = pango_get_icon(shape_name)
+    #        else:
+    #            icon = pango_get_icon("save")
 
-            rect = QRect(QPoint(), option.decorationSize)
-            rect.moveCenter(option.rect.center())
+    #        rect = QRect(QPoint(), option.decorationSize)
+    #        rect.moveCenter(option.rect.center())
 
-            icon.paint(painter, rect, Qt.AlignVCenter)
+    #        icon.paint(painter, rect, Qt.AlignVCenter)
 
-        def sizeHint(self, option, idx):
-            return QSize(16, 24)
+    #    def sizeHint(self, option, idx):
+    #        return QSize(16, 24)
 
 
 class PangoFileWidget(PangoDockWidget):
@@ -75,8 +75,8 @@ class PangoFileWidget(PangoDockWidget):
         self.file_model.setFilter(QDir.Files | QDir.NoDotAndDotDot)
         self.file_model.setNameFilters(["*.jpg", "*.png"])
         self.file_model.setNameFilterDisables(False)
-        self.thumbnail_provider = ThumbnailProvider()
-        self.file_model.setIconProvider(self.thumbnail_provider)
+        self.th_provider = ThumbnailProvider()
+        self.file_model.setIconProvider(self.th_provider)
 
         self.file_view = QListView()
         self.file_view.setModel(self.file_model)
@@ -93,10 +93,10 @@ class ThumbnailProvider(QFileIconProvider):
     def icon(self, type: 'QFileIconProvider.IconType'):
         fn = type.filePath()
 
-        if fn.endswith(".jpg"):
-            a = QPixmap(QSize(100, 100))
-            a = a.scaledToHeight(125, Qt.FastTransformation)
-            a.load(fn)
-            return QIcon(a)
+        if fn.endswith(".jpg") or fn.endswith(".png"):
+            th = QPixmap(QSize(100, 100))
+            th = th.scaledToHeight(125, Qt.FastTransformation)
+            th.load(fn)
+            return QIcon(th)
         else:
             return super().icon(type)

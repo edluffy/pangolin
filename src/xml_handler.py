@@ -7,7 +7,7 @@ from PyQt5.QtCore import QPointF
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox
 
-from item import PangoLabelGraphic, PangoLabelItem, PangoPathItem, PangoPolyItem, PangoRectItem
+from item import PangoLabelGraphic, PangoLabelItem, PangoPathItem, PangoPolyItem, PangoBboxItem
 
 class Xml_Handler():
     def __init__(self, model):

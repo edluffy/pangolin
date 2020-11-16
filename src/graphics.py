@@ -1,9 +1,9 @@
 from PyQt5.QtCore import QEvent, QLineF, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygonF, QTransform
 from PyQt5.QtWidgets import (QAction, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPixmapItem,
-                             QGraphicsScene, QGraphicsView, QMenu, QUndoCommand, QUndoStack)
+                             QGraphicsScene, QGraphicsView, QMenu, QUndoCommand, QUndoCommand, QUndoStack)
 
-from item import PangoGraphic, PangoPathGraphic, PangoPolyGraphic, PangoRectGraphic
+from item import PangoBboxGraphic, PangoGraphic, PangoPathGraphic, PangoPolyGraphic, PangoBboxItem
 from utils import pango_get_icon, pango_gfx_change_debug, pango_item_role_debug
 
 from random import randint
@@ -18,7 +18,7 @@ class PangoGraphicsScene(QGraphicsScene):
         self.stack = QUndoStack()
         self.fpath = None
         self.active_label = PangoGraphic()
-        self.active_shape = PangoGraphic()
+        self.active_com = QUndoCommand()
 
         self.tool = None
         self.tool_size = 10
@@ -46,14 +46,13 @@ class PangoGraphicsScene(QGraphicsScene):
         painter.drawPixmap(0, 0, px)
 
     def reset_com(self):
-        if type(self.active_shape) is PangoPolyGraphic\
-        and not self.active_shape.closed:
-            self.unravel_last_shape()
+        if hasattr(self.active_com, "gfx"):
+            if type(self.active_com.gfx) is PangoPolyGraphic and not self.active_com.gfx.closed:
+                self.unravel_active_com()
+        self.active_com = None
 
-        self.active_shape = PangoGraphic()
-
-    # Undo all commands for last shape (including creation)
-    def unravel_last_shape(self):
+    # Undo all commands for active shape (including creation)
+    def unravel_active_com(self):
         while type(self.stack.command(self.stack.index()-1))\
                 is not CreateShape:
             self.stack.undo()
@@ -61,44 +60,74 @@ class PangoGraphicsScene(QGraphicsScene):
 
         self.stack.undo() # Remove CreateShape
         self.stack.command(self.stack.index()).setObsolete(True)
+
         self.stack.push(QUndoCommand()) # Refresh changes made to stack
+        self.stack.undo()
 
         print(self.stack.command(self.stack.index()))
 
     def event(self, event):
-        if self.tool == "Pan":
+        super().event(event)
+
+        if self.tool == "Lasso":
             self.select_handler(event)
-            return True
+            return False
         elif self.tool == "Path":
             self.path_handler(event)
-            return True
+            return False
         elif self.tool == "Poly":
             self.poly_handler(event)
-            return True
+            return False
+        elif self.tool == "Rect":
+            self.bbox_handler(event)
+            return False
         else:
             return False
-    
+
     def select_handler(self, event):
         if event.type() == QEvent.GraphicsSceneMousePress:
             gfx = self.itemAt(event.scenePos(), QTransform())
-            if gfx is not None:
-                if gfx.parentItem() != self.active_label:
-                    pass
+            if hasattr(gfx, "points") and event.buttons() & Qt.LeftButton:
+                distances = []
+                for point in gfx.points:
+                    distances.append(QLineF(point, event.scenePos()).length())
 
+                if min(distances) < 20:
+                    idx = distances.index(min(distances))
+
+                    self.stack.beginMacro("Moved point "+str(idx)+" in "+gfx.name)
+                    self.active_com = MovePoint(event.scenePos(), idx, gfx)
+                    self.stack.push(self.active_com)        
+
+        elif event.type() == QEvent.GraphicsSceneMouseMove:
+            if event.buttons() & Qt.LeftButton and type(self.active_com) is MovePoint:
+                idx = self.active_com.idx
+                gfx = self.active_com.gfx
+                self.active_com = MovePoint(event.scenePos(), idx, gfx)
+                self.stack.push(self.active_com)        
+
+        elif event.type() == QEvent.GraphicsSceneMouseRelease:
+            if type(self.active_com) is MovePoint:
+                self.stack.endMacro()
+                self.reset_com()
 
     def path_handler(self, event):
         if event.type() == QEvent.GraphicsSceneMousePress:
-            if type(self.active_shape) is not PangoPathGraphic:
-                self.stack.push(CreateShape(PangoPathGraphic, 
-                    {'pos': event.scenePos(), 'width': self.tool_size}, self.active_label))
+            if self.active_com is None or type(self.active_com.gfx) is not PangoPathGraphic:
+                self.active_com = CreateShape(
+                    PangoPathGraphic, 
+                    {'pos': event.scenePos(), 'width': self.tool_size}, self.active_label)
+                self.stack.push(self.active_com)
 
-            self.stack.beginMacro("Added stroke to "+self.active_shape.name)
-            self.stack.push(ExtendPath(event.scenePos(), "move", self.active_shape))
+            self.stack.beginMacro("Added stroke to "+self.active_com.gfx.name)
+            self.active_com = ExtendPath(event.scenePos(), "move", self.active_com.gfx)
+            self.stack.push(self.active_com)
 
         elif event.type() == QEvent.GraphicsSceneMouseMove:
             self.reticle.setPos(event.scenePos())
-            if event.buttons() & Qt.LeftButton and type(self.active_shape) is PangoPathGraphic:
-                self.stack.push(ExtendPath(event.scenePos(), "line", self.active_shape))
+            if event.buttons() & Qt.LeftButton and type(self.active_com.gfx) is PangoPathGraphic:
+                self.active_com = ExtendPath(event.scenePos(), "line", self.active_com.gfx)
+                self.stack.push(self.active_com)
 
         elif event.type() == QEvent.GraphicsSceneMouseRelease:
             self.stack.endMacro()
@@ -106,95 +135,44 @@ class PangoGraphicsScene(QGraphicsScene):
 
     def poly_handler(self, event):
         if event.type() == QEvent.GraphicsSceneMousePress:
-            if type(self.active_shape) is not PangoPolyGraphic:
-                self.stack.push(
-                        CreateShape(PangoPolyGraphic, {'pos': event.scenePos()}, self.active_label))
+            if self.active_com is None or type(self.active_com.gfx) is not PangoPolyGraphic:
+                self.active_com = CreateShape(
+                        PangoPolyGraphic, {'pos': event.scenePos()}, self.active_label)
+                self.stack.push(self.active_com)
 
-            if not self.active_shape.closed:
-                self.stack.push(ExtendPoly(event.scenePos(), self.active_shape))
+
+            if not self.active_com.gfx.closed:
+                self.active_com = ExtendPoly(event.scenePos(), self.active_com.gfx)
+                self.stack.push(self.active_com)
+
+    def bbox_handler(self, event):
+        if event.type() == QEvent.GraphicsSceneMousePress:
+            if self.active_com is None or type(self.active_com.gfx) is not PangoBboxGraphic:
+                self.active_com = CreateShape(
+                        PangoBboxGraphic, {'pos': event.scenePos()}, self.active_label)
+                self.stack.push(self.active_com)
+
+                self.stack.beginMacro("Finished "+self.active_com.gfx.name)
+                self.active_com = ExtendBbox(event.scenePos(), 0, self.active_com.gfx)
+                self.stack.push(self.active_com)        
+
 
         elif event.type() == QEvent.GraphicsSceneMouseMove:
-            pass
+            if event.buttons() & Qt.LeftButton and type(self.active_com.gfx) is PangoBboxGraphic:
+                self.active_com = ExtendBbox(event.scenePos(), 1, self.active_com.gfx)
+                self.stack.push(self.active_com)        
 
         elif event.type() == QEvent.GraphicsSceneMouseRelease:
-            pass
+            if type(self.active_com) is ExtendBbox:
+                self.stack.endMacro()
 
+                ps = self.active_com.gfx.points
+                if ps[0] == QPointF() or ps[1] == QPointF() or\
+                QLineF(ps[0], ps[1]).length() <= self.active_com.gfx.dynamic_width()*2:
+                    self.unravel_active_com()
+                self.reset_com()
 
-            #gfx = self.itemAt(pos, QTransform())
-            #if hasattr(gfx, "points"):
-            #    distances = []
-            #    for point in gfx.points:
-            #        distances.append(QLineF(point, pos).length())
-
-            #    if min(distances) < 20:
-            #        idx = distances.index(min(distances))
-
-            #        ## START MOVE POINT MACRO
-            #        self.c_stack.beginMacro(
-            #                "Moved point "+str(idx)+" in "+self.gfx.name)
-            #        self.last_com = MovePointShape(gfx, idx, pos)
-            #        self.c_stack.push(self.last_com)        
-
-class UndoCommand(QUndoCommand):
-    """
-    For pickling
-    """
-    def __init__(self, text="test", parent=None):
-        QUndoCommand.__init__(self, text, parent)
-        self.__parent = parent
-        self.__initialized = True
-
-        # defined and initialized in __setstate__
-        # self.__child_states = {}
-
-    def __getstate__(self):
-        return {
-            **{k: v for k, v in self.__dict__.items()},
-            '_UndoCommand__initialized': False,
-            '_UndoCommand__text': self.text(),
-            '_UndoCommand__children':
-                [self.child(i) for i in range(self.childCount())]
-        }
-
-    def __setstate__(self, state):
-        if hasattr(self, '_UndoCommand__initialized') and \
-                self.__initialized:
-            return
-
-        text = state['_UndoCommand__text']
-        parent = state['_UndoCommand__parent']  # type: UndoCommand
-
-        if parent is not None and \
-                (not hasattr(parent, '_UndoCommand__initialized') or
-                 not parent.__initialized):
-            # will be initialized in parent's __setstate__
-            if not hasattr(parent, '_UndoCommand__child_states'):
-                setattr(parent, '_UndoCommand__child_states', {})
-            parent.__child_states[self] = state
-            return
-
-        # init must be called on unpickle-time to recreate Qt object
-        UndoCommand.__init__(self, text, parent)
-        for child in state['_UndoCommand__children']:
-            child.__setstate__(self.__child_states[child])
-
-        self.__dict__ = {k: v for k, v in state.items()}
-
-    @staticmethod
-    def from_QUndoCommand(qc: QUndoCommand, parent=None):
-        if type(qc) == QUndoCommand:
-            qc.__class__ = UndoCommand
-            qc.__initialized = True
-
-        qc.__parent = parent
-
-        children = [qc.child(i) for i in range(qc.childCount())]
-        for child in children:
-            UndoCommand.from_QUndoCommand(child, parent=qc)
-
-        return qc
-
-class CreateShape(UndoCommand):
+class CreateShape(QUndoCommand):
     def __init__(self, clss, data, p_gfx):
         super().__init__()
         self.p_gfx = p_gfx
@@ -203,8 +181,11 @@ class CreateShape(UndoCommand):
         # Expected data:
         # PangoPathGraphic - 'pos', 'width'
         # PangoPolyGraphic - 'pos' 
+        # PangoBboxGraphic - 'pos' 
 
         self.gfx = self.clss()
+
+    def redo(self):
         self.gfx.setParentItem(self.p_gfx)
         self.gfx.name = self.shape_name()+" at "+self.shape_coords()
         self.gfx.visible = True
@@ -214,18 +195,10 @@ class CreateShape(UndoCommand):
 
         self.setText("Created "+self.shape_name()+" at "+self.shape_coords())
 
-    def redo(self):
-        scene = self.p_gfx.scene()
-
-        scene.addItem(self.gfx)
-        scene.active_shape = self.gfx
-
     def undo(self):
         scene = self.p_gfx.scene()
-
         scene.removeItem(self.gfx)
         scene.gfx_removed.emit(self.gfx)
-        #del self.gfx
 
     def shape_name(self):
         return self.clss.__name__.replace("Pango", "").replace("Graphic", "")
@@ -234,7 +207,7 @@ class CreateShape(UndoCommand):
         return "("+str(round(self.data["pos"].x()))\
               +", "+str(round(self.data["pos"].y()))+")"
 
-class ExtendPath(UndoCommand):
+class ExtendPath(QUndoCommand):
     def __init__(self, pos, motion, gfx):
         super().__init__()
         self.gfx = gfx
@@ -251,7 +224,7 @@ class ExtendPath(UndoCommand):
         _, _ = self.gfx.strokes.pop()
         self.gfx.update()
 
-class ExtendPoly(UndoCommand):
+class ExtendPoly(QUndoCommand):
     def __init__(self, pos, gfx):
         super().__init__()
         self.gfx = gfx
@@ -260,8 +233,9 @@ class ExtendPoly(UndoCommand):
     def redo(self):
         self.gfx.prepareGeometryChange()
         if len(self.gfx.points) > 1: # Check for closure
-            if QLineF(self.gfx.points[0], self.pos).length() <= self.gfx.w:
+            if QLineF(self.gfx.points[0], self.pos).length() <= self.gfx.dynamic_width()*2:
                 self.gfx.closed = True
+                self.gfx.scene().gfx_changed.emit(self.gfx, QGraphicsItem.ItemMatrixChange)
 
         if self.gfx.closed:
             self.setText("Finished "+self.gfx.name)
@@ -280,7 +254,27 @@ class ExtendPoly(UndoCommand):
             _ = self.gfx.points.pop()
         self.gfx.update()
 
-class MovePointShape(UndoCommand):
+class ExtendBbox(QUndoCommand):
+    def __init__(self, pos, idx, gfx):
+        super().__init__()
+        self.gfx = gfx
+        self.pos = pos
+        self.idx = idx
+
+    def redo(self):
+        self.gfx.prepareGeometryChange()
+        p = self.pos
+        self.gfx.points[self.idx] = p
+        self.setText("Extended "+self.gfx.name+" to ("
+                +str(round(p.x()))+", "+str(round(p.y()))+")")
+        self.gfx.update()
+
+    def undo(self):
+        self.gfx.prepareGeometryChange()
+        self.gfx.points[self.idx] = QPointF()
+        self.gfx.update()
+
+class MovePoint(QUndoCommand):
     def __init__(self, pos, idx, gfx):
         super().__init__()
         self.gfx = gfx
@@ -298,24 +292,6 @@ class MovePointShape(UndoCommand):
         self.gfx.points[self.idx] = self.old_pos
         self.gfx.update()
 
-
-class MovePointPoly(UndoCommand):
-    def __init__(self, gfx, p_idx, pos):
-        super().__init__()
-        self.gfx = gfx
-        self.pos = pos
-        self.p_idx = p_idx
-
-    def redo(self):
-        self.old_pos = self.gfx.points[self.p_idx]
-        self.gfx.prepareGeometryChange()
-        self.gfx.points[self.p_idx] = self.pos
-        self.gfx.update()
-
-    def undo(self):
-        self.gfx.prepareGeometryChange()
-        self.gfx.points[self.p_idx] = self.old_pos
-        self.gfx.update()
 
 class PangoGraphicsView(QGraphicsView):
     def __init__(self, parent=None):
