@@ -102,8 +102,7 @@ class PangoToolBarWidget(QToolBar):
         self.pan_action = QAction("Pan")
         self.lasso_action = QAction("Lasso")
         self.path_action = QAction("Path")
-        self.filled_path_action = QAction("Filled Path")
-        self.rect_action = QAction("Rect")
+        self.bbox_action = QAction("Bbox")
         self.poly_action = QAction("Poly")
 
         self.action_group = QActionGroup(self)
@@ -113,8 +112,7 @@ class PangoToolBarWidget(QToolBar):
         self.action_group.addAction(self.pan_action)
         self.action_group.addAction(self.lasso_action)
         self.action_group.addAction(self.path_action)
-        self.action_group.addAction(self.filled_path_action)
-        self.action_group.addAction(self.rect_action)
+        self.action_group.addAction(self.bbox_action)
         self.action_group.addAction(self.poly_action)
 
         for action in self.action_group.actions():

@@ -304,22 +304,6 @@ class PangoBboxGraphic(PangoGraphic):
         if self.points[0] != QPointF() and self.points[1] != QPointF():
             painter.drawRect(QRectF(*self.points))
 
-        font = QFont()
-        font.setPointSizeF(self.dynamic_width()*5)
-
-        painter.setFont(font)
-        painter.setBrush(self.get_brush())
-
-        fm = QFontMetrics(font)
-        w = fm.width(self.parentItem().name)
-        h = fm.height()
-
-
-        text_rect = QRectF(QPointF(self.points[0].x(), self.points[1].y()-h), 
-                QPointF(self.points[0].x()+w, self.points[1].y()))
-        painter.drawRect(text_rect)
-
-
         w = self.dynamic_width()
         if option.state & QStyle.State_MouseOver:
             w += self.dynamic_width()
@@ -327,10 +311,25 @@ class PangoBboxGraphic(PangoGraphic):
         for n in range(0, len(self.points)):
             painter.drawEllipse(self.points[n], w/2, w/2)
 
-        p = self.get_pen()
-        p.setColor(QColor("black"))
-        painter.setPen(p)
-        painter.drawText(QRectF(*self.points), Qt.AlignBottom, self.parentItem().name)
+        font = QFont()
+        font.setPointSizeF(self.dynamic_width()*5)
+        painter.setFont(font)
+        painter.setBrush(self.get_brush())
+
+        fm = QFontMetrics(font)
+        w = fm.width(self.parentItem().name)
+        h = fm.height()
+
+        text_rect = QRectF(QPointF(self.points[0].x(), self.points[1].y()-h), 
+                QPointF(self.points[0].x()+w, self.points[1].y()))
+
+        if text_rect.width() < self.boundingRect().width()/2 and\
+                text_rect.height() < self.boundingRect().height()/2:
+            painter.drawRect(text_rect)
+            p = self.get_pen()
+            p.setColor(QColor("black"))
+            painter.setPen(p)
+            painter.drawText(QRectF(*self.points), Qt.AlignBottom, self.parentItem().name)
 
     def boundingRect(self):
         w = self.dynamic_width()

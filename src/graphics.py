@@ -64,8 +64,6 @@ class PangoGraphicsScene(QGraphicsScene):
         self.stack.push(QUndoCommand()) # Refresh changes made to stack
         self.stack.undo()
 
-        print(self.stack.command(self.stack.index()))
-
     def event(self, event):
         super().event(event)
 
@@ -78,7 +76,7 @@ class PangoGraphicsScene(QGraphicsScene):
         elif self.tool == "Poly":
             self.poly_handler(event)
             return False
-        elif self.tool == "Rect":
+        elif self.tool == "Bbox":
             self.bbox_handler(event)
             return False
         else:
@@ -94,7 +92,6 @@ class PangoGraphicsScene(QGraphicsScene):
 
                 if min(distances) < 20:
                     idx = distances.index(min(distances))
-
                     self.stack.beginMacro("Moved point "+str(idx)+" in "+gfx.name)
                     self.active_com = MovePoint(event.scenePos(), idx, gfx)
                     self.stack.push(self.active_com)        
@@ -103,6 +100,14 @@ class PangoGraphicsScene(QGraphicsScene):
             if event.buttons() & Qt.LeftButton and type(self.active_com) is MovePoint:
                 idx = self.active_com.idx
                 gfx = self.active_com.gfx
+
+                # Prevent inside out bbox
+                if type(gfx) is PangoBboxGraphic:
+                    tl = gfx.points[(1, 0)[idx]]
+                    br = event.scenePos()
+                    if br.x() < tl.x() or br.y() < tl.y():
+                        return
+
                 self.active_com = MovePoint(event.scenePos(), idx, gfx)
                 self.stack.push(self.active_com)        
 
@@ -159,8 +164,12 @@ class PangoGraphicsScene(QGraphicsScene):
 
         elif event.type() == QEvent.GraphicsSceneMouseMove:
             if event.buttons() & Qt.LeftButton and type(self.active_com.gfx) is PangoBboxGraphic:
-                self.active_com = ExtendBbox(event.scenePos(), 1, self.active_com.gfx)
-                self.stack.push(self.active_com)        
+                # Prevent inside out bbox
+                tl = self.active_com.gfx.points[0]
+                br = event.scenePos()
+                if br.x() > tl.x() and br.y() > tl.y():
+                    self.active_com = ExtendBbox(event.scenePos(), 1, self.active_com.gfx)
+                    self.stack.push(self.active_com)        
 
         elif event.type() == QEvent.GraphicsSceneMouseRelease:
             if type(self.active_com) is ExtendBbox:
@@ -310,7 +319,7 @@ class PangoGraphicsView(QGraphicsView):
         elif tool == "Path":
             self.setCursor(Qt.BlankCursor)
             self.setDragMode(QGraphicsView.NoDrag)
-        elif tool == "Rect":
+        elif tool == "Bbox":
             self.setCursor(Qt.CrossCursor)
             self.setDragMode(QGraphicsView.NoDrag)
         elif tool == "Poly":
