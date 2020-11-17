@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QEvent, QLineF, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygonF, QTransform
 from PyQt5.QtWidgets import (QAction, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPixmapItem,
-                             QGraphicsScene, QGraphicsView, QMenu, QUndoCommand, QUndoCommand, QUndoStack)
+                             QGraphicsScene, QGraphicsView, QMenu, QMessageBox, QUndoCommand, QUndoCommand, QUndoStack)
 
 from item import PangoBboxGraphic, PangoGraphic, PangoPathGraphic, PangoPolyGraphic, PangoBboxItem
 from utils import pango_get_icon, pango_gfx_change_debug, pango_item_role_debug
@@ -163,13 +163,16 @@ class PangoGraphicsScene(QGraphicsScene):
 
 
         elif event.type() == QEvent.GraphicsSceneMouseMove:
-            if event.buttons() & Qt.LeftButton and type(self.active_com.gfx) is PangoBboxGraphic:
-                # Prevent inside out bbox
-                tl = self.active_com.gfx.points[0]
-                br = event.scenePos()
-                if br.x() > tl.x() and br.y() > tl.y():
-                    self.active_com = ExtendBbox(event.scenePos(), 1, self.active_com.gfx)
-                    self.stack.push(self.active_com)        
+            if event.buttons() & Qt.LeftButton:  
+                if hasattr(self.active_com, "gfx") and\
+                    type(self.active_com.gfx) is PangoBboxGraphic:
+
+                    # Prevent inside out bbox
+                    tl = self.active_com.gfx.points[0]
+                    br = event.scenePos()
+                    if br.x() > tl.x() and br.y() > tl.y():
+                        self.active_com = ExtendBbox(event.scenePos(), 1, self.active_com.gfx)
+                        self.stack.push(self.active_com)        
 
         elif event.type() == QEvent.GraphicsSceneMouseRelease:
             if type(self.active_com) is ExtendBbox:
@@ -202,6 +205,8 @@ class CreateShape(QUndoCommand):
             if attr != "pos":
                 setattr(self.gfx, attr, val)
 
+        self.gfx.scene().clearSelection()
+        self.gfx.setSelected(True)
         self.setText("Created "+self.shape_name()+" at "+self.shape_coords())
 
     def undo(self):
@@ -327,8 +332,15 @@ class PangoGraphicsView(QGraphicsView):
             self.setDragMode(QGraphicsView.NoDrag)
 
     def delete_selected(self):
-        for gfx in self.scene().selectedItems():
-            self.scene().removeItem(gfx)
+        res = QMessageBox().question( self, "Unsaved shape commands", 
+                "Command history will be cleaned, are you sure you want to continue?")
+
+        if res == QMessageBox.Yes:
+            for gfx in self.scene().selectedItems():
+                self.scene().removeItem(gfx)
+                self.scene().gfx_removed.emit(gfx)
+                self.scene().stack.clear()
+                self.scene().reset_com()
 
     def paintEvent(self, event):
         super().paintEvent(event)

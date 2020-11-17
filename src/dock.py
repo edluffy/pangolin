@@ -37,7 +37,7 @@ class PangoUndoWidget(PangoDockWidget):
         self.setFixedWidth(250)
         self.undo_view = undo_view
 
-        self.undo_view.setCleanIcon(pango_get_icon("save_masks"))
+        self.undo_view.setCleanIcon(pango_get_icon("save"))
         self.undo_view.setEmptyLabel("Last save state")
 
         self.setWidget(self.undo_view)

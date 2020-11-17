@@ -97,7 +97,10 @@ class PangoModelSceneInterface(object):
         return matches
     
     def item_selection_changed(self):
-        new = [self.map[QPersistentModelIndex(idx)] for idx in self.tree.selectedIndexes()]
+        try:
+            new = [self.map[QPersistentModelIndex(idx)] for idx in self.tree.selectedIndexes()]
+        except KeyError:
+            return
         old = self.scene.selectedItems()
 
         for gfx in set(new)-set(old):
@@ -107,7 +110,10 @@ class PangoModelSceneInterface(object):
             gfx.setSelected(False)
 
     def gfx_selection_changed(self):
-        new = [QModelIndex(self.map.inverse[gfx]) for gfx in self.scene.selectedItems()]
+        try:
+            new = [QModelIndex(self.map.inverse[gfx]) for gfx in self.scene.selectedItems()]
+        except KeyError:
+            return
         old = self.tree.selectedIndexes()
 
         for idx in set(new)-set(old):
@@ -118,6 +124,7 @@ class PangoModelSceneInterface(object):
 
     def item_changed(self, top_idx, bottom_idx, roles):
         item = self.model.itemFromIndex(top_idx)
+        #print("Item change: ", pango_item_role_debug(roles[0]))
         try:
             gfx = self.map[item.key()]
         except KeyError:
@@ -138,6 +145,8 @@ class PangoModelSceneInterface(object):
 
         # Sync properties 
         for k, v in gfx.getattrs().items():
+            if k == "visible":
+                continue # Glitch fix
             if not(v is None or v==[] or v=="" or v==0 or (type(v) is QColor and v==QColor())):
                 setattr(item, k, v)
 

@@ -11,6 +11,8 @@ class PangoItem(QStandardItem):
         self.setCheckable(True)
         self.setEditable(False)
 
+        self.visible = True
+
     def key(self):
         return QPersistentModelIndex(self.index())
 
