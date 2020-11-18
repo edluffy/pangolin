@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QModelIndex, QPoint, QSize, Qt, pyqtSignal, QSortFilterProxyModel
-from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtGui import QColor, QFont, QIcon
 from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox,
                              QLabel, QSizePolicy, QSpinBox, QStatusBar, QStyle, QStyleOptionComboBox, QToolBar, QWidget)
 from graphics import PangoGraphicsScene
@@ -111,9 +111,9 @@ class PangoToolBarWidget(QToolBar):
 
         self.action_group.addAction(self.pan_action)
         self.action_group.addAction(self.lasso_action)
-        self.action_group.addAction(self.path_action)
         self.action_group.addAction(self.bbox_action)
         self.action_group.addAction(self.poly_action)
+        self.action_group.addAction(self.path_action)
 
         for action in self.action_group.actions():
             icon = pango_get_icon(action.text())
@@ -159,17 +159,24 @@ class PangoToolBarWidget(QToolBar):
         dialog.setOption(QColorDialog.ShowAlphaChannel, False)
         row = self.label_select.currentIndex()
         color = dialog.getColor()
+        if color == QColor():
+            return
+        name = self.label_select.model().item(row, 0).name
 
-        label_item = self.label_select.model().item(row, 0)
-        label_item.color = color
-
-        for n in range(0, label_item.rowCount()):
-            child = label_item.child(n, 0)
-            child.color = color
+        for row in range(0, self.label_select.count()):
+            label = self.label_select.model().item(row, 0)
+            if label.name == name:
+                label.color = color
+                label.set_icon()
+                for n in range(0, label.rowCount()):
+                    child = label.child(n, 0)
+                    child.set_icon()
 
         # Refresh label (for scene reticle etc.)
         self.label_select.setCurrentIndex(0)
         self.label_select.setCurrentIndex(row)
+
+        self.label_select.color_display.update()
 
     def filter_label_select(self, new_fpath):
         for row in range(0, self.label_select.count()):
@@ -203,13 +210,22 @@ class PangoToolBarWidget(QToolBar):
             self.label_select.currentIndexChanged.emit(self.label_select.currentIndex())
 
     def del_label(self):
-        row = self.label_select.currentIndex()
-        self.label_select.model().removeRow(row)
+        self.scene.clear_changes.emit()
+        if self.scene.stack.count() == 0:
+            row = self.label_select.currentIndex()
+            name = self.label_select.model().item(row, 0).name
 
-        if self.label_select.model().rowCount() == 0:
-            self.label_select.setEnabled(False)
-            self.action_group.setEnabled(False)
-            self.color_action.setEnabled(False)
+            for i in range(0, self.label_select.count()):
+                label = self.label_select.model().item(i, 0)
+                if label.name == name:
+                    for j in range(0, label.rowCount()):
+                        self.label_select.model().removeRow(j, label.index())
+                    self.label_select.model().removeRow(i)
+
+            if self.label_select.model().rowCount() == 0:
+                self.label_select.setEnabled(False)
+                self.action_group.setEnabled(False)
+                self.color_action.setEnabled(False)
 
     def set_tool(self, action):
         if self.scene is None:
@@ -244,10 +260,10 @@ class PangoToolBarWidget(QToolBar):
 
     def set_scene(self, scene):
         if self.scene is not None:
-            self.scene.tool_reset.disconnect(self.reset_tool)
+            self.scene.clear_tool.disconnect(self.reset_tool)
 
         self.scene = scene
-        self.scene.tool_reset.connect(self.reset_tool)
+        self.scene.clear_tool.connect(self.reset_tool)
         self.reset_tool()
 
         if not self.add_action.isEnabled() or self.del_action.isEnabled():

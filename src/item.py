@@ -28,7 +28,7 @@ class PangoItem(QStandardItem):
         return {
             k: getattr(self, k) 
             for k in ["name", "visible", "fpath", "color", 
-                "strokes", "width", "points", "closed"] 
+                "path", "width", "poly", "rect"] 
             if hasattr(self, k)
         }
     
@@ -90,18 +90,17 @@ class PangoLabelItem(PangoItem):
 class PangoPathItem(PangoItem):
     def __init__(self):
         super().__init__()
-        self.strokes = []
-        self.width = 0
+        self.path = QPainterPath()
 
 class PangoPolyItem(PangoItem):
     def __init__(self):
         super().__init__()
-        self.points = []
-        self.closed = False
+        self.poly = QPolygonF()
 
 class PangoBboxItem(PangoItem):
     def __init__(self):
         super().__init__()
+        self.rect = QRectF()
 
 class PangoGraphic(QGraphicsItem):
     def __init__(self, parent=None):
@@ -119,7 +118,7 @@ class PangoGraphic(QGraphicsItem):
         return {
             k: getattr(self, k) 
             for k in ["name", "visible", "fpath", "color", 
-                "strokes", "width", "points", "closed"] 
+                "path", "width", "poly", "rect"] 
             if hasattr(self, k)
         }
 
@@ -149,9 +148,7 @@ class PangoGraphic(QGraphicsItem):
         pen = QPen()
         pen.setCapStyle(Qt.RoundCap)
         pen.setJoinStyle(Qt.RoundJoin)
-        if hasattr(self, "width"):
-            pen.setWidth(self.width)
-        elif hasattr(self, "dynamic_width"):
+        if hasattr(self, "dynamic_width"):
             pen.setWidth(self.dynamic_width())
 
         p_gfx = self.parentItem()
@@ -219,64 +216,50 @@ class PangoLabelGraphic(PangoGraphic):
 class PangoPathGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.strokes = []
-        self.width = 0
-
-    def path(self):
-        if len(self.strokes) > 1:
-            path = QPainterPath(self.strokes[0][0])
-            for pos, motion in self.strokes[1:]:
-                if motion == "line":
-                    path.lineTo(pos)
-                else:
-                    path.moveTo(pos)
-            return path
-        else:
-            return QPainterPath()
-
+        self.path = QPainterPath()
 
     def paint(self, painter, option, widget):
         super().paint(painter, option, widget)
         painter.setPen(self.get_pen())
-        painter.drawPath(self.path())
+        painter.drawPath(self.path)
 
     def boundingRect(self):
         return self.shape().controlPointRect()
 
     def shape(self):
         st = QPainterPathStroker(self.get_pen())
-        return st.createStroke(self.path())
+        return st.createStroke(self.path)
 
 class PangoPolyGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.points = []
-        self.closed = False
+        self.poly = QPolygonF()
 
     def dynamic_width(self):
         if self.scene() is not None:
             sz = self.scene().sceneRect().size()
             return (sz.width()+sz.height())/350
         return 10
-
+    
     def paint(self, painter, option, widget):
         super().paint(painter, option, widget)
         painter.setPen(self.get_pen())
         painter.setBrush(self.get_brush())
 
-        if self.closed:
-            painter.drawPolygon(QPolygonF(self.points))
+        if self.poly.isClosed():
+            painter.drawPolygon(self.poly)
         else:
-            for n in range(0, len(self.points)-1):
-                painter.drawLine(self.points[n], self.points[n+1])
+            for n in range(0, self.poly.count()-1):
+                painter.drawLine(self.poly.value(n), self.poly.value(n+1))
 
-        painter.setOpacity(1)
+
         w = self.dynamic_width()
-        if option.state & QStyle.State_MouseOver or not self.closed:
+        if option.state & QStyle.State_MouseOver or not self.poly.isClosed():
             w += self.dynamic_width()/2
 
-        for n in range(0, len(self.points)):
-            painter.drawEllipse(self.points[n], w/2, w/2)
+        painter.setOpacity(1)
+        for n in range(0, self.poly.count()):
+            painter.drawEllipse(self.poly.value(n), w/2, w/2)
 
     def boundingRect(self):
         w = self.dynamic_width()
@@ -284,13 +267,13 @@ class PangoPolyGraphic(PangoGraphic):
 
     def shape(self):
         path = QPainterPath()
-        path.addPolygon(QPolygonF(self.points))
+        path.addPolygon(self.poly)
         return self.shape_from_path(path, self.get_pen())
 
 class PangoBboxGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.points = [QPointF(), QPointF()]
+        self.rect = QRectF()
 
     def dynamic_width(self):
         if self.scene() is not None:
@@ -301,18 +284,21 @@ class PangoBboxGraphic(PangoGraphic):
     def paint(self, painter, option, widget):
         super().paint(painter, option, widget)
         painter.setPen(self.get_pen())
+
+        painter.drawRect(self.rect)
+        self.paint_text(painter)
+
         painter.setOpacity(1)
-
-        if self.points[0] != QPointF() and self.points[1] != QPointF():
-            painter.drawRect(QRectF(*self.points))
-
         w = self.dynamic_width()
         if option.state & QStyle.State_MouseOver:
             w += self.dynamic_width()
 
-        for n in range(0, len(self.points)):
-            painter.drawEllipse(self.points[n], w/2, w/2)
+        painter.drawEllipse(self.rect.topLeft, w/2, w/2)
+        painter.drawEllipse(self.rect.topRight, w/2, w/2)
+        painter.drawEllipse(self.rect.bottomLeft, w/2, w/2)
+        painter.drawEllipse(self.rect.bottomRight, w/2, w/2)
 
+    def paint_text(self, painter):
         font = QFont()
         font.setPointSizeF(self.dynamic_width()*5)
         painter.setFont(font)
@@ -322,16 +308,17 @@ class PangoBboxGraphic(PangoGraphic):
         w = fm.width(self.parentItem().name)
         h = fm.height()
 
-        text_rect = QRectF(QPointF(self.points[0].x(), self.points[1].y()-h), 
-                QPointF(self.points[0].x()+w, self.points[1].y()))
-
-        if text_rect.width() < self.boundingRect().width()/2 and\
-                text_rect.height() < self.boundingRect().height()/2:
-            painter.drawRect(text_rect)
-            p = self.get_pen()
-            p.setColor(QColor("black"))
-            painter.setPen(p)
-            painter.drawText(QRectF(*self.points), Qt.AlignBottom, self.parentItem().name)
+        #text_rect = QRectF(QPointF(self.points[0].x(), self.points[1].y()-h), 
+        #        QPointF(self.points[0].x()+w, self.points[1].y()))
+        #
+        #
+        #if text_rect.width() < self.boundingRect().width()/2 and\
+        #        text_rect.height() < self.boundingRect().height()/2:
+        #    painter.drawRect(text_rect)
+        #    p = self.get_pen()
+        #    p.setColor(QColor("black"))
+        #    painter.setPen(p)
+        #    painter.drawText(QRectF(*self.points), Qt.AlignBottom, self.parentItem().name)
 
     def boundingRect(self):
         w = self.dynamic_width()
@@ -339,7 +326,6 @@ class PangoBboxGraphic(PangoGraphic):
 
     def shape(self):
         path = QPainterPath()
-        if self.points[0] != QPointF() and self.points[1] != QPointF():
-            path.addRect(QRectF(*self.points))
+        path.addRect(self.rect)
         return self.shape_from_path(path, self.get_pen())
 

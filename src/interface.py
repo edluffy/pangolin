@@ -145,7 +145,7 @@ class PangoModelSceneInterface(object):
 
         # Sync properties 
         for k, v in gfx.getattrs().items():
-            if k == "visible":
+            if k == "visible" or k == "color":
                 continue # Glitch fix
             if not(v is None or v==[] or v=="" or v==0 or (type(v) is QColor and v==QColor())):
                 setattr(item, k, v)
@@ -158,6 +158,8 @@ class PangoModelSceneInterface(object):
 
         gfx = self.map[item.key()]
         _ = self.map.pop(item.key())
+        if gfx.scene() is not None:
+            gfx.scene().removeItem(gfx)
         del gfx
 
     def gfx_removed(self, gfx):

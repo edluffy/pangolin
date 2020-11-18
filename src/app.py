@@ -53,6 +53,7 @@ class MainWindow(QMainWindow):
 
         self.file_widget.file_view.selectionModel().currentChanged.connect(self.switch_image)
         self.tool_bar.label_select.currentIndexChanged.connect(self.switch_label)
+        self.interface.scene.clear_changes.connect(self.unsaved_commands_dialog)
 
         # Layouts
         self.bg = QWidget()
@@ -76,13 +77,14 @@ class MainWindow(QMainWindow):
         
     def switch_label(self, row):
         item = self.interface.model.item(row)
-        try:
-            self.interface.scene.active_label = self.interface.map[item.key()]
-        except KeyError:
-            return
+        if item is not None:
+            try:
+                self.interface.scene.active_label = self.interface.map[item.key()]
+            except KeyError:
+                return
 
-        self.interface.scene.update_reticle()
-        self.interface.scene.reset_com()
+            self.interface.scene.update_reticle()
+            self.interface.scene.reset_com()
 
     def switch_image(self, c_idx, p_idx):
         c_fpath = self.file_widget.file_model.filePath(c_idx)
@@ -139,7 +141,7 @@ class MainWindow(QMainWindow):
         if pfile != "":
             # Save changes?
             if self.interface.map:
-                result = self.unsaved_changes_dialog()
+                result = self.unsaved_files_dialog()
                 if result == QMessageBox.Cancel:
                     return
                 elif result == QMessageBox.Save:
@@ -167,13 +169,22 @@ class MainWindow(QMainWindow):
                     break
 
 
-    def unsaved_changes_dialog(self):
+    def unsaved_files_dialog(self):
         dialog = QMessageBox()
         dialog.setText("The project has been modified.")
         dialog.setInformativeText("Do you want to save your changes?")
         dialog.setStandardButtons(QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
         dialog.setDefaultButton(QMessageBox.Save)
         return dialog.exec()
+
+    def unsaved_commands_dialog(self):
+        res = QMessageBox().question(self.parent(), "Unsaved shape commands", 
+                "Command history will be cleaned, are you sure you want to continue?")
+        if res == QMessageBox.Yes:
+            for stack in self.change_stacks.values():
+                stack.clear()
+        return res
+
 
     def export_warning_dialog(self):
         pass
