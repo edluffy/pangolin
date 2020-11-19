@@ -1,4 +1,3 @@
-import sys
 from PyQt5.QtCore import QEvent, QLineF, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygonF, QTransform
 from PyQt5.QtWidgets import (QAction, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPixmapItem,
@@ -6,8 +5,6 @@ from PyQt5.QtWidgets import (QAction, QGraphicsEllipseItem, QGraphicsItem, QGrap
 
 from item import PangoBboxGraphic, PangoGraphic, PangoPathGraphic, PangoPolyGraphic, PangoBboxItem
 from utils import pango_get_icon, pango_gfx_change_debug, pango_item_role_debug
-
-from random import randint
 
 class PangoGraphicsScene(QGraphicsScene):
     gfx_changed = pyqtSignal(PangoGraphic, QGraphicsItem.GraphicsItemChange)
@@ -57,10 +54,18 @@ class PangoGraphicsScene(QGraphicsScene):
     def unravel_shape(self, gfx):
         for i in range(self.stack.count()-1, -1, -1):
             com = self.stack.command(i)
-            if com.gfx == gfx:
-                com.setObsolete(True)
+            if type(com) is QUndoCommand:
+                for j in range(0, com.childCount()):
+                    sub_com = com.child(j)
+                    if sub_com.gfx == gfx:
+                        com.setObsolete(True)
+            else:
+                if com.gfx == gfx:
+                    com.setObsolete(True)
+
                 if type(com) == CreateShape:
                     break # Reached shape creation
+
         self.stack.setIndex(0)
         self.stack.setIndex(self.stack.count())
 
@@ -106,13 +111,6 @@ class PangoGraphicsScene(QGraphicsScene):
 
                 elif type(self.active_com.gfx) is PangoBboxGraphic: 
                     pass
-                    # Prevent inside out bbox
-                    #if type(gfx) is PangoBboxGraphic:
-                    #    tl = gfx.points[(1, 0)[idx]]
-                    #    br = event.scenePos()
-                    #    if br.x() < tl.x() or br.y() < tl.y():
-                    #        return
-
 
         elif event.type() == QEvent.GraphicsSceneMouseRelease:
             self.reset_com()
@@ -161,31 +159,32 @@ class PangoGraphicsScene(QGraphicsScene):
         if event.type() == QEvent.GraphicsSceneMousePress:
             if type(self.active_com.gfx) is not PangoBboxGraphic:
                 self.active_com = CreateShape(PangoBboxGraphic, event.scenePos(), self.active_label)
+                self.stack.beginMacro(self.active_com.text())
                 self.stack.push(self.active_com)
 
                 self.active_com = MoveShape(event.scenePos(), self.active_com.gfx, corner="topLeft")
+                self.stack.push(self.active_com)        
+                self.active_com = MoveShape( event.scenePos(), self.active_com.gfx, corner="bottomRight")
                 self.stack.push(self.active_com)        
 
         elif event.type() == QEvent.GraphicsSceneMouseMove:
             if event.buttons() & Qt.LeftButton:  
                 if type(self.active_com.gfx) is PangoBboxGraphic:
-                    pass
-
-                    ## Prevent inside out bbox
-                    #tl = self.active_com.gfx.points[0]
-                    #br = event.scenePos()
-                    #if br.x() > tl.x() and br.y() > tl.y():
-                    #    self.active_com = MoveShape(event.scenePos(), 1, self.active_com.gfx)
-                    #    self.stack.push(self.active_com)        
+                    tl = self.active_com.gfx.rect.topLeft()
+                    br = event.scenePos()
+                    if tl.x() < br.x() and tl.y() < br.y():
+                        self.active_com = MoveShape(
+                                event.scenePos(), self.active_com.gfx, corner="bottomRight")
+                        self.stack.push(self.active_com)        
 
         elif event.type() == QEvent.GraphicsSceneMouseRelease:
-            if type(self.active_com) is MoveShape:
-                pass
-                #ps = self.active_com.gfx.points
-                #if ps[0] == QPointF() or ps[1] == QPointF() or\
-                #QLineF(ps[0], ps[1]).length() <= self.active_com.gfx.dynamic_width()*2:
-                #    self.unravel_shape(self.active_com.gfx)
-                #self.reset_com()
+            if type(self.active_com.gfx) is PangoBboxGraphic:
+                self.stack.endMacro()
+                tl = self.active_com.gfx.rect.topLeft()
+                br = self.active_com.gfx.rect.bottomRight()
+                if QLineF(tl, br).length() < self.active_com.gfx.dynamic_width()*2:
+                    self.unravel_shape(self.active_com.gfx)
+                self.reset_com()
 
 class CreateShape(QUndoCommand):
     def __init__(self, clss, pos, p_gfx):
@@ -195,6 +194,7 @@ class CreateShape(QUndoCommand):
         self.p_gfx = p_gfx
 
         self.gfx = self.clss()
+        self.setText("Created "+self.shape_name()+" at "+self.shape_coords())
 
     def redo(self):
         self.gfx.setParentItem(self.p_gfx)
@@ -203,7 +203,6 @@ class CreateShape(QUndoCommand):
 
         self.gfx.scene().clearSelection()
         self.gfx.setSelected(True)
-        self.setText("Created "+self.shape_name()+" at "+self.shape_coords())
 
     def undo(self):
         scene = self.p_gfx.scene()
@@ -223,6 +222,8 @@ class ExtendShape(QUndoCommand):
         self.gfx = gfx
         self.pos = pos
         self.motion = motion
+        self.setText("Extended "+self.gfx.name+" to ("
+            +str(round(self.pos.x()))+", "+str(round(self.pos.y()))+")")
 
     def redo(self):
         self.gfx.scene().active_com = self
@@ -234,10 +235,8 @@ class ExtendShape(QUndoCommand):
         elif type(self.gfx) is PangoPolyGraphic:
             self.gfx.poly += self.pos
 
+        self.gfx.itemChange(QGraphicsItem.ItemTransformChange, None)
         self.gfx.update()
-
-        self.setText("Extended "+self.gfx.name+" to ("
-            +str(round(self.pos.x()))+", "+str(round(self.pos.y()))+")")
 
     def undo(self):
         self.gfx.scene().active_com = self
@@ -259,6 +258,8 @@ class MoveShape(QUndoCommand):
         self.pos = pos
         self.idx = idx
         self.corner = corner
+        self.setText("Moved point in "+self.gfx.name+" to ("
+            +str(round(self.pos.x()))+", "+str(round(self.pos.y()))+")")
 
     def redo(self):
         self.gfx.scene().active_com = self
@@ -269,13 +270,11 @@ class MoveShape(QUndoCommand):
             self.gfx.poly.replace(self.idx, self.pos)
 
         elif type(self.gfx) is PangoBboxGraphic:
-            self.oldpos = getattr(self.gfx.rect, "corner")
-            getattr(self.gfx.rect, "move"+"corner")(self.pos)
+            self.old_pos = getattr(self.gfx.rect, self.corner)()
+            getattr(self.gfx.rect, "set"+self.corner[0].upper()+self.corner[1:])(self.pos)
 
+        self.gfx.itemChange(QGraphicsItem.ItemTransformChange, None)
         self.gfx.update()
-
-        self.setText("Moved point in "+self.gfx.name+" to ("
-            +str(round(self.pos.x()))+", "+str(round(self.pos.y()))+")")
 
     def undo(self):
         self.gfx.scene().active_com = self
@@ -285,7 +284,7 @@ class MoveShape(QUndoCommand):
             self.gfx.poly.replace(self.idx, self.old_pos)
 
         elif type(self.gfx) is PangoBboxGraphic:
-            getattr(self.gfx.rect, "move"+"corner")(self.old_pos)
+            getattr(self.gfx.rect, "set"+self.corner[0].upper()+self.corner[1:])(self.old_pos)
 
         self.gfx.update()
 

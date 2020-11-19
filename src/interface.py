@@ -123,32 +123,68 @@ class PangoModelSceneInterface(object):
             self.tree.selectionModel().select(idx, QItemSelectionModel.Deselect)
 
     def item_changed(self, top_idx, bottom_idx, roles):
+        if roles is None:
+            return
         item = self.model.itemFromIndex(top_idx)
-        #print("Item change: ", pango_item_role_debug(roles[0]))
+        print("Item change: ", pango_item_role_debug(roles[0]))
+
+        if hasattr(item, "poly"):
+            print(item.poly.value(0))
         try:
             gfx = self.map[item.key()]
         except KeyError:
             gfx = self.create_gfx_from_item(item)
 
         # Sync properties 
-        for k, v in item.getattrs().items():
-            if not(v is None or v==[] or v=="" or (type(v) is QColor and v==QColor())):
-                setattr(gfx, k, v)
+        #for k, v in item.getattrs().items():
+        #    if not(v is None or v==[] or v=="" or (type(v) is QColor and v==QColor())):
+        #        setattr(gfx, k, v)
+
+        if roles[0] is Qt.DisplayRole:
+            if gfx.name is not None:
+                gfx.name = item.name
+        elif roles[0] is Qt.CheckStateRole:
+            if gfx.visible is not None:
+                gfx.visible = item.visible
+        elif roles[0] is Qt.DecorationRole:
+            if gfx.color is not QColor():
+                gfx.color = item.color
 
     def gfx_changed(self, gfx, change):
-        #print("Gfx change: ", pango_gfx_change_debug(change))
+        print("Gfx change: ", pango_gfx_change_debug(change))
         try:
             item = self.model.itemFromIndex(QModelIndex(self.map.inverse[gfx]))
         except KeyError:
             item = self.create_item_from_gfx(gfx)
             item.set_icon()
 
+        if change is QGraphicsItem.ItemToolTipHasChanged:
+            if gfx.name is not None:
+                item.name = gfx.name
+        elif change is QGraphicsItem.ItemVisibleHasChanged:
+            if gfx.visible is not None:
+                item.visible = gfx.visible
+        elif change is QGraphicsItem.ItemTransformChange:
+            if hasattr(gfx, "color"):
+                if gfx.color is not QColor():
+                    item.color = gfx.color
+            if hasattr(gfx, "path"):
+                if gfx.path is not None:
+                    item.path = gfx.path
+            elif hasattr(gfx, "poly"):
+                if gfx.poly is not None:
+                    item.poly = gfx.poly
+            elif hasattr(gfx, "rect"):
+                if gfx.rect is not None:
+                    item.rect = gfx.rect
+
+
         # Sync properties 
-        for k, v in gfx.getattrs().items():
-            if k == "visible" or k == "color":
-                continue # Glitch fix
-            if not(v is None or v==[] or v=="" or v==0 or (type(v) is QColor and v==QColor())):
-                setattr(item, k, v)
+        #for k, v in gfx.getattrs().items():
+        #    if k == "visible" or k == "color":
+        #        continue # Glitch fix
+        #    if not(v is None or v==[] or v=="" or v==0 or (type(v) is QColor and v==QColor())):
+        #        setattr(item, k, v)
 
     def item_removed(self, parent_idx, first, last):
         if parent_idx.isValid():
