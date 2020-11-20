@@ -31,6 +31,10 @@ class PangoItem(QStandardItem):
                 "path", "width", "poly", "rect"] 
             if hasattr(self, k)
         }
+
+    def force_update(self):
+        if self.model() is not None:
+            self.model().dataChanged.emit(self.index(), self.index(), [Qt.UserRole])
     
     @property
     def name(self):
@@ -150,6 +154,8 @@ class PangoGraphic(QGraphicsItem):
         pen.setJoinStyle(Qt.RoundJoin)
         if hasattr(self, "dynamic_width"):
             pen.setWidth(self.dynamic_width())
+        elif hasattr(self, "path"):
+            pen.setWidth(self.path.width)
 
         p_gfx = self.parentItem()
         if p_gfx is not None and hasattr(p_gfx, "color"):
@@ -337,7 +343,6 @@ class PainterPath(QPainterPath):
     def __init__(self):
         super().__init__()
         self.width = None
-
 
     def __getstate__(self):
         d = {}

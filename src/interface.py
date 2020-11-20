@@ -1,11 +1,11 @@
-from PyQt5.QtCore import QItemSelectionModel, QModelIndex, QPersistentModelIndex, Qt
+from PyQt5.QtCore import QItemSelectionModel, QModelIndex, QPersistentModelIndex, QRectF, Qt
 from PyQt5.QtGui import QColor, QStandardItemModel
 from PyQt5.QtWidgets import QGraphicsItem
 
 from bidict import bidict
 from graphics import PangoGraphicsScene
 
-from item import PangoGraphic, PangoItem, PangoLabelGraphic, PangoLabelItem, PangoPathGraphic, PangoPathItem, PangoPolyGraphic, PangoPolyItem, PangoBboxGraphic, PangoBboxItem
+from item import PainterPath, PangoGraphic, PangoItem, PangoLabelGraphic, PangoLabelItem, PangoPathGraphic, PangoPathItem, PangoPolyGraphic, PangoPolyItem, PangoBboxGraphic, PangoBboxItem, PolygonF
 from utils import pango_gfx_change_debug, pango_item_role_debug
 
 """ PangoModelSceneInterface promotes loose coupling by keeping model/view and 
@@ -126,65 +126,40 @@ class PangoModelSceneInterface(object):
         if roles is None:
             return
         item = self.model.itemFromIndex(top_idx)
-        print("Item change: ", pango_item_role_debug(roles[0]))
+        #print("Item change: ", pango_item_role_debug(roles[0]))
 
-        if hasattr(item, "poly"):
-            print(item.poly.value(0))
         try:
             gfx = self.map[item.key()]
         except KeyError:
             gfx = self.create_gfx_from_item(item)
 
         # Sync properties 
-        #for k, v in item.getattrs().items():
-        #    if not(v is None or v==[] or v=="" or (type(v) is QColor and v==QColor())):
-        #        setattr(gfx, k, v)
+        for k, v in item.getattrs().items():
+            if not self.var_empty(v):
+                setattr(gfx, k, v)
 
-        if roles[0] is Qt.DisplayRole:
-            if gfx.name is not None:
-                gfx.name = item.name
-        elif roles[0] is Qt.CheckStateRole:
-            if gfx.visible is not None:
-                gfx.visible = item.visible
-        elif roles[0] is Qt.DecorationRole:
-            if gfx.color is not QColor():
-                gfx.color = item.color
 
     def gfx_changed(self, gfx, change):
-        print("Gfx change: ", pango_gfx_change_debug(change))
+        #print("Gfx change: ", pango_gfx_change_debug(change))
         try:
             item = self.model.itemFromIndex(QModelIndex(self.map.inverse[gfx]))
         except KeyError:
             item = self.create_item_from_gfx(gfx)
             item.set_icon()
 
-        if change is QGraphicsItem.ItemToolTipHasChanged:
-            if gfx.name is not None:
-                item.name = gfx.name
-        elif change is QGraphicsItem.ItemVisibleHasChanged:
-            if gfx.visible is not None:
-                item.visible = gfx.visible
-        elif change is QGraphicsItem.ItemTransformChange:
-            if hasattr(gfx, "color"):
-                if gfx.color is not QColor():
-                    item.color = gfx.color
-            if hasattr(gfx, "path"):
-                if gfx.path is not None:
-                    item.path = gfx.path
-            elif hasattr(gfx, "poly"):
-                if gfx.poly is not None:
-                    item.poly = gfx.poly
-            elif hasattr(gfx, "rect"):
-                if gfx.rect is not None:
-                    item.rect = gfx.rect
-
-
         # Sync properties 
-        #for k, v in gfx.getattrs().items():
-        #    if k == "visible" or k == "color":
-        #        continue # Glitch fix
-        #    if not(v is None or v==[] or v=="" or v==0 or (type(v) is QColor and v==QColor())):
-        #        setattr(item, k, v)
+        for k, v in gfx.getattrs().items():
+            if k == "visible" or k == "color":
+                continue # Glitch fix
+            if not self.var_empty(v):
+                setattr(item, k, v)
+
+    def var_empty(self, v):
+        return v is None or v==[] or v=="" or v==0\
+                or (type(v) is QColor and v==QColor())\
+                or (type(v) is PainterPath and v==PainterPath())\
+                or (type(v) is PolygonF and v==PolygonF())\
+                or (type(v) is QRectF and v==QRectF())
 
     def item_removed(self, parent_idx, first, last):
         if parent_idx.isValid():

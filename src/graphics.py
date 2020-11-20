@@ -94,23 +94,47 @@ class PangoGraphicsScene(QGraphicsScene):
                 min_dx = float("inf")
                 for i in range(0, gfx.poly.count()):
                     dx = QLineF(gfx.poly.value(i), event.scenePos()).length()
-                    min_dx = min(dx, min_dx)
+                    if dx < min_dx:
+                        min_dx = dx
+                        idx = i
 
                 if min_dx < 20:
-                    idx = gfx.poly.index(min_dx)
                     self.active_com = MoveShape(event.scenePos(), gfx, idx=idx)
                     self.stack.push(self.active_com)        
 
             elif type(gfx) is PangoBboxGraphic:
-                pass
+                min_dx = float("inf")
+                for corner in ["topLeft", "topRight", "bottomLeft", "bottomRight"]:
+                    dx = QLineF(getattr(gfx.rect, corner)(), event.scenePos()).length()
+                    if dx < min_dx:
+                        min_dx = dx
+                        min_corner = corner
+
+                if min_dx < 20:
+                    self.active_com = MoveShape(event.scenePos(), gfx, corner=min_corner)
+                    self.stack.push(self.active_com)        
+
+                    
 
         elif event.type() == QEvent.GraphicsSceneMouseMove and event.buttons() & Qt.LeftButton:
             if type(self.active_com) is MoveShape:
                 if type(self.active_com.gfx) is PangoPolyGraphic: 
+                    self.stack.undo()
                     self.active_com.pos = event.scenePos()
+                    self.stack.redo()
 
                 elif type(self.active_com.gfx) is PangoBboxGraphic: 
-                    pass
+                    self.stack.undo()
+                    old_pos = self.active_com.pos
+                    self.active_com.pos = event.scenePos()
+                    self.stack.redo()
+
+                    tl = self.active_com.gfx.rect.topLeft()
+                    br = self.active_com.gfx.rect.bottomRight()
+                    if tl.x() > br.x() or tl.y() > br.y():
+                        self.stack.undo()
+                        self.active_com.pos = old_pos
+                        self.stack.redo()
 
         elif event.type() == QEvent.GraphicsSceneMouseRelease:
             self.reset_com()
@@ -196,6 +220,9 @@ class CreateShape(QUndoCommand):
         self.gfx = self.clss()
         self.setText("Created "+self.shape_name()+" at "+self.shape_coords())
 
+        if clss is PangoPathGraphic:
+            self.gfx.path.width = self.p_gfx.scene().tool_size
+
     def redo(self):
         self.gfx.setParentItem(self.p_gfx)
         self.gfx.name = self.shape_name()+" at "+self.shape_coords()
@@ -235,7 +262,6 @@ class ExtendShape(QUndoCommand):
         elif type(self.gfx) is PangoPolyGraphic:
             self.gfx.poly += self.pos
 
-        self.gfx.itemChange(QGraphicsItem.ItemTransformChange, None)
         self.gfx.update()
 
     def undo(self):
@@ -267,13 +293,19 @@ class MoveShape(QUndoCommand):
 
         if type(self.gfx) is PangoPolyGraphic:
             self.old_pos = self.gfx.poly.value(self.idx)
+
+            if self.gfx.poly.isClosed(): # Keep closed
+                if self.idx == 0:
+                    self.gfx.poly.replace(self.gfx.poly.count()-1, self.pos)
+                if self.idx == self.gfx.poly.count()-1:
+                    self.gfx.poly.replace(0, self.pos)
+
             self.gfx.poly.replace(self.idx, self.pos)
 
         elif type(self.gfx) is PangoBboxGraphic:
             self.old_pos = getattr(self.gfx.rect, self.corner)()
             getattr(self.gfx.rect, "set"+self.corner[0].upper()+self.corner[1:])(self.pos)
 
-        self.gfx.itemChange(QGraphicsItem.ItemTransformChange, None)
         self.gfx.update()
 
     def undo(self):
@@ -281,6 +313,12 @@ class MoveShape(QUndoCommand):
         self.gfx.prepareGeometryChange()
 
         if type(self.gfx) is PangoPolyGraphic:
+            if self.gfx.poly.isClosed():
+                if self.idx == 0:
+                    self.gfx.poly.replace(self.gfx.poly.count()-1, self.old_pos)
+                if self.idx == self.gfx.poly.count()-1:
+                    self.gfx.poly.replace(0, self.old_pos)
+
             self.gfx.poly.replace(self.idx, self.old_pos)
 
         elif type(self.gfx) is PangoBboxGraphic:

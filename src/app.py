@@ -157,7 +157,7 @@ class MainWindow(QMainWindow):
             for item in unpickled_items:
                 if item.parent() is None:
                     self.interface.model.appendRow(item)
-                self.interface.item_changed(item.index(), None, None)
+                item.force_update()
 
             # Open image folder
             for item in unpickled_items:
