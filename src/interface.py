@@ -59,24 +59,6 @@ class PangoModelSceneInterface(object):
             if gfx.scene() is self.scene:
                 self.scene.removeItem(gfx)
 
-    def copy_labels_tree(self, new_fpath, old_fpath):
-        old = [item.name for item in self.find_in_tree("fpath", old_fpath, 1)]
-        new = [item.name for item in self.find_in_tree("fpath", new_fpath, 1)]
-
-        for name in set(old)-set(new):
-            ms = self.find_in_tree("name", name, 1)
-            if ms is not None:
-                label = ms[0]
-                dupe_label = globals()[type(label).__name__]()
-                self.model.appendRow(dupe_label)
-
-                dupe_label.setattrs(**label.getattrs())
-                dupe_label.fpath = new_fpath
-                dupe_label.set_icon()
-
-    def del_labels_tree(self):
-        i_model = self.interface.model
-
     def find_in_tree(self, prop, value, levels=2, inclusive=False):
         matches = []
         root = self.model.invisibleRootItem()
@@ -95,7 +77,41 @@ class PangoModelSceneInterface(object):
                             if inclusive:
                                 matches.extend(item_child.children())
         return matches
-    
+
+    def switch_label(self, row):
+        item = self.model.item(row)
+        if item is not None:
+            try:
+                self.scene.active_label = self.map[item.key()]
+            except KeyError:
+                return
+
+            self.scene.update_reticle()
+            self.scene.reset_com()
+
+    def copy_labels(self, new_fpath, old_fpath):
+        old = [item.name for item in self.find_in_tree("fpath", old_fpath, 1)]
+        new = [item.name for item in self.find_in_tree("fpath", new_fpath, 1)]
+
+        for name in set(old)-set(new):
+            ms = self.find_in_tree("name", name, 1)
+            if ms is not None:
+                label = ms[0]
+                dupe_label = globals()[type(label).__name__]()
+                self.model.appendRow(dupe_label)
+
+                dupe_label.setattrs(**label.getattrs())
+                dupe_label.fpath = new_fpath
+                dupe_label.set_icon()
+
+    def del_labels(self, row):
+        name = self.model.item(row).name
+        gfxs = [self.map[item.key()] for item in self.find_in_tree("name", name, 1, True)]
+        self.scene.unravel_shapes(*gfxs)
+
+        self.model.removeRow(row)
+        self.model.removeRow(row) # Twice is necessary
+
     def item_selection_changed(self):
         try:
             new = [self.map[QPersistentModelIndex(idx)] for idx in self.tree.selectedIndexes()]

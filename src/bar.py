@@ -56,6 +56,8 @@ class PangoMenuBarWidget(QToolBar):
 
 
 class PangoToolBarWidget(QToolBar):
+    del_labels_signal = pyqtSignal(int)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setIconSize(QSize(16, 16))
@@ -72,15 +74,15 @@ class PangoToolBarWidget(QToolBar):
         self.color_display = QLabel()
         self.color_display.setFixedSize(QSize(50, 20))
         self.label_select = self.LabelSelect(self.color_display)
-        self.label_select.lineEdit().returnPressed.connect(self.add_label)
+        self.label_select.lineEdit().returnPressed.connect(self.add)
 
         self.add_action = QAction("Add")
-        self.add_action.triggered.connect(self.add_label)
+        self.add_action.triggered.connect(self.add)
         icon = pango_get_icon("add")
         self.add_action.setIcon(icon)
 
         self.del_action = QAction("Delete")
-        self.del_action.triggered.connect(self.del_label)
+        self.del_action.triggered.connect(self.delete)
         icon = pango_get_icon("del")
         self.del_action.setIcon(icon)
 
@@ -189,7 +191,7 @@ class PangoToolBarWidget(QToolBar):
             if self.label_select.view().isRowHidden(row) is False:
                 self.label_select.setCurrentIndex(row)
 
-    def add_label(self):
+    def add(self):
         if not self.label_select.isEnabled():
             self.label_select.setEnabled(True)
             self.action_group.setEnabled(True)
@@ -209,23 +211,14 @@ class PangoToolBarWidget(QToolBar):
         if bottom_row == 0:
             self.label_select.currentIndexChanged.emit(self.label_select.currentIndex())
 
-    def del_label(self):
-        self.scene.clear_changes.emit()
-        if self.scene.stack.count() == 0:
-            row = self.label_select.currentIndex()
-            name = self.label_select.model().item(row, 0).name
+    def delete(self):
+        self.reset_tool()
+        self.del_labels_signal.emit(self.label_select.currentIndex())
 
-            for i in range(0, self.label_select.count()):
-                label = self.label_select.model().item(i, 0)
-                if label.name == name:
-                    for j in range(0, label.rowCount()):
-                        self.label_select.model().removeRow(j, label.index())
-                    self.label_select.model().removeRow(i)
-
-            if self.label_select.model().rowCount() == 0:
-                self.label_select.setEnabled(False)
-                self.action_group.setEnabled(False)
-                self.color_action.setEnabled(False)
+        if self.label_select.model().rowCount() == 0:
+            self.label_select.setEnabled(False)
+            self.action_group.setEnabled(False)
+            self.color_action.setEnabled(False)
 
     def set_tool(self, action):
         if self.scene is None:

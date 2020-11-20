@@ -10,7 +10,6 @@ class PangoGraphicsScene(QGraphicsScene):
     gfx_changed = pyqtSignal(PangoGraphic, QGraphicsItem.GraphicsItemChange)
     gfx_removed = pyqtSignal(PangoGraphic)
     clear_tool = pyqtSignal()
-    clear_changes = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -47,20 +46,20 @@ class PangoGraphicsScene(QGraphicsScene):
     def reset_com(self):
         if type(self.active_com.gfx) is PangoPolyGraphic:
             if not self.active_com.gfx.poly.isClosed():
-                self.unravel_shape(self.active_com.gfx)
+                self.unravel_shapes(self.active_com.gfx)
         self.active_com = CreateShape(PangoGraphic, QPointF(), PangoGraphic())
 
-    # Undo all commands for shape (including creation)
-    def unravel_shape(self, gfx):
+    # Undo all commands for shapes (including creation)
+    def unravel_shapes(self, *gfxs):
         for i in range(self.stack.count()-1, -1, -1):
             com = self.stack.command(i)
             if type(com) is QUndoCommand:
                 for j in range(0, com.childCount()):
                     sub_com = com.child(j)
-                    if sub_com.gfx == gfx:
+                    if sub_com.gfx in gfxs:
                         com.setObsolete(True)
             else:
-                if com.gfx == gfx:
+                if com.gfx in gfxs:
                     com.setObsolete(True)
 
                 if type(com) == CreateShape:
@@ -68,10 +67,10 @@ class PangoGraphicsScene(QGraphicsScene):
 
         self.stack.setIndex(0)
         self.stack.setIndex(self.stack.count())
+        self.active_com = CreateShape(PangoGraphic, QPointF(), PangoGraphic())
 
     def event(self, event):
         super().event(event)
-
         if self.tool == "Lasso":
             self.select_handler(event)
             return False
@@ -207,7 +206,7 @@ class PangoGraphicsScene(QGraphicsScene):
                 tl = self.active_com.gfx.rect.topLeft()
                 br = self.active_com.gfx.rect.bottomRight()
                 if QLineF(tl, br).length() < self.active_com.gfx.dynamic_width()*2:
-                    self.unravel_shape(self.active_com.gfx)
+                    self.unravel_shapes(self.active_com.gfx)
                 self.reset_com()
 
 class CreateShape(QUndoCommand):
@@ -352,7 +351,6 @@ class PangoGraphicsView(QGraphicsView):
             self.setDragMode(QGraphicsView.NoDrag)
 
     def delete_selected(self):
-        self.scene().clear_changes.emit()
         if self.scene().stack.count() == 0:
             for gfx in self.scene().selectedItems():
                 self.scene().removeItem(gfx)
@@ -378,6 +376,7 @@ class PangoGraphicsView(QGraphicsView):
         item = self.itemAt(event.pos())
         if hasattr(item, "name"):
             self.coords+=item.name
+        self.sceneRect()
 
     def wheelEvent(self, event):
         self.setTransformationAnchor(QGraphicsView.NoAnchor)

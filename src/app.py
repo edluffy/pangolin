@@ -1,5 +1,5 @@
 import os, pickle
-from PyQt5.QtCore import QDir, QFile, QIODevice, QItemSelectionModel, QModelIndex, QPointF, QRectF, QXmlStreamWriter, Qt
+from PyQt5.QtCore import QDir, QFile, QIODevice, QItemSelectionModel, QModelIndex, QPoint, QPointF, QRectF, QXmlStreamWriter, Qt
 from PyQt5.QtGui import QColor, QKeySequence, QPixmap, QStandardItemModel
 from PyQt5.QtWidgets import (QApplication, QFileDialog, QFileSystemModel, QMainWindow, QMessageBox, QShortcut, QTreeView, QUndoStack, QUndoView,
                              QVBoxLayout, QWidget)
@@ -52,8 +52,9 @@ class MainWindow(QMainWindow):
         self.menu_bar.load_action.triggered.connect(self.load_project)
 
         self.file_widget.file_view.selectionModel().currentChanged.connect(self.switch_image)
-        self.tool_bar.label_select.currentIndexChanged.connect(self.switch_label)
-        self.interface.scene.clear_changes.connect(self.unsaved_commands_dialog)
+        self.file_widget.file_model.directoryLoaded.connect(self.select_first_image)
+        self.tool_bar.label_select.currentIndexChanged.connect(self.interface.switch_label)
+        self.tool_bar.del_labels_signal.connect(self.interface.del_labels)
 
         # Layouts
         self.bg = QWidget()
@@ -75,16 +76,6 @@ class MainWindow(QMainWindow):
         self.sh_reset_tool = QShortcut(QKeySequence('Esc'), self)
         #self.sh_reset_tool.activated.connect(self.scene.reset_tool)
         
-    def switch_label(self, row):
-        item = self.interface.model.item(row)
-        if item is not None:
-            try:
-                self.interface.scene.active_label = self.interface.map[item.key()]
-            except KeyError:
-                return
-
-            self.interface.scene.update_reticle()
-            self.interface.scene.reset_com()
 
     def switch_image(self, c_idx, p_idx):
         c_fpath = self.file_widget.file_model.filePath(c_idx)
@@ -101,9 +92,25 @@ class MainWindow(QMainWindow):
         self.undo_view.setStack(self.change_stacks[c_fpath])
         self.interface.scene.stack = self.change_stacks[c_fpath]
 
-        self.interface.copy_labels_tree(c_fpath, p_fpath)
+        self.interface.copy_labels(c_fpath, p_fpath)
         self.interface.filter_tree(c_fpath, p_fpath)
         self.tool_bar.filter_label_select(c_fpath)
+
+
+    def select_first_image(self):
+        #self.switch_image(root_idx.child(0, 0), root_idx.child(0, 0))
+        #idx = self.file_widget.file_view.indexAt(QPoint(100, 81))
+        #print(self.file_widget.file_view.rectForIndex(idx))
+
+        fpath = self.file_widget.file_model.rootPath()
+        for f in sorted(os.listdir(fpath)):
+            if f.endswith(".jpg") or f.endswith(".png"):
+                idx = self.file_widget.file_model.index(f)
+                fake_f = self.file_widget.file_model.fileName(idx)
+                print(f, fake_f)
+                self.file_widget.file_view.setCurrentIndex(idx)
+                return
+
 
     def load_images(self, action=None, fpath=None):
         if fpath is None:
@@ -116,7 +123,17 @@ class MainWindow(QMainWindow):
             root_idx = self.file_widget.file_model.index(fpath)
             self.file_widget.file_view.setRootIndex(root_idx)
 
+            print(self.file_widget.file_model.fileName(root_idx.child(0, 0)))
+
+
+            #self.switch_image(idx, idx)
+
+
+
     def save_project(self, action=None, pfile=None):
+
+        self.switch_image(
+                self.file_widget.file_model.index(0,0), self.file_widget.file_model.index(0,0))
         if pfile is None:
             pf = os.path.join(self.file_widget.file_model.rootPath(), "pango_project.p")
             if os.path.exists(pf):

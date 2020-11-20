@@ -210,6 +210,7 @@ class PangoGraphic(QGraphicsItem):
 class PangoLabelGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setFlag(QGraphicsItem.ItemClipsChildrenToShape)
         self.fpath = None
         self.color = QColor()
 
@@ -217,7 +218,8 @@ class PangoLabelGraphic(PangoGraphic):
         super().paint(painter, option, widget)
 
     def boundingRect(self):
-        return QRectF()
+        if hasattr(self, "scene"):
+            return self.scene().sceneRect()
 
 class PangoPathGraphic(PangoGraphic):
     def __init__(self, parent=None):
