@@ -36,6 +36,10 @@ class PangoMenuBarWidget(QToolBar):
         self.import_labels_action.setIcon(pango_get_icon("import"))
         self.action_group.addAction(self.import_labels_action)
 
+        self.export_action = QAction("Export")
+        self.export_action.setIcon(pango_get_icon("export"))
+        self.action_group.addAction(self.export_action)
+
         self.save_action = QAction("Save Project")
         self.save_action.setIcon(pango_get_icon("save"))
         self.action_group.addAction(self.save_action)

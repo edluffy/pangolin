@@ -83,7 +83,7 @@ class PangoFileWidget(PangoDockWidget):
         self.file_view.setViewMode(QListView.IconMode)
         self.file_view.setFlow(QListView.LeftToRight)
         self.file_view.setIconSize(QSize(150, 150))
-
+        
         self.setWidget(self.file_view)
 
 class ThumbnailProvider(QFileIconProvider):

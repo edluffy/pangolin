@@ -376,7 +376,6 @@ class PangoGraphicsView(QGraphicsView):
         item = self.itemAt(event.pos())
         if hasattr(item, "name"):
             self.coords+=item.name
-        self.sceneRect()
 
     def wheelEvent(self, event):
         self.setTransformationAnchor(QGraphicsView.NoAnchor)

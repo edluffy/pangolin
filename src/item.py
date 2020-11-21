@@ -285,8 +285,13 @@ class PangoBboxGraphic(PangoGraphic):
 
     def dynamic_width(self):
         if self.scene() is not None:
-            sz = self.scene().sceneRect().size()
-            return (sz.width()+sz.height())/500
+            if self.scene().views() is not None:
+                sz1 = self.scene().views()[0].rect()
+                sz2 = self.scene().sceneRect().size()
+                #print((sz1.width()*sz1.height()) / (sz2.width()*sz2.height()))
+                #print(sz1.width()/sz2.width())
+                return (sz1.width()/sz2.width())*25
+                #return (sz1.width()+sz1.height())/200
         return 5
 
     def paint(self, painter, option, widget):
