@@ -7,7 +7,7 @@ class ExportSettingsDialog(QDialog):
     def __init__(self, parent, fnames):
         super().__init__(parent)
         self.setWindowTitle("Export Settings")
-        self.file_formats = ["PascalVOC (XML)", "COCO (JSON)", "YOLOv3 (XML)", "Image Mask (PNG)"]
+        self.file_formats = ["PascalVOC (XML)", "COCO (JSON)", "YOLOv3 (TXT)", "Image Mask (PNG)"]
         self.fnames = fnames
 
         self.file_list = QListWidget()
@@ -20,6 +20,8 @@ class ExportSettingsDialog(QDialog):
 
         self.format_selector = QComboBox()
         self.format_selector.addItems(self.file_formats)
+        self.format_selector.currentIndexChanged.connect(self.update_info)
+        self.info_label = QLabel()
 
         self.cancel_button = QPushButton("Cancel")
         self.export_button = QPushButton("Export")
@@ -33,14 +35,26 @@ class ExportSettingsDialog(QDialog):
         self.main_layout.addWidget(self.file_list)
         self.main_layout.addWidget(QLabel("Export Format:"))
         self.main_layout.addWidget(self.format_selector)
+        self.main_layout.addWidget(self.info_label)
 
         self.button_layout = QHBoxLayout()
         self.main_layout.addLayout(self.button_layout)
         self.button_layout.addWidget(self.cancel_button)
         self.button_layout.addWidget(self.export_button)
 
+        self.update_info()
+
     def selected_fnames(self):
         return [item.text() for item in self.file_list.selectedItems()]
 
     def file_format(self):
         return self.format_selector.currentText()
+    
+    def update_info(self, idx=None):
+        text = self.format_selector.currentText()
+        if text == "PascalVOC (XML)" or text == "YOLOv3 (TXT)":
+            self.info_label.setText("Bounding boxes will be automatically calculated for non-Bbox items")
+        else:
+            self.info_label.setText("")
+
+

@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QDialog
 
 from bar import PangoMenuBarWidget, PangoToolBarWidget
 from converters.pascal_voc import pascal_voc_write
+from converters.yolo import yolo_write
 from dialog import ExportSettingsDialog
 from dock import PangoFileWidget, PangoLabelWidget, PangoUndoWidget
 from graphics import PangoGraphicsScene, PangoGraphicsView
@@ -176,7 +177,8 @@ class MainWindow(QMainWindow):
         fpaths = self.change_stacks.keys()
         items_by_fpath = {}
         for fpath in fpaths:
-            items_by_fpath[fpath] = self.interface.find_in_tree("fpath", fpath, 1, True)
+            items_by_fpath[fpath] = [item for item in self.interface.find_in_tree(
+                "fpath", fpath, 1, True) if type(item) != PangoLabelItem]
 
         dialog = ExportSettingsDialog(self, items_by_fpath.keys())
         if dialog.exec():
@@ -185,9 +187,8 @@ class MainWindow(QMainWindow):
 
             if file_format == "PascalVOC (XML)":
                 for fpath in s_fpaths:
-                    items = [i for i in items_by_fpath[fpath] if type(i) == PangoBboxItem]
-                    if items != []:
-                        pascal_voc_write(items, fpath)
+                    if items_by_fpath[fpath] != []:
+                        pascal_voc_write(self.interface, items_by_fpath[fpath], fpath)
 
             elif file_format == "COCO (JSON)":
                 #export_fpath, _ = QFileDialog().getSaveFileName(
@@ -195,8 +196,10 @@ class MainWindow(QMainWindow):
                 #    "XML files (*.xml)")
                 pass
 
-            elif file_format == "YOLOv3 (XML)":
-                pass
+            elif file_format == "YOLOv3 (TXT)":
+                for fpath in s_fpaths:
+                    if items_by_fpath[fpath] != []:
+                        yolo_write(self.interface, items_by_fpath[fpath], fpath)
 
             elif file_format == "Image Mask (PNG)":
                 pass

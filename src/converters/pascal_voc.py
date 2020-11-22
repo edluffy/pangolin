@@ -2,7 +2,9 @@ import os
 from PyQt5.QtGui import QImage
 from lxml import etree
 
-def pascal_voc_write(items, fpath):
+from item import PangoBboxItem
+
+def pascal_voc_write(interface, items, fpath):
     img = QImage(fpath)
     root = etree.Element("annotation")
 
@@ -21,6 +23,12 @@ def pascal_voc_write(items, fpath):
     etree.SubElement(root, "segmented").text = "0"
 
     for item in items:
+        if type(item) == PangoBboxItem:
+            rect = item.rect
+        else:
+            rect = interface.map[item.key()].boundingRect()
+            rect = rect.intersected(interface.map[item.parent().key()].boundingRect())
+            
         object = etree.SubElement(root, "object")
         etree.SubElement(object, "name").text = item.parent().name
         etree.SubElement(object, "pose").text = "Unspecified"
@@ -28,10 +36,12 @@ def pascal_voc_write(items, fpath):
         etree.SubElement(object, "difficult").text = "0"
 
         bndbox = etree.SubElement(object, "bndbox")
-        etree.SubElement(bndbox, "xmin").text = str(item.rect.left())
-        etree.SubElement(bndbox, "xmax").text = str(item.rect.right())
-        etree.SubElement(bndbox, "ymin").text = str(item.rect.top())
-        etree.SubElement(bndbox, "ymax").text = str(item.rect.bottom())
+        etree.SubElement(bndbox, "xmin").text = str(round(rect.left()))
+        etree.SubElement(bndbox, "xmax").text = str(round(rect.right()))
+        etree.SubElement(bndbox, "ymin").text = str(round(rect.top()))
+        etree.SubElement(bndbox, "ymax").text = str(round(rect.bottom()))
 
-    txt = etree.tostring(root, pretty_print=True)
-    print(txt.decode("utf-8"))
+    tree = etree.ElementTree(root)
+    pre, ext = os.path.splitext(fpath)
+    with open(pre+".xml", 'wb') as f:
+        tree.write(f, encoding="utf-8", xml_declaration=True, pretty_print=True)
