@@ -13,13 +13,13 @@ from dock import PangoFileWidget, PangoLabelWidget, PangoUndoWidget
 from graphics import PangoGraphicsScene, PangoGraphicsView
 from interface import PangoModelSceneInterface
 from item import PangoBboxItem, PangoGraphic, PangoLabelGraphic, PangoLabelItem
+
 app = QApplication([])
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
-
 class MainWindow(QMainWindow):
-    def __init__(self, *args, **kwargs):
-        super(MainWindow, self).__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
         self.setWindowTitle("Pangolin")
         self.setUnifiedTitleAndToolBarOnMac(True)
         self.setGeometry(50, 50, 1200, 675)
@@ -79,7 +79,6 @@ class MainWindow(QMainWindow):
         # Shortcuts
         self.sh_reset_tool = QShortcut(QKeySequence('Esc'), self)
         #self.sh_reset_tool.activated.connect(self.scene.reset_tool)
-        
 
     def switch_image(self, c_idx, p_idx):
         c_fpath = self.file_widget.file_model.filePath(c_idx)
@@ -107,6 +106,7 @@ class MainWindow(QMainWindow):
                 idx = self.file_widget.file_model.index(os.path.join(fpath, f))
                 self.file_widget.file_view.setCurrentIndex(idx)
                 return
+        #self.file_widget.file_view.scrollToTop()
 
     def load_images(self, action=None, fpath=None):
         if fpath is None:
@@ -118,6 +118,7 @@ class MainWindow(QMainWindow):
             self.file_widget.file_model.setRootPath(fpath)
             root_idx = self.file_widget.file_model.index(fpath)
             self.file_widget.file_view.setRootIndex(root_idx)
+            #print(self.file_widget.file_model.rootPath())
 
     def save_project(self, action=None, pfile=None):
         if pfile is None:

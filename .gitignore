@@ -1,2 +1,13 @@
+# python
 **/__pycache__
+
+# packaging
+/build/
+/dist/
+*.egg-info
+
+# testing
+/.tox
+
+# misc
 .DS_STORE
