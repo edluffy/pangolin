@@ -1,5 +1,3 @@
 PyQt5
-PyQt5-stubs
 bidict
 lxml
-lxml-stubs

@@ -246,7 +246,7 @@ class PangoPolyGraphic(PangoGraphic):
     def dynamic_width(self):
         if self.scene() is not None:
             sz = self.scene().sceneRect().size()
-            return (sz.width()+sz.height())/350
+            return int((sz.width()+sz.height())/350)
         return 10
     
     def paint(self, painter, option, widget):
@@ -265,9 +265,10 @@ class PangoPolyGraphic(PangoGraphic):
         if option.state & QStyle.State_MouseOver or not self.poly.isClosed():
             w += self.dynamic_width()/2
 
-        painter.setOpacity(1)
-        for n in range(0, self.poly.count()):
-            painter.drawEllipse(self.poly.value(n), w/2, w/2)
+        if not self.poly.isClosed() or self.isSelected():
+            painter.setOpacity(1)
+            for n in range(0, self.poly.count()):
+                painter.drawEllipse(self.poly.value(n), w/2, w/2)
 
     def boundingRect(self):
         w = self.dynamic_width()
@@ -290,7 +291,7 @@ class PangoBboxGraphic(PangoGraphic):
                 sz2 = self.scene().sceneRect().size()
                 #print((sz1.width()*sz1.height()) / (sz2.width()*sz2.height()))
                 #print(sz1.width()/sz2.width())
-                return (sz1.width()/sz2.width())*25
+                return int((sz1.width()/sz2.width())*25)
                 #return (sz1.width()+sz1.height())/200
         return 5
 

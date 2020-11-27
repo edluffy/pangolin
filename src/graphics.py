@@ -165,7 +165,7 @@ class PangoGraphicsScene(QGraphicsScene):
                 self.stack.push(self.active_com)
 
             if self.active_com.gfx.poly.count() <= 1 or not self.active_com.gfx.poly.isClosed():
-                if QLineF(event.scenePos(), self.active_com.gfx.poly.first()).length() < 20:
+                if QLineF(event.scenePos(), self.active_com.gfx.poly.first()).length() < self.active_com.gfx.dynamic_width()*2:
                     pos = QPointF()
                     pos.setX(self.active_com.gfx.poly.first().x())
                     pos.setY(self.active_com.gfx.poly.first().y())
@@ -250,6 +250,7 @@ class ExtendShape(QUndoCommand):
         self.motion = motion
         self.setText("Extended "+self.gfx.name+" to ("
             +str(round(self.pos.x()))+", "+str(round(self.pos.y()))+")")
+        print("("+str(round(self.pos.x()))+", "+str(round(self.pos.y()))+"),")
 
     def redo(self):
         self.gfx.scene().active_com = self

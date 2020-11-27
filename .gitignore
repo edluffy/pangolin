@@ -6,8 +6,5 @@
 /dist/
 *.egg-info
 
-# testing
-/.tox
-
 # misc
 .DS_STORE
