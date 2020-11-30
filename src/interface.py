@@ -86,7 +86,7 @@ class PangoModelSceneInterface(object):
             except KeyError:
                 return
 
-            self.scene.update_reticle()
+            self.scene.reticle.setBrush(self.scene.active_label.color)
             self.scene.reset_com()
 
     def copy_labels(self, new_fpath, old_fpath):

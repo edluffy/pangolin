@@ -1,6 +1,4 @@
-from PyQt5.QtCore import QPoint, Qt
 import pytest
-
 from pytestqt.qt_compat import qt_api
 
 from app import MainWindow
@@ -40,8 +38,8 @@ def test_poly_tool(app, qtbot):
             (199, 340), (194, 398), (193, 416), (175, 416), (187, 373), (187, 339), 
             (184, 309), (176, 289), (171, 258), (174, 246), (175, 225), (168, 203), 
             (152, 173), (138, 134), ( 97, 130), (114, 114), (125,  90), (130,  90)]
-    for p in [app.graphics_view.mapFromScene(QPoint(*p)) for p in giraffe_1]:
-        qtbot.mouseClick(app.graphics_view.viewport(), Qt.LeftButton, pos=p, delay=delay)
+    for p in [app.graphics_view.mapFromScene(qt_api.QtCore.QPoint(*p)) for p in giraffe_1]:
+        qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
     giraffe_2 = [ 
             (471, 253), (464, 244), (464, 230), (454, 225), (442, 228), (430, 238),
@@ -52,8 +50,8 @@ def test_poly_tool(app, qtbot):
             (380, 353), (380, 375), (381, 393), (390, 386), (390, 371), (394, 343),
             (404, 318), (407, 298), (403, 285), (428, 271), (444, 253), (454, 258),
             (464, 258), (471, 253)]
-    for p in [app.graphics_view.mapFromScene(QPoint(*p)) for p in giraffe_2]:
-        qtbot.mouseClick(app.graphics_view.viewport(), Qt.LeftButton, pos=p, delay=delay)
+    for p in [app.graphics_view.mapFromScene(qt_api.QtCore.QPoint(*p)) for p in giraffe_2]:
+        qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
     app.tool_bar.add_action.trigger()
 
@@ -65,8 +63,8 @@ def test_poly_tool(app, qtbot):
             (435, 464), (435, 437), (431, 427), (417, 425), (399, 440), (394, 454),
             (395, 472), (379, 491), (368, 491), (361, 486), (358, 468), (363, 442),
             (354, 436), (361, 430)]
-    for p in [app.graphics_view.mapFromScene(QPoint(*p)) for p in zebra_1]:
-        qtbot.mouseClick(app.graphics_view.viewport(), Qt.LeftButton, pos=p, delay=delay)
+    for p in [app.graphics_view.mapFromScene(qt_api.QtCore.QPoint(*p)) for p in zebra_1]:
+        qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
     zebra_2 = [
             (794, 399), (789, 375), (795, 350), (812, 339), (843, 334), (864, 334),
@@ -77,8 +75,8 @@ def test_poly_tool(app, qtbot):
             (845, 405), (838, 405), (829, 431), (838, 474), (826, 477), (822, 458),
             (820, 440), (820, 423), (820, 408), (818, 473), (809, 473), (809, 450),
             (808, 431), (794, 399)]
-    for p in [app.graphics_view.mapFromScene(QPoint(*p)) for p in zebra_2]:
-        qtbot.mouseClick(app.graphics_view.viewport(), Qt.LeftButton, pos=p, delay=delay)
+    for p in [app.graphics_view.mapFromScene(qt_api.QtCore.QPoint(*p)) for p in zebra_2]:
+        qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
     zebra_3 = [
             (514, 551), (524, 535), (532, 512), (536, 490), (560, 460), (605, 437),
@@ -90,8 +88,8 @@ def test_poly_tool(app, qtbot):
             (565, 552), (575, 528), (561, 495), (561, 476), (549, 488), (546, 517),
             (540, 535), (514, 551), (748, 448), (777, 459), (794, 472), (808, 488),
             (818, 509), (795, 500), (774, 483), (748, 448)]
-    for p in [app.graphics_view.mapFromScene(QPoint(*p)) for p in zebra_3]:
-        qtbot.mouseClick(app.graphics_view.viewport(), Qt.LeftButton, pos=p, delay=delay)
+    for p in [app.graphics_view.mapFromScene(qt_api.QtCore.QPoint(*p)) for p in zebra_3]:
+        qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
     app.tool_bar.add_action.trigger()
 
@@ -111,8 +109,8 @@ def test_poly_tool(app, qtbot):
             (416, 490), (421, 552), (417, 632), (412, 652), (389, 641), (380, 633),
             (357, 633), (357, 611), (384, 601), (382, 595), (379, 590), (371, 559),
             (375, 549), (367, 540)]
-    for p in [app.graphics_view.mapFromScene(QPoint(*p)) for p in rocks_1]:
-        qtbot.mouseClick(app.graphics_view.viewport(), Qt.LeftButton, pos=p, delay=delay)
+    for p in [app.graphics_view.mapFromScene(qt_api.QtCore.QPoint(*p)) for p in rocks_1]:
+        qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
 
     rocks_2 = [
@@ -129,8 +127,8 @@ def test_poly_tool(app, qtbot):
             (973, 510), (990, 533), (999, 665), (756, 665), (770, 645), (771, 618),
             (832, 573), (871, 550), (918, 533), (954, 506), (973, 510), (554, 665),
             (533, 651), (514, 646), (495, 653), (488, 665), (554, 665)]
-    for p in [app.graphics_view.mapFromScene(QPoint(*p)) for p in rocks_2]:
-        qtbot.mouseClick(app.graphics_view.viewport(), Qt.LeftButton, pos=p, delay=delay)
+    for p in [app.graphics_view.mapFromScene(qt_api.QtCore.QPoint(*p)) for p in rocks_2]:
+        qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
     app.tool_bar.add_action.trigger()
 
@@ -161,8 +159,8 @@ def test_poly_tool(app, qtbot):
             (237, 414), (194, 414), (249, 387), (253, 350), (247, 308), (260, 336),
             (260, 399), (249, 387), (340, 414), (340, 379), (361, 335), (357, 410),
             (340, 414), (371, 408), (377, 336), (381, 340), (384, 393), (371, 408)]
-    for p in [app.graphics_view.mapFromScene(QPoint(*p)) for p in trees_1]:
-        qtbot.mouseClick(app.graphics_view.viewport(), Qt.LeftButton, pos=p, delay=delay)
+    for p in [app.graphics_view.mapFromScene(qt_api.QtCore.QPoint(*p)) for p in trees_1]:
+        qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
     app.tool_bar.add_action.trigger()
 
@@ -200,7 +198,9 @@ def test_poly_tool(app, qtbot):
             (757, 519), (775, 537), (743, 579), (733, 579), (740, 547), (757, 519),
             (543, 652), (583, 653), (632, 664), (609, 666), (554, 665), (543, 652),
             (642, 632), (670, 616), (685, 618), (669, 632), (642, 632)]
-    for p in [app.graphics_view.mapFromScene(QPoint(*p)) for p in grass_1]:
-        qtbot.mouseClick(app.graphics_view.viewport(), Qt.LeftButton, pos=p, delay=delay)
+    for p in [app.graphics_view.mapFromScene(qt_api.QtCore.QPoint(*p)) for p in grass_1]:
+        qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
-    qtbot.wait(50000)
+    app.tool_bar.lasso_action.trigger()
+
+    qtbot.wait(500000)

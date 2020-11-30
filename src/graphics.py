@@ -1,7 +1,7 @@
-from PyQt5.QtCore import QEvent, QLineF, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, QLineF, QPoint, QPointF, QRect, QRectF, QTimer, Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygonF, QTransform
 from PyQt5.QtWidgets import (QAction, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPixmapItem,
-                             QGraphicsScene, QGraphicsView, QMenu, QMessageBox, QUndoCommand, QUndoCommand, QUndoStack)
+                             QGraphicsScene, QGraphicsSimpleTextItem, QGraphicsView, QMenu, QMessageBox, QUndoCommand, QUndoCommand, QUndoStack)
 
 from item import PangoBboxGraphic, PangoGraphic, PangoPathGraphic, PangoPolyGraphic, PangoBboxItem
 from utils import pango_get_icon, pango_gfx_change_debug, pango_item_role_debug
@@ -35,9 +35,6 @@ class PangoGraphicsScene(QGraphicsScene):
         self.reticle.setVisible(False)
         self.reticle.setPen(QPen(Qt.NoPen))
         self.addItem(self.reticle)
-
-    def update_reticle(self):
-        self.reticle.setBrush(self.active_label.color)
 
     def drawBackground(self, painter, rect):
         px = QPixmap(self.fpath)
@@ -113,8 +110,6 @@ class PangoGraphicsScene(QGraphicsScene):
                     self.active_com = MoveShape(event.scenePos(), gfx, corner=min_corner)
                     self.stack.push(self.active_com)        
 
-                    
-
         elif event.type() == QEvent.GraphicsSceneMouseMove and event.buttons() & Qt.LeftButton:
             if type(self.active_com) is MoveShape:
                 if type(self.active_com.gfx) is PangoPolyGraphic: 
@@ -164,18 +159,18 @@ class PangoGraphicsScene(QGraphicsScene):
                 self.active_com = CreateShape(PangoPolyGraphic, event.scenePos(), self.active_label)
                 self.stack.push(self.active_com)
 
-            if self.active_com.gfx.poly.count() <= 1 or not self.active_com.gfx.poly.isClosed():
-                if QLineF(event.scenePos(), self.active_com.gfx.poly.first()).length() < self.active_com.gfx.dynamic_width()*2:
+            gfx = self.active_com.gfx
+            pos = event.scenePos()
+            if gfx.poly.count() <= 1 or not gfx.poly.isClosed():
+                if QLineF(event.scenePos(), gfx.poly.first()).length() < gfx.dw()*2:
                     pos = QPointF()
-                    pos.setX(self.active_com.gfx.poly.first().x())
-                    pos.setY(self.active_com.gfx.poly.first().y())
-                else:
-                    pos = event.scenePos()
+                    pos.setX(gfx.poly.first().x())
+                    pos.setY(gfx.poly.first().y())
 
                 self.active_com = ExtendShape(pos, self.active_com.gfx)
                 self.stack.push(self.active_com)
 
-                if self.active_com.gfx.poly.count() > 1 and self.active_com.gfx.poly.isClosed():
+                if gfx.poly.count() > 1 and gfx.poly.isClosed():
                     self.reset_com()
 
     def bbox_handler(self, event):
@@ -224,6 +219,7 @@ class CreateShape(QUndoCommand):
 
     def redo(self):
         self.gfx.setParentItem(self.p_gfx)
+        self.gfx.inherit_color()
         self.gfx.name = self.shape_name()+" at "+self.shape_coords()
         self.gfx.visible = True
 
@@ -250,7 +246,7 @@ class ExtendShape(QUndoCommand):
         self.motion = motion
         self.setText("Extended "+self.gfx.name+" to ("
             +str(round(self.pos.x()))+", "+str(round(self.pos.y()))+")")
-        print("("+str(round(self.pos.x()))+", "+str(round(self.pos.y()))+"),")
+        #print("("+str(round(self.pos.x()))+", "+str(round(self.pos.y()))+"),")
 
     def redo(self):
         self.gfx.scene().active_com = self
@@ -333,7 +329,6 @@ class PangoGraphicsView(QGraphicsView):
         self.setInteractive(True)
         self.setMouseTracking(True)
         self.setCacheMode(QGraphicsView.CacheBackground)
-        self.coords = ""
 
     def set_cursor(self, tool):
         if tool == "Pan":
@@ -357,26 +352,6 @@ class PangoGraphicsView(QGraphicsView):
                 self.scene().removeItem(gfx)
                 self.scene().gfx_removed.emit(gfx)
                 self.scene().reset_com()
-
-    def paintEvent(self, event):
-        super().paintEvent(event)
-        qp = QPainter(self.viewport())
-        qp.setFont(QFont("Arial", 10))
-
-        vrect = self.viewport().rect()
-        text_box = QRectF(QPoint(vrect.right()-100, 0), QPoint(vrect.right(), 50))
-        qp.drawText(text_box, Qt.AlignRight, self.coords)
-
-        self.viewport().update()
-
-    def mouseMoveEvent(self, event):
-        super().mouseMoveEvent(event)
-        pos = self.mapToScene(event.pos())
-        self.coords = "x: "+str(round(pos.x()))+"\ny: "+str(round(pos.y()))+"\n"
-
-        item = self.itemAt(event.pos())
-        if hasattr(item, "name"):
-            self.coords+=item.name
 
     def wheelEvent(self, event):
         self.setTransformationAnchor(QGraphicsView.NoAnchor)
