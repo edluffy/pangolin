@@ -200,7 +200,7 @@ class PangoGraphicsScene(QGraphicsScene):
                 self.stack.endMacro()
                 tl = self.active_com.gfx.rect.topLeft()
                 br = self.active_com.gfx.rect.bottomRight()
-                if QLineF(tl, br).length() < self.active_com.gfx.dynamic_width()*2:
+                if QLineF(tl, br).length() < self.active_com.gfx.dw()*2:
                     self.unravel_shapes(self.active_com.gfx)
                 self.reset_com()
 

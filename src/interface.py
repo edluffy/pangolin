@@ -19,6 +19,7 @@ class PangoModelSceneInterface(object):
         self.model = QStandardItemModel()
         self.model.dataChanged.connect(self.item_changed)
         self.model.rowsAboutToBeRemoved.connect(self.item_removed)
+        self.model.item
 
         # Scene/View changes (gfx) ----> Model/View (item)
         self.scene = PangoGraphicsScene()
@@ -216,6 +217,7 @@ class PangoModelSceneInterface(object):
         self.map[item.key()] = gfx
         if item.parent() is not None:
             gfx.setParentItem(self.map[item.parent().key()])
+            gfx.inherit_color()
         else:
             self.scene.addItem(gfx)
         return gfx

@@ -119,10 +119,6 @@ class PangoGraphic(QAbstractGraphicsShapeItem):
         brush = QBrush()
         brush.setStyle(Qt.SolidPattern)
 
-        #if hasattr(self.parentItem(), "color"):
-        #    pen.color = self.parentItem().color
-        #    brush.color = self.parentItem().color
-
         self.setPen(pen)
         self.setBrush(brush)
 
@@ -301,26 +297,28 @@ class PangoBboxGraphic(PangoGraphic):
 
     def paint(self, painter, option, widget):
         super().paint(painter, option, widget)
-        painter.setPen(self.pen())
-        painter.setOpacity(0.8)
 
+        w = self.dw()
+        pen = self.pen()
+        pen.setWidth(int(w))
+        painter.setPen(pen)
+
+        painter.setOpacity(0.8)
         painter.drawRect(self.rect)
         self.paint_text_rect(painter)
 
         painter.setOpacity(1)
-        if option.state & QStyle.State_MouseOver:
-            pass # increase width
-
-        painter.drawEllipse(self.rect.topLeft(), 5, 5)
-        painter.drawEllipse(self.rect.topRight(), 5, 5)
-        painter.drawEllipse(self.rect.bottomLeft(), 5, 5)
-        painter.drawEllipse(self.rect.bottomRight(), 5, 5)
+        if option.state & QStyle.State_MouseOver or self.isSelected():
+            painter.drawEllipse(self.rect.topLeft(), w, w)
+            painter.drawEllipse(self.rect.topRight(), w, w)
+            painter.drawEllipse(self.rect.bottomLeft(), w, w)
+            painter.drawEllipse(self.rect.bottomRight(), w, w)
 
     def paint_text_rect(self, painter):
         p = painter.pen()
 
         font = QFont()
-        #font.setPointSizeF(self.dynamic_width()*5)
+        font.setPointSizeF(self.dw()*3)
         painter.setFont(font)
         painter.setBrush(self.brush())
 
@@ -342,7 +340,8 @@ class PangoBboxGraphic(PangoGraphic):
         painter.setPen(p)
 
     def boundingRect(self):
-        return self.shape().controlPointRect()
+        w = self.dw()
+        return self.shape().controlPointRect().adjusted(-w*2, -w*2, w*2, w*2)
 
     def shape(self):
         path = QPainterPath()

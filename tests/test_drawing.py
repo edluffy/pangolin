@@ -11,22 +11,14 @@ def app(qtbot):
     app.load_images(fpath="/Users/edluffy/Documents/pangolin-test-images")
     return app
 
-#def test_basic(app, qtbot):
-#    assert app.isVisible() == True
-#    assert app.windowTitle() == "Pangolin"
-#    assert app.file_widget.file_model.rootPath() == "/Users/edluffy/Documents/pangolin-test-images"
+def test_basic(app, qtbot):
+    assert app.isVisible() == True
+    assert app.windowTitle() == "Pangolin"
+    assert app.file_widget.file_model.rootPath() == "/Users/edluffy/Documents/pangolin-test-images"
 
 def test_poly_tool(app, qtbot):
     delay = 1
     app.tool_bar.poly_action.trigger()
-
-    app.tool_bar.add_action.trigger()
-    app.tool_bar.add_action.trigger()
-    app.tool_bar.add_action.trigger()
-    app.tool_bar.add_action.trigger()
-    app.tool_bar.add_action.trigger()
-    app.tool_bar.add_action.trigger()
-    app.tool_bar.add_action.trigger()
     app.tool_bar.add_action.trigger()
 
     giraffe_1 = [
@@ -203,4 +195,4 @@ def test_poly_tool(app, qtbot):
 
     app.tool_bar.lasso_action.trigger()
 
-    qtbot.wait(500000)
+    qtbot.wait(50000)

@@ -1,10 +1,12 @@
 import os
+from src.item import PangoLabelItem, PangoPathItem, PangoPolyItem
 from PyQt5.QtGui import QImage
 from lxml import etree
 
 from item import PangoBboxItem
+from utils import pango_get_icon, pango_get_palette
 
-def pascal_voc_write(interface, items, fpath):
+def pascal_voc_write(interface, fpath, items):
     img = QImage(fpath)
     root = etree.Element("annotation")
 
@@ -25,9 +27,11 @@ def pascal_voc_write(interface, items, fpath):
     for item in items:
         if type(item) == PangoBboxItem:
             rect = item.rect
-        else:
+        elif type(item) in (PangoPolyItem, PangoPathItem):
             rect = interface.map[item.key()].boundingRect()
             rect = rect.intersected(interface.map[item.parent().key()].boundingRect())
+        else:
+            continue
             
         object = etree.SubElement(root, "object")
         etree.SubElement(object, "name").text = item.parent().name
@@ -45,3 +49,48 @@ def pascal_voc_write(interface, items, fpath):
     pre, ext = os.path.splitext(fpath)
     with open(pre+".xml", 'wb') as f:
         tree.write(f, encoding="utf-8", xml_declaration=True, pretty_print=True)
+
+def pascal_voc_read(interface, fpath):
+    tree = etree.parse(fpath)
+    root = tree.getroot()
+
+    pre, ext = os.path.splitext(fpath)
+    if os.path.exists(pre+".png"):
+        img_fpath = pre+".png"
+    elif os.path.exists(pre+".jpg"):
+        img_fpath = pre+".jpg"
+    else:
+        return
+
+    for object in root.iterfind("object"):
+        name = object.find("name")
+
+        # Create Label if not present
+        if interface.find_in_tree("name", name.text, levels=1)==[]:
+            label = PangoLabelItem()
+            interface.model.invisibleRootItem().appendRow(label)
+
+            label.name = name.text
+            label.visible = True
+            label.fpath = img_fpath
+            label.color = pango_get_palette(label.unique_row()-1)
+            label.set_icon()
+
+        # Create shape
+        shape = PangoBboxItem()
+        interface.find_in_tree("name", name.text, levels=1)[0].appendRow(shape)
+        shape.visible = True
+        shape.fpath = img_fpath
+
+        bndbox = object.find("bndbox")
+        shape.rect.setLeft(float(bndbox.findtext("xmin")))
+        shape.rect.setRight(float(bndbox.findtext("xmax")))
+        shape.rect.setTop(float(bndbox.findtext("ymin")))
+        shape.rect.setBottom(float(bndbox.findtext("ymax")))
+
+        shape.name = "Bbox at "+ "("+str(round(shape.rect.topLeft().x()))\
+              +", "+str(round(shape.rect.topLeft().y()))+")"
+        shape.set_icon()
+
+
+

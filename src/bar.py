@@ -205,7 +205,7 @@ class PangoToolBarWidget(QToolBar):
         root = self.label_select.model().invisibleRootItem()
         root.appendRow(item)
         item.fpath = self.scene.fpath
-        item.name = "Empty Label "+str(item.unique_row())
+        item.name = "Unnamed Label "+str(item.unique_row())
         item.visible = True
         item.color = pango_get_palette(item.unique_row()-1)
         item.set_icon()

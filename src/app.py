@@ -1,18 +1,17 @@
 import os, pickle
-from os.path import basename
-from PyQt5.QtCore import QDir, QFile, QIODevice, QItemSelectionModel, QModelIndex, QPoint, QPointF, QRectF, QXmlStreamWriter, Qt
-from PyQt5.QtGui import QColor, QKeySequence, QPixmap, QStandardItemModel
-from PyQt5.QtWidgets import (QAbstractItemView, QApplication, QComboBox, QDialog, QFileDialog, QFileSystemModel, QHBoxLayout, QInputDialog, QLabel, QListWidget, QMainWindow, QMessageBox, QPushButton, QShortcut, QTreeView, QUndoStack, QUndoView,
+from PyQt5.QtCore import QModelIndex, QRectF, Qt
+from PyQt5.QtGui import QKeySequence, QPixmap
+from PyQt5.QtWidgets import (QApplication, QFileDialog, QMainWindow, QMessageBox, QShortcut, QTreeView, QUndoStack, QUndoView,
                              QVBoxLayout, QWidget)
 
-from bar import PangoMenuBarWidget, PangoToolBarWidget
-from converters.pascal_voc import pascal_voc_write
-from converters.yolo import yolo_write
-from dialog import ExportSettingsDialog
-from dock import PangoFileWidget, PangoLabelWidget, PangoUndoWidget
-from graphics import PangoGraphicsScene, PangoGraphicsView
-from interface import PangoModelSceneInterface
-from item import PangoBboxItem, PangoGraphic, PangoLabelGraphic, PangoLabelItem
+from src.bar import PangoMenuBarWidget, PangoToolBarWidget
+from src.converters.pascal_voc import pascal_voc_read, pascal_voc_write
+from src.converters.yolo import yolo_read, yolo_write
+from src.dock import PangoFileWidget, PangoLabelWidget, PangoUndoWidget
+from src.dialog import ExportSettingsDialog, ImportSettingsDialog
+from src.graphics import PangoGraphicsView
+from src.interface import PangoModelSceneInterface
+from src.item import PangoLabelItem
 
 app = QApplication([])
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
@@ -56,7 +55,7 @@ class MainWindow(QMainWindow):
         self.menu_bar.export_action.triggered.connect(self.export_project)
 
         self.file_widget.file_view.selectionModel().currentChanged.connect(self.switch_image)
-        self.file_widget.file_model.directoryLoaded.connect(self.select_first_image)
+        self.file_widget.file_model.directoryLoaded.connect(self.after_loaded_images)
         self.tool_bar.label_select.currentIndexChanged.connect(self.interface.switch_label)
         self.tool_bar.del_labels_signal.connect(self.interface.del_labels)
 
@@ -99,15 +98,6 @@ class MainWindow(QMainWindow):
         self.interface.filter_tree(c_fpath, p_fpath)
         self.tool_bar.filter_label_select(c_fpath)
 
-    def select_first_image(self):
-        fpath = self.file_widget.file_model.rootPath()
-        for f in sorted(os.listdir(fpath)):
-            if f.endswith(".jpg") or f.endswith(".png"):
-                idx = self.file_widget.file_model.index(os.path.join(fpath, f))
-                self.file_widget.file_view.setCurrentIndex(idx)
-                return
-        #self.file_widget.file_view.scrollToTop()
-
     def load_images(self, action=None, fpath=None):
         if fpath is None:
             dialog = QFileDialog()
@@ -118,7 +108,20 @@ class MainWindow(QMainWindow):
             self.file_widget.file_model.setRootPath(fpath)
             root_idx = self.file_widget.file_model.index(fpath)
             self.file_widget.file_view.setRootIndex(root_idx)
-            #print(self.file_widget.file_model.rootPath())
+            self.images_are_new = True
+
+    def after_loaded_images(self):
+        if self.images_are_new is True:
+            fpath = self.file_widget.file_model.rootPath()
+            for f in sorted(os.listdir(fpath)):
+                if f.endswith(".jpg") or f.endswith(".png"):
+                    idx = self.file_widget.file_model.index(os.path.join(fpath, f))
+                    self.file_widget.file_view.setCurrentIndex(idx)
+                    break
+            #self.file_widget.file_view.scrollToTop()
+
+            self.import_project(fpath)
+            self.images_are_new = False
 
     def save_project(self, action=None, pfile=None):
         if pfile is None:
@@ -189,7 +192,7 @@ class MainWindow(QMainWindow):
             if file_format == "PascalVOC (XML)":
                 for fpath in s_fpaths:
                     if items_by_fpath[fpath] != []:
-                        pascal_voc_write(self.interface, items_by_fpath[fpath], fpath)
+                        pascal_voc_write(self.interface, fpath, items_by_fpath[fpath])
 
             elif file_format == "COCO (JSON)":
                 #export_fpath, _ = QFileDialog().getSaveFileName(
@@ -200,11 +203,31 @@ class MainWindow(QMainWindow):
             elif file_format == "YOLOv3 (TXT)":
                 for fpath in s_fpaths:
                     if items_by_fpath[fpath] != []:
-                        yolo_write(self.interface, items_by_fpath[fpath], fpath)
+                        yolo_write(self.interface, fpath, items_by_fpath[fpath])
 
             elif file_format == "Image Mask (PNG)":
                 pass
 
+    def import_project(self, folder):
+        fpaths = []
+        for fname in os.listdir(folder):
+            pre, ext = os.path.splitext(fname)
+            if ext in (".xml", ".txt"):
+                fpaths.append(os.path.join(folder, fname))
+        if fpaths == []:
+            return
+
+        dialog = ImportSettingsDialog(self, fpaths, warn=True)
+        if dialog.exec():
+            s_fpaths = dialog.selected_fnames()
+
+            for fpath in s_fpaths:
+                pre, ext = os.path.splitext(fpath)
+                if ext == ".xml": # PascalVOC (XML)
+                    pascal_voc_read(self.interface, fpath)
+                elif ext == ".txt":
+                    yolo_read(self.interface, fpath)
+                    pass
 
     def unsaved_files_dialog(self):
         dialog = QMessageBox()
