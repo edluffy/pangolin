@@ -31,9 +31,7 @@ def yolo_read(interface, fpath):
         return
 
     with open(fpath, 'r') as f:
-        lines = f.readlines()
-        print(lines)
-        for line in lines:
+        for line in f.readlines():
             row, cx, cy, w, h = map(float, line.split(" "))
 
             # Create Label if not present

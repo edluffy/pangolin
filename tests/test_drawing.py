@@ -1,6 +1,7 @@
 import pytest
 from pytestqt.qt_compat import qt_api
 
+from random import random
 from app import MainWindow
 
 @pytest.fixture
@@ -8,18 +9,80 @@ def app(qtbot):
     app = MainWindow()
     qtbot.addWidget(app)
     app.show()
-    app.load_images(fpath="/Users/edluffy/Documents/pangolin-test-images")
+    app.load_images(fpath="tests/resources")
     return app
 
 def test_basic(app, qtbot):
     assert app.isVisible() == True
     assert app.windowTitle() == "Pangolin"
-    assert app.file_widget.file_model.rootPath() == "/Users/edluffy/Documents/pangolin-test-images"
+    assert app.file_widget.file_model.rootPath() == "tests/resources"
+
+def test_bbox_tool(app, qtbot):
+    delay = 25
+    n_drag_points = 10
+    app.file_widget.file_view.setCurrentIndex(
+            app.file_widget.file_model.index("tests/resources/road.jpg"))
+
+    app.tool_bar.bbox_action.trigger()
+    app.tool_bar.add_action.trigger()
+    app.tool_bar.label_select.setCurrentText("car")
+
+    def drag_between(tl, br):
+        p1 = app.graphics_view.mapFromScene(qt_api.QtCore.QPointF(tl[0], tl[1]))
+        p2 = app.graphics_view.mapFromScene(qt_api.QtCore.QPointF(br[0], br[1]))
+
+        x_values = [p1.x()+ n*(p2.x()-p1.x())/(n_drag_points-1) for n in range(n_drag_points)]
+        y_values = [p1.y()+ n*(p2.y()-p1.y())/(n_drag_points-1) for n in range(n_drag_points)]
+
+        # Add noise
+        for n in range(n_drag_points-1):
+            x_values[n] += random()*20
+            y_values[n] += random()*20
+
+        qtbot.mousePress(app.graphics_view.viewport(), qt_api.QtCore.Qt.LeftButton, pos=p1)
+        for n in range(n_drag_points):
+            event = qt_api.QtGui.QMouseEvent(
+                qt_api.QtCore.QEvent.MouseMove,
+                qt_api.QtCore.QPointF(x_values[n], y_values[n]),
+                qt_api.QtCore.Qt.NoButton,
+                qt_api.QtCore.Qt.LeftButton,
+                qt_api.QtCore.Qt.NoModifier,
+            )
+            qt_api.QtCore.QCoreApplication.sendEvent(app.graphics_view.viewport(), event)
+            qtbot.wait(delay)
+        qtbot.mouseRelease(app.graphics_view.viewport(), qt_api.QtCore.Qt.LeftButton)
+
+    drag_between((233, 648), (517, 893))
+    drag_between((682, 210), (899, 375))
+    drag_between((808, 335), (990, 529))
+    drag_between((1155, 569), (1428, 808))
+    drag_between((1314, 1058), (1815, 1399))
+    drag_between((1781, 1029), (2230, 1308))
+    drag_between((1786, 1507), (2486, 1968))
+    drag_between((2532, 1428), (3220, 1860))
+    drag_between((3841, 1519), (4444, 1923))
+
+    app.tool_bar.add_action.trigger()
+    app.tool_bar.label_select.setCurrentText("post")
+
+    drag_between((591, 0), (643, 227))
+    drag_between((745, 0), (802, 159))
+    drag_between((1445, 0), (1536, 2230))
+    drag_between((2168, 0), (2213, 512))
+    drag_between((2355, 0), (2418, 261))
+    drag_between((2959, 0), (3015, 961))
+    drag_between((1866, 517), (2037, 961))
+
+    qtbot.wait(5000)
 
 def test_poly_tool(app, qtbot):
     delay = 1
+    app.file_widget.file_view.setCurrentIndex(
+            app.file_widget.file_model.index("tests/resources/zoo.jpg"))
+
     app.tool_bar.poly_action.trigger()
     app.tool_bar.add_action.trigger()
+    app.tool_bar.label_select.setCurrentText("giraffe")
 
     giraffe_1 = [
             (135,  90), (145, 104), (165, 111), (151, 121), (187, 171), (223, 212), 
@@ -46,6 +109,7 @@ def test_poly_tool(app, qtbot):
         qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
     app.tool_bar.add_action.trigger()
+    app.tool_bar.label_select.setCurrentText("zebra")
 
     zebra_1 = [
             (361, 430), (384, 399), (412, 373), (442, 363), (486, 352), (510, 358),
@@ -84,6 +148,7 @@ def test_poly_tool(app, qtbot):
         qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
     app.tool_bar.add_action.trigger()
+    app.tool_bar.label_select.setCurrentText("rock")
 
     rocks_1 = [
             (42, 551), (22, 541), (49, 537), (69, 532), (72, 523), (95, 524),
@@ -123,6 +188,7 @@ def test_poly_tool(app, qtbot):
         qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
     app.tool_bar.add_action.trigger()
+    app.tool_bar.label_select.setCurrentText("tree")
 
     trees_1 = [
             (451, 465), (465, 478), (460, 501), (474, 563), (463, 634), (512, 625),
@@ -155,6 +221,7 @@ def test_poly_tool(app, qtbot):
         qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
     app.tool_bar.add_action.trigger()
+    app.tool_bar.label_select.setCurrentText("grass")
 
     grass_1 = [
             (3, 417), (367, 417), (350, 437), (341, 437), (320, 423), (295, 422),
@@ -194,5 +261,4 @@ def test_poly_tool(app, qtbot):
         qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
     app.tool_bar.lasso_action.trigger()
-
-    qtbot.wait(50000)
+    qtbot.wait(5000)

@@ -243,14 +243,19 @@ class PangoPathGraphic(PangoGraphic):
 
     def paint(self, painter, option, widget):
         super().paint(painter, option, widget)
-        painter.setPen(self.pen())
+        pen = self.pen()
+        pen.setWidth(self.path.width)
+        painter.setPen(pen)
+
         painter.drawPath(self.path)
 
     def boundingRect(self):
         return self.shape().controlPointRect()
 
     def shape(self):
-        st = QPainterPathStroker(self.pen())
+        pen = self.pen()
+        pen.setWidth(self.path.width)
+        st = QPainterPathStroker(pen)
         return st.createStroke(self.path)
 
 class PangoPolyGraphic(PangoGraphic):
