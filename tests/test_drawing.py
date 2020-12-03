@@ -18,7 +18,6 @@ def test_basic(app, qtbot):
     assert app.file_widget.file_model.rootPath() == "tests/resources"
 
 def test_stack(app, qtbot, delay=25):
-
     test_poly_tool(app, qtbot, delay=0)
     for _ in range(0, 100):
         app.interface.scene.stack.setIndex(int(random()*app.interface.scene.stack.count()-1))

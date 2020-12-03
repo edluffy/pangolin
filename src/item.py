@@ -152,8 +152,11 @@ class PangoGraphic(QAbstractGraphicsShapeItem):
         self.setVisible(visible)
 
     def dw(self):
-        rect = self.scene().sceneRect()
-        return (rect.size().height()+rect.size().width())/400
+        rect = QRectF(self.scene().px.rect())
+        if rect != QRectF():
+            return (rect.size().height()+rect.size().width())/400
+        else:
+            return 10
     
     def inherit_color(self):
         if hasattr(self.parentItem(), "color"):
@@ -233,8 +236,7 @@ class PangoLabelGraphic(PangoGraphic):
         super().paint(painter, option, widget)
 
     def boundingRect(self):
-        if hasattr(self, "scene"):
-            return self.scene().sceneRect()
+        return QRectF(self.scene().px.rect())
 
 class PangoPathGraphic(PangoGraphic):
     def __init__(self, parent=None):

@@ -59,7 +59,7 @@ class ExportSettingsDialog(QDialog):
 
 
 class ImportSettingsDialog(QDialog):
-    def __init__(self, parent, fpaths, warn=False):
+    def __init__(self, parent, fpaths):
         super().__init__(parent)
         self.setWindowTitle("Import Settings")
 
@@ -81,10 +81,7 @@ class ImportSettingsDialog(QDialog):
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
 
-        if warn:
-            text = "Existing annotation file(s) were found\n in image folder:"
-        else:
-            text = "Select files:"
+        text = "Possible existing annotation file(s) were found\n in image folder:"
         self.main_layout.addWidget(QLabel(text))
         self.main_layout.addWidget(self.file_list)
 

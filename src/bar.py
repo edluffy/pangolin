@@ -32,9 +32,9 @@ class PangoMenuBarWidget(QToolBar):
         self.open_images_action.setIcon(pango_get_icon("open"))
         self.action_group.addAction(self.open_images_action)
 
-        self.import_labels_action = QAction("Import Labels")
-        self.import_labels_action.setIcon(pango_get_icon("import"))
-        self.action_group.addAction(self.import_labels_action)
+        self.import_action = QAction("Import")
+        self.import_action.setIcon(pango_get_icon("import"))
+        self.action_group.addAction(self.import_action)
 
         self.export_action = QAction("Export")
         self.export_action.setIcon(pango_get_icon("export"))

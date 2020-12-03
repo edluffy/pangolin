@@ -15,6 +15,7 @@ class PangoGraphicsScene(QGraphicsScene):
         super().__init__(parent)
         self.stack = QUndoStack()
         self.fpath = None
+        self.px = QPixmap()
         self.active_label = PangoGraphic()
         self.active_com = CreateShape(PangoGraphic, QPointF(), PangoGraphic())
 
@@ -36,9 +37,13 @@ class PangoGraphicsScene(QGraphicsScene):
         self.reticle.setPen(QPen(Qt.NoPen))
         self.addItem(self.reticle)
 
+    def set_fpath(self, fpath):
+        self.fpath = fpath
+        self.px = QPixmap(self.fpath)
+        self.setSceneRect(QRectF(self.px.rect()))
+
     def drawBackground(self, painter, rect):
-        px = QPixmap(self.fpath)
-        painter.drawPixmap(0, 0, px)
+        painter.drawPixmap(0, 0, self.px)
 
     def reset_com(self):
         if type(self.active_com.gfx) is PangoPolyGraphic:

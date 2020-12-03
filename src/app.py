@@ -53,6 +53,7 @@ class MainWindow(QMainWindow):
         self.menu_bar.save_action.triggered.connect(self.save_project)
         self.menu_bar.load_action.triggered.connect(self.load_project)
         self.menu_bar.export_action.triggered.connect(self.export_project)
+        self.menu_bar.import_action.triggered.connect(self.import_project)
 
         self.file_widget.file_view.selectionModel().currentChanged.connect(self.switch_image)
         self.file_widget.file_model.directoryLoaded.connect(self.after_loaded_images)
@@ -83,9 +84,8 @@ class MainWindow(QMainWindow):
         c_fpath = self.file_widget.file_model.filePath(c_idx)
         p_fpath = self.file_widget.file_model.filePath(p_idx)
 
-        self.interface.scene.fpath = c_fpath
+        self.interface.scene.set_fpath(c_fpath)
         self.interface.scene.reset_com()
-        self.interface.scene.setSceneRect(QRectF(QPixmap(c_fpath).rect()))
         self.graphics_view.fitInView(self.interface.scene.sceneRect(), Qt.KeepAspectRatio)
 
         # Handling unsaved changes
@@ -118,9 +118,9 @@ class MainWindow(QMainWindow):
                     idx = self.file_widget.file_model.index(os.path.join(fpath, f))
                     self.file_widget.file_view.setCurrentIndex(idx)
                     break
-            #self.file_widget.file_view.scrollToTop()
 
-            self.import_project(fpath)
+            #self.file_widget.file_view.scrollToTop()
+            self.import_project(folder=fpath)
             self.images_are_new = False
 
     def save_project(self, action=None, pfile=None):
@@ -208,7 +208,9 @@ class MainWindow(QMainWindow):
             elif file_format == "Image Mask (PNG)":
                 pass
 
-    def import_project(self, folder):
+    def import_project(self, action=None, folder=None):
+        if folder is None:
+            folder = self.file_widget.file_model.rootPath()
         fpaths = []
         for fname in os.listdir(folder):
             pre, ext = os.path.splitext(fname)
@@ -217,7 +219,7 @@ class MainWindow(QMainWindow):
         if fpaths == []:
             return
 
-        dialog = ImportSettingsDialog(self, fpaths, warn=True)
+        dialog = ImportSettingsDialog(self, fpaths)
         if dialog.exec():
             s_fpaths = dialog.selected_fnames()
 
@@ -227,7 +229,6 @@ class MainWindow(QMainWindow):
                     pascal_voc_read(self.interface, fpath)
                 elif ext == ".txt":
                     yolo_read(self.interface, fpath)
-                    pass
 
     def unsaved_files_dialog(self):
         dialog = QMessageBox()
