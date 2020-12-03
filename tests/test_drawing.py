@@ -17,9 +17,25 @@ def test_basic(app, qtbot):
     assert app.windowTitle() == "Pangolin"
     assert app.file_widget.file_model.rootPath() == "tests/resources"
 
-def test_bbox_tool(app, qtbot):
-    delay = 25
-    n_drag_points = 10
+def test_stack(app, qtbot, delay=25):
+
+    test_poly_tool(app, qtbot, delay=0)
+    for _ in range(0, 100):
+        app.interface.scene.stack.setIndex(int(random()*app.interface.scene.stack.count()-1))
+        qtbot.wait(delay)
+    assert app.interface.scene.stack.count() == 789
+
+    qtbot.wait(1000)
+
+    test_bbox_tool(app, qtbot, delay=0)
+    for _ in range(0, 100):
+        app.interface.scene.stack.setIndex(int(random()*app.interface.scene.stack.count()-1))
+        qtbot.wait(delay)
+    assert app.interface.scene.stack.count() == 16
+
+    qtbot.wait(1000)
+
+def test_bbox_tool(app, qtbot, delay=25, n_drag_points=10):
     app.file_widget.file_view.setCurrentIndex(
             app.file_widget.file_model.index("tests/resources/road.jpg"))
 
@@ -73,12 +89,16 @@ def test_bbox_tool(app, qtbot):
     drag_between((2959, 0), (3015, 961))
     drag_between((1866, 517), (2037, 961))
 
-    qtbot.wait(5000)
+    app.tool_bar.lasso_action.trigger()
 
-def test_poly_tool(app, qtbot):
-    delay = 1
+    assert app.interface.scene.stack.count() == 16
+    qtbot.wait(1000)
+
+def test_poly_tool(app, qtbot, delay=1):
     app.file_widget.file_view.setCurrentIndex(
             app.file_widget.file_model.index("tests/resources/zoo.jpg"))
+
+    qtbot.wait(1000)
 
     app.tool_bar.poly_action.trigger()
     app.tool_bar.add_action.trigger()
@@ -261,4 +281,6 @@ def test_poly_tool(app, qtbot):
         qtbot.mouseClick(app.graphics_view.viewport(), qt_api.Qt.LeftButton, pos=p, delay=delay)
 
     app.tool_bar.lasso_action.trigger()
-    qtbot.wait(5000)
+
+    qtbot.wait(1000)
+    assert app.interface.scene.stack.count() == 789
