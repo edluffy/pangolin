@@ -281,5 +281,5 @@ def test_poly_tool(app, qtbot, delay=1):
 
     app.tool_bar.lasso_action.trigger()
 
-    qtbot.wait(1000)
+    qtbot.wait(100000)
     assert app.interface.scene.stack.count() == 789

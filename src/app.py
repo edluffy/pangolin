@@ -1,4 +1,5 @@
 import os, pickle
+from src.converters.image_mask import image_mask_write
 from PyQt5.QtCore import QModelIndex, QRectF, Qt
 from PyQt5.QtGui import QKeySequence, QPixmap
 from PyQt5.QtWidgets import (QApplication, QFileDialog, QMainWindow, QMessageBox, QShortcut, QTreeView, QUndoStack, QUndoView,
@@ -206,7 +207,13 @@ class MainWindow(QMainWindow):
                         yolo_write(self.interface, fpath, items_by_fpath[fpath])
 
             elif file_format == "Image Mask (PNG)":
-                pass
+                mask_folder = os.path.join(default, "Masks")
+                if not os.path.exists(mask_folder):
+                    os.mkdir(mask_folder)
+                for fpath in s_fpaths:
+                    idx = self.file_widget.file_model.index(fpath)
+                    self.file_widget.file_view.setCurrentIndex(idx)
+                    image_mask_write(self.interface, fpath, mask_folder)
 
     def import_project(self, action=None, folder=None):
         if folder is None:

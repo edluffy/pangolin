@@ -112,6 +112,7 @@ class PangoGraphic(QAbstractGraphicsShapeItem):
         self.setCacheMode(QGraphicsItem.DeviceCoordinateCache)
         self.setAcceptHoverEvents(True)
         self.setFlag(QGraphicsItem.ItemIsSelectable)
+        self.force_opaque = False
 
         pen = QPen()
         pen.setCapStyle(Qt.RoundCap)
@@ -175,7 +176,9 @@ class PangoGraphic(QAbstractGraphicsShapeItem):
 
     def paint(self, painter, option, widget):
         painter.setCompositionMode(QPainter.CompositionMode_Source)
-        if option.state & QStyle.State_Selected:
+        if self.force_opaque:
+            painter.setOpacity(1)
+        elif option.state & QStyle.State_Selected:
             painter.setOpacity(0.7)
         else:
             painter.setOpacity(0.5)
@@ -310,7 +313,8 @@ class PangoBboxGraphic(PangoGraphic):
         pen.setWidth(int(w))
         painter.setPen(pen)
 
-        painter.setOpacity(0.8)
+        if not self.force_opaque:
+            painter.setOpacity(0.8)
         painter.drawRect(self.rect)
         self.paint_text_rect(painter)
 

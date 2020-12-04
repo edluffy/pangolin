@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QEvent, QLineF, QPoint, QPointF, QRect, QRectF, QTimer, Qt, pyqtSignal
-from PyQt5.QtGui import QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygonF, QTransform
+from PyQt5.QtGui import QBrush, QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygonF, QTransform
 from PyQt5.QtWidgets import (QAction, QGraphicsEllipseItem, QGraphicsItem, QGraphicsPixmapItem,
                              QGraphicsScene, QGraphicsSimpleTextItem, QGraphicsView, QMenu, QMessageBox, QUndoCommand, QUndoCommand, QUndoStack)
 
@@ -23,6 +23,7 @@ class PangoGraphicsScene(QGraphicsScene):
         self.tool_size = 10
 
         self.full_clear()
+        self.reticle.isVisible
 
     def full_clear(self):
         self.stack.clear()
