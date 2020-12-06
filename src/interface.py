@@ -19,7 +19,6 @@ class PangoModelSceneInterface(object):
         self.model = QStandardItemModel()
         self.model.dataChanged.connect(self.item_changed)
         self.model.rowsAboutToBeRemoved.connect(self.item_removed)
-        self.model.item
 
         # Scene/View changes (gfx) ----> Model/View (item)
         self.scene = PangoGraphicsScene()
@@ -33,32 +32,16 @@ class PangoModelSceneInterface(object):
             self.tree.selectionModel().selectionChanged.connect(self.item_selection_changed)
 
     def filter_tree(self, new_fpath, old_fpath):
-        old = [item.key() for item in self.find_in_tree("fpath", old_fpath, 1, True)]
-        new = [item.key() for item in self.find_in_tree("fpath", new_fpath, 1, True)]
-
-        for key in new:
+        for key, gfx in self.map.items():
             item = self.model.itemFromIndex(QModelIndex(key))
-            gfx = self.map[key]
+            if hasattr(item, "fpath"): # ( = not a label)
+                if item.fpath == new_fpath:
+                    self.tree.setRowHidden(item.row(), item.parent().index(), False)
+                    self.scene.addItem(gfx)
 
-            if item.parent() is None:
-                self.tree.setRowHidden(item.row(), QModelIndex(), False)
-            else:
-                self.tree.setRowHidden(item.row(), item.parent().index(), False)
-
-            if gfx.scene() is not self.scene:
-                self.scene.addItem(gfx)
-
-        for key in old:
-            item = self.model.itemFromIndex(QModelIndex(key))
-            gfx = self.map[key]
-
-            if item.parent() is None:
-                self.tree.setRowHidden(item.row(), QModelIndex(), True)
-            else:
-                self.tree.setRowHidden(item.row(), item.parent().index(), True)
-
-            if gfx.scene() is self.scene:
-                self.scene.removeItem(gfx)
+                elif item.fpath == old_fpath:
+                    self.tree.setRowHidden(item.row(), item.parent().index(), True)
+                    self.scene.removeItem(gfx)
 
     def find_in_tree(self, prop, value, levels=2, inclusive=False):
         matches = []
@@ -66,14 +49,14 @@ class PangoModelSceneInterface(object):
         if levels > 0: # (Labels)
             for i in range(0, root.rowCount()):
                 item = root.child(i)
-                if getattr(item, prop) == value:
+                if hasattr(item, prop) and getattr(item, prop) == value:
                     matches.append(item)
                     if inclusive:
                         matches.extend(item.children())
                 if levels > 1: # (Shapes)
                     for i in range(0, item.rowCount()):
                         item_child = item.child(i)
-                        if getattr(item_child, prop) == value:
+                        if hasattr(item, prop) and getattr(item_child, prop) == value:
                             matches.append(item_child)
                             if inclusive:
                                 matches.extend(item_child.children())
@@ -90,28 +73,17 @@ class PangoModelSceneInterface(object):
             self.scene.reticle.setBrush(self.scene.active_label.color)
             self.scene.reset_com()
 
-    def copy_labels(self, new_fpath, old_fpath):
-        old = [item.name for item in self.find_in_tree("fpath", old_fpath, 1)]
-        new = [item.name for item in self.find_in_tree("fpath", new_fpath, 1)]
-
-        for name in set(old)-set(new):
-            ms = self.find_in_tree("name", name, 1)
-            if ms is not None:
-                label = ms[0]
-                dupe_label = globals()[type(label).__name__]()
-                self.model.appendRow(dupe_label)
-
-                dupe_label.setattrs(**label.getattrs())
-                dupe_label.fpath = new_fpath
-                dupe_label.set_icon()
-
     def del_labels(self, row):
-        name = self.model.item(row).name
-        gfxs = [self.map[item.key()] for item in self.find_in_tree("name", name, 1, True)]
-        self.scene.unravel_shapes(*gfxs)
+        gfxs = []
+        item = self.model.item(row)
+        for i in range(0, item.rowCount()):
+            gfxs.append(self.map[item.child(i).key()])
 
-        self.model.removeRow(row)
-        self.model.removeRow(row) # Twice is necessary
+        self.scene.unravel_shapes(*gfxs)
+        idx = item.index()
+        self.model.removeRow(idx.row(), idx.parent())
+        self.model.removeRow(idx.row(), idx.parent())
+        #self.model.removeRow(row) # Twice is necessary
 
     def item_selection_changed(self):
         try:

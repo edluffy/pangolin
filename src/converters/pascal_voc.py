@@ -72,7 +72,7 @@ def pascal_voc_read(interface, fpath):
             label.name = name.text
             label.visible = True
             label.fpath = img_fpath
-            label.color = pango_get_palette(label.unique_row()-1)
+            label.color = pango_get_palette(label.row()-1)
             label.set_icon()
 
         # Create shape

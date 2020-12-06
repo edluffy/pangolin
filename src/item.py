@@ -80,30 +80,24 @@ class PangoItem(QStandardItem):
 class PangoLabelItem(PangoItem):
     def __init__(self):
         super().__init__()
-        self.fpath = None
         self.color = QColor()
-
-    def unique_row(self):
-        root = self.model().invisibleRootItem()
-        row = 0
-        for i in range(0, root.rowCount()):
-            if root.child(i).fpath == self.fpath:
-                row+=1
-        return row
 
 class PangoPathItem(PangoItem):
     def __init__(self):
         super().__init__()
+        self.fpath = None
         self.path = PainterPath()
 
 class PangoPolyItem(PangoItem):
     def __init__(self):
         super().__init__()
+        self.fpath = None
         self.poly = PolygonF()
 
 class PangoBboxItem(PangoItem):
     def __init__(self):
         super().__init__()
+        self.fpath = None
         self.rect = QRectF()
 
 class PangoGraphic(QAbstractGraphicsShapeItem):
@@ -216,7 +210,6 @@ class PangoLabelGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFlag(QGraphicsItem.ItemClipsChildrenToShape)
-        self.fpath = None
 
     @property
     def color(self):
@@ -244,6 +237,7 @@ class PangoLabelGraphic(PangoGraphic):
 class PangoPathGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.fpath = None
         self.path = PainterPath()
 
     def paint(self, painter, option, widget):
@@ -266,6 +260,7 @@ class PangoPathGraphic(PangoGraphic):
 class PangoPolyGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.fpath = None
         self.poly = PolygonF()
 
     def paint(self, painter, option, widget):
@@ -303,11 +298,11 @@ class PangoPolyGraphic(PangoGraphic):
 class PangoBboxGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.fpath = None
         self.rect = QRectF()
 
     def paint(self, painter, option, widget):
         super().paint(painter, option, widget)
-
         w = self.dw()
         pen = self.pen()
         pen.setWidth(int(w))
@@ -316,7 +311,9 @@ class PangoBboxGraphic(PangoGraphic):
         if not self.force_opaque:
             painter.setOpacity(0.8)
         painter.drawRect(self.rect)
-        self.paint_text_rect(painter)
+
+        if self.parentItem() is not None:
+            self.paint_text_rect(painter)
 
         painter.setOpacity(1)
         if option.state & QStyle.State_MouseOver or self.isSelected():

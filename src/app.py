@@ -26,7 +26,6 @@ class MainWindow(QMainWindow):
 
         # Models and Views
         self.interface = PangoModelSceneInterface()
-        self.change_stacks = {}
 
         self.tree_view = QTreeView()
         self.tree_view.setUniformRowHeights(True)
@@ -51,10 +50,9 @@ class MainWindow(QMainWindow):
 
         # Signals and Slots
         self.menu_bar.open_images_action.triggered.connect(self.load_images)
-        self.menu_bar.save_action.triggered.connect(self.save_project)
-        self.menu_bar.load_action.triggered.connect(self.load_project)
         self.menu_bar.export_action.triggered.connect(self.export_project)
         self.menu_bar.import_action.triggered.connect(self.import_project)
+        self.menu_bar.save_project_action.triggered.connect(self.save_project)
 
         self.file_widget.file_view.selectionModel().currentChanged.connect(self.switch_image)
         self.file_widget.file_model.directoryLoaded.connect(self.after_loaded_images)
@@ -90,14 +88,11 @@ class MainWindow(QMainWindow):
         self.graphics_view.fitInView(self.interface.scene.sceneRect(), Qt.KeepAspectRatio)
 
         # Handling unsaved changes
-        if c_fpath not in self.change_stacks.keys():
-            self.change_stacks[c_fpath] = QUndoStack()
-        self.undo_view.setStack(self.change_stacks[c_fpath])
-        self.interface.scene.stack = self.change_stacks[c_fpath]
-
-        self.interface.copy_labels(c_fpath, p_fpath)
+        if c_fpath not in self.interface.scene.change_stacks.keys():
+            self.interface.scene.change_stacks[c_fpath] = QUndoStack()
+        self.undo_view.setStack(self.interface.scene.change_stacks[c_fpath])
+        self.interface.scene.stack = self.interface.scene.change_stacks[c_fpath]
         self.interface.filter_tree(c_fpath, p_fpath)
-        self.tool_bar.filter_label_select(c_fpath)
 
     def load_images(self, action=None, fpath=None):
         if fpath is None:
@@ -113,77 +108,53 @@ class MainWindow(QMainWindow):
 
     def after_loaded_images(self):
         if self.images_are_new is True:
-            fpath = self.file_widget.file_model.rootPath()
-            for f in sorted(os.listdir(fpath)):
+            folder_path = self.file_widget.file_model.rootPath()
+            for f in sorted(os.listdir(folder_path)):
                 if f.endswith(".jpg") or f.endswith(".png"):
-                    idx = self.file_widget.file_model.index(os.path.join(fpath, f))
+                    idx = self.file_widget.file_model.index(os.path.join(folder_path, f))
                     self.file_widget.file_view.setCurrentIndex(idx)
                     break
 
-            #self.file_widget.file_view.scrollToTop()
-            self.import_project(folder=fpath)
+            self.file_widget.file_view.scrollToTop()
+            self.load_project()
             self.images_are_new = False
 
-    def save_project(self, action=None, pfile=None):
-        if pfile is None:
-            pf = os.path.join(self.file_widget.file_model.rootPath(), "pango_project.p")
-            if os.path.exists(pf):
-                pfile = pf
+    def save_project(self, action=None, project_path=None):
+        if project_path is None:
+            project_path = os.path.join(
+                    self.file_widget.file_model.rootPath(), "pangolin_project.p")
 
-        if pfile is None:
-            default = self.file_widget.file_model.rootPath()+"/pango_project.p"
-            pfile, _ = QFileDialog().getSaveFileName(
-                self, "Save Project", default, "Pickle files (*.p)")
+        pickle_items = []
+        for k in self.interface.map.keys():
+            pickle_items.append(self.interface.model.itemFromIndex(QModelIndex(k)))
+        pickle.dump(pickle_items, open(project_path, "wb"))
 
-        if pfile != "":
-            pickle_items = []
-            for k in self.interface.map.keys():
-                pickle_items.append(self.interface.model.itemFromIndex(QModelIndex(k)))
-            pickle.dump(pickle_items, open(pfile, "wb"))
+    def load_project(self, action=None, project_path=None):
+        if project_path is None:
+            project_path = os.path.join(
+                    self.file_widget.file_model.rootPath(), "pangolin_project.p")
 
-    def load_project(self, action=None, pfile=None):
-        if pfile is None:
-            pfile, _ = QFileDialog().getOpenFileName(
-                    self, caption="Load Project", filter="Pickle files (*.p)")
-        
-        if pfile != "":
-            # Save changes?
-            if self.interface.map:
-                result = self.unsaved_files_dialog()
-                if result == QMessageBox.Cancel:
-                    return
-                elif result == QMessageBox.Save:
-                    self.save_project()
+        if os.path.exists(project_path):
 
             # Clear project
             self.interface.map.clear()
             self.interface.model.clear()
             self.interface.scene.full_clear()
-            self.file_widget.file_view.setRootIndex(QModelIndex())
 
-            unpickled_items = pickle.load(open(pfile, "rb"))
+            unpickled_items = pickle.load(open(project_path, "rb"))
             for item in unpickled_items:
                 if item.parent() is None:
                     self.interface.model.appendRow(item)
                 item.force_update()
 
-            # Open image folder
-            for item in unpickled_items:
-                if hasattr(item, "fpath"):
-                    fpath = os.path.dirname(item.fpath)
-                    self.file_widget.file_model.setRootPath(fpath)
-                    root_idx = self.file_widget.file_model.index(fpath)
-                    self.file_widget.file_view.setRootIndex(root_idx)
-                    break
-
     def export_project(self, action=None):
-        default = self.file_widget.file_model.rootPath()
+        folder_path = self.file_widget.file_model.rootPath()
 
-        fpaths = self.change_stacks.keys()
+        fpaths = self.interface.scene.change_stacks.keys()
         items_by_fpath = {}
         for fpath in fpaths:
             items_by_fpath[fpath] = [item for item in self.interface.find_in_tree(
-                "fpath", fpath, 1, True) if type(item) != PangoLabelItem]
+                "fpath", fpath, 2)]
 
         dialog = ExportSettingsDialog(self, items_by_fpath.keys())
         if dialog.exec():
@@ -207,7 +178,7 @@ class MainWindow(QMainWindow):
                         yolo_write(self.interface, fpath, items_by_fpath[fpath])
 
             elif file_format == "Image Mask (PNG)":
-                mask_folder = os.path.join(default, "Masks")
+                mask_folder = os.path.join(folder_path, "Masks")
                 if not os.path.exists(mask_folder):
                     os.mkdir(mask_folder)
                 for fpath in s_fpaths:
@@ -238,6 +209,15 @@ class MainWindow(QMainWindow):
                     yolo_read(self.interface, fpath)
 
     def unsaved_files_dialog(self):
+        #if pfile != "":
+        #    # Save changes?
+        #    if self.interface.map:
+        #        result = self.unsaved_files_dialog()
+        #        if result == QMessageBox.Cancel:
+        #            return
+        #        elif result == QMessageBox.Save:
+        #            self.save_project()
+
         dialog = QMessageBox()
         dialog.setText("The project has been modified.")
         dialog.setInformativeText("Do you want to save your changes?")
@@ -249,7 +229,7 @@ class MainWindow(QMainWindow):
         res = QMessageBox().question(self.parent(), "Unsaved shape commands", 
                 "Command history will be cleaned, are you sure you want to continue?")
         if res == QMessageBox.Yes:
-            for stack in self.change_stacks.values():
+            for stack in self.interface.scene.change_stacks.values():
                 stack.clear()
         return res
 

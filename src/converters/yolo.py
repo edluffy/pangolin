@@ -39,10 +39,10 @@ def yolo_read(interface, fpath):
                 label = PangoLabelItem()
                 interface.model.invisibleRootItem().appendRow(label)
 
-                label.name = "Unnamed Label "+str(label.unique_row())
+                label.name = "Unnamed Label "+str(label.row())
                 label.visible = True
                 label.fpath = img_fpath
-                label.color = pango_get_palette(label.unique_row()-1)
+                label.color = pango_get_palette(label.row()-1)
                 label.set_icon()
             
             # Create shape

@@ -40,13 +40,9 @@ class PangoMenuBarWidget(QToolBar):
         self.export_action.setIcon(pango_get_icon("export"))
         self.action_group.addAction(self.export_action)
 
-        self.save_action = QAction("Save Project")
-        self.save_action.setIcon(pango_get_icon("save"))
-        self.action_group.addAction(self.save_action)
-
-        self.load_action = QAction("Load Project")
-        self.load_action.setIcon(pango_get_icon("load"))
-        self.action_group.addAction(self.load_action)
+        self.save_project_action = QAction("Save Project")
+        self.save_project_action.setIcon(pango_get_icon("save"))
+        self.action_group.addAction(self.save_project_action)
 
         self.run_action = QAction("PyTorch")
         self.run_action.setIcon(pango_get_icon("fire"))
@@ -181,19 +177,7 @@ class PangoToolBarWidget(QToolBar):
         # Refresh label (for scene reticle etc.)
         self.label_select.setCurrentIndex(0)
         self.label_select.setCurrentIndex(row)
-
         self.label_select.color_display.update()
-
-    def filter_label_select(self, new_fpath):
-        for row in range(0, self.label_select.count()):
-            item = self.label_select.model().item(row, 0)
-            self.label_select.view().setRowHidden(row, item.fpath!=self.scene.fpath)
-        self.label_select.model().sort(0)
-
-        # Select first valid label
-        for row in range(0, self.label_select.count()):
-            if self.label_select.view().isRowHidden(row) is False:
-                self.label_select.setCurrentIndex(row)
 
     def add(self):
         if not self.label_select.isEnabled():
@@ -204,10 +188,9 @@ class PangoToolBarWidget(QToolBar):
         item = PangoLabelItem()
         root = self.label_select.model().invisibleRootItem()
         root.appendRow(item)
-        item.fpath = self.scene.fpath
-        item.name = "Unnamed Label "+str(item.unique_row())
+        item.name = "Unnamed Label "+str(item.row())
         item.visible = True
-        item.color = pango_get_palette(item.unique_row()-1)
+        item.color = pango_get_palette(item.row())
         item.set_icon()
 
         bottom_row = self.label_select.model().rowCount()-1

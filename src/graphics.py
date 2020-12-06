@@ -13,6 +13,7 @@ class PangoGraphicsScene(QGraphicsScene):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.change_stacks = {}
         self.stack = QUndoStack()
         self.fpath = None
         self.px = QPixmap()
@@ -54,22 +55,23 @@ class PangoGraphicsScene(QGraphicsScene):
 
     # Undo all commands for shapes (including creation)
     def unravel_shapes(self, *gfxs):
-        for i in range(self.stack.count()-1, -1, -1):
-            com = self.stack.command(i)
-            if type(com) is QUndoCommand:
-                for j in range(0, com.childCount()):
-                    sub_com = com.child(j)
-                    if sub_com.gfx in gfxs:
+        for stack in self.change_stacks.values():
+            for i in range(stack.count()-1, -1, -1):
+                com = stack.command(i)
+                if type(com) is QUndoCommand:
+                    for j in range(0, com.childCount()):
+                        sub_com = com.child(j)
+                        if sub_com.gfx in gfxs:
+                            com.setObsolete(True)
+                else:
+                    if com.gfx in gfxs:
                         com.setObsolete(True)
-            else:
-                if com.gfx in gfxs:
-                    com.setObsolete(True)
 
-                if type(com) == CreateShape:
-                    break # Reached shape creation
+                    if type(com) == CreateShape:
+                        break # Reached shape creation
 
-        self.stack.setIndex(0)
-        self.stack.setIndex(self.stack.count())
+            stack.setIndex(0)
+            stack.setIndex(stack.count())
         self.active_com = CreateShape(PangoGraphic, QPointF(), PangoGraphic())
 
     def event(self, event):
@@ -227,15 +229,17 @@ class CreateShape(QUndoCommand):
         self.gfx.setParentItem(self.p_gfx)
         self.gfx.inherit_color()
         self.gfx.name = self.shape_name()+" at "+self.shape_coords()
+        self.gfx.fpath = self.gfx.scene().fpath
         self.gfx.visible = True
 
         self.gfx.scene().clearSelection()
         self.gfx.setSelected(True)
 
     def undo(self):
-        scene = self.p_gfx.scene()
-        scene.removeItem(self.gfx)
-        scene.gfx_removed.emit(self.gfx)
+        scene = self.gfx.scene()
+        if scene is not None:
+            scene.removeItem(self.gfx)
+            scene.gfx_removed.emit(self.gfx)
 
     def shape_name(self):
         return self.clss.__name__.replace("Pango", "").replace("Graphic", "")
@@ -255,7 +259,8 @@ class ExtendShape(QUndoCommand):
         #print("("+str(round(self.pos.x()))+", "+str(round(self.pos.y()))+"),")
 
     def redo(self):
-        self.gfx.scene().active_com = self
+        if self.gfx.scene() is not None:
+            self.gfx.scene().active_com = self
         self.gfx.prepareGeometryChange()
 
         if type(self.gfx) is PangoPathGraphic:
@@ -267,7 +272,8 @@ class ExtendShape(QUndoCommand):
         self.gfx.update()
 
     def undo(self):
-        self.gfx.scene().active_com = self
+        if self.gfx.scene() is not None:
+            self.gfx.scene().active_com = self
         self.gfx.prepareGeometryChange()
 
         if type(self.gfx) is PangoPathGraphic:
@@ -290,7 +296,8 @@ class MoveShape(QUndoCommand):
             +str(round(self.pos.x()))+", "+str(round(self.pos.y()))+")")
 
     def redo(self):
-        self.gfx.scene().active_com = self
+        if self.gfx.scene() is not None:
+            self.gfx.scene().active_com = self
         self.gfx.prepareGeometryChange()
 
         if type(self.gfx) is PangoPolyGraphic:
@@ -311,7 +318,8 @@ class MoveShape(QUndoCommand):
         self.gfx.update()
 
     def undo(self):
-        self.gfx.scene().active_com = self
+        if self.gfx.scene() is not None:
+            self.gfx.scene().active_com = self
         self.gfx.prepareGeometryChange()
 
         if type(self.gfx) is PangoPolyGraphic:
