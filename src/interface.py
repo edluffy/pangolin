@@ -37,11 +37,14 @@ class PangoModelSceneInterface(object):
             if hasattr(item, "fpath"): # ( = not a label)
                 if item.fpath == new_fpath:
                     self.tree.setRowHidden(item.row(), item.parent().index(), False)
-                    self.scene.addItem(gfx)
-
-                elif item.fpath == old_fpath:
+                    if gfx.scene() is None:
+                        self.scene.addItem(gfx)
+                        gfx.setParentItem(self.map[item.parent().key()])
+                        gfx.inherit_color() # incase color has changed
+                else:
                     self.tree.setRowHidden(item.row(), item.parent().index(), True)
-                    self.scene.removeItem(gfx)
+                    if gfx.scene() is not None:
+                        self.scene.removeItem(gfx)
 
     def find_in_tree(self, prop, value, levels=2, inclusive=False):
         matches = []
@@ -74,16 +77,17 @@ class PangoModelSceneInterface(object):
             self.scene.reset_com()
 
     def del_labels(self, row):
-        gfxs = []
-        item = self.model.item(row)
-        for i in range(0, item.rowCount()):
-            gfxs.append(self.map[item.child(i).key()])
+        if self.model.rowCount() > 0:
+            gfxs = []
+            item = self.model.item(row)
+            for i in range(0, item.rowCount()):
+                gfxs.append(self.map[item.child(i).key()])
 
-        self.scene.unravel_shapes(*gfxs)
-        idx = item.index()
-        self.model.removeRow(idx.row(), idx.parent())
-        self.model.removeRow(idx.row(), idx.parent())
-        #self.model.removeRow(row) # Twice is necessary
+            self.scene.unravel_shapes(*gfxs)
+            idx = item.index()
+            self.model.removeRow(idx.row(), idx.parent())
+            self.model.removeRow(idx.row(), idx.parent()) # Twice is necessary
+            self.filter_tree(self.scene.fpath, None)
 
     def item_selection_changed(self):
         try:

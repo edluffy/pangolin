@@ -218,6 +218,9 @@ class CreateShape(QUndoCommand):
         self.clss = clss
         self.pos = pos
         self.p_gfx = p_gfx
+        self.fpath = ""
+        if self.p_gfx.scene() is not None:
+            self.fpath += p_gfx.scene().fpath # Create copy
 
         self.gfx = self.clss()
         self.setText("Created "+self.shape_name()+" at "+self.shape_coords())
@@ -229,7 +232,7 @@ class CreateShape(QUndoCommand):
         self.gfx.setParentItem(self.p_gfx)
         self.gfx.inherit_color()
         self.gfx.name = self.shape_name()+" at "+self.shape_coords()
-        self.gfx.fpath = self.gfx.scene().fpath
+        self.gfx.fpath = self.fpath
         self.gfx.visible = True
 
         self.gfx.scene().clearSelection()
@@ -256,7 +259,6 @@ class ExtendShape(QUndoCommand):
         self.motion = motion
         self.setText("Extended "+self.gfx.name+" to ("
             +str(round(self.pos.x()))+", "+str(round(self.pos.y()))+")")
-        #print("("+str(round(self.pos.x()))+", "+str(round(self.pos.y()))+"),")
 
     def redo(self):
         if self.gfx.scene() is not None:

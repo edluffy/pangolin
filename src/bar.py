@@ -159,20 +159,17 @@ class PangoToolBarWidget(QToolBar):
     def set_color(self):
         dialog = QColorDialog()
         dialog.setOption(QColorDialog.ShowAlphaChannel, False)
-        row = self.label_select.currentIndex()
         color = dialog.getColor()
         if color == QColor():
             return
-        name = self.label_select.model().item(row, 0).name
 
-        for row in range(0, self.label_select.count()):
-            label = self.label_select.model().item(row, 0)
-            if label.name == name:
-                label.color = color
-                label.set_icon()
-                for n in range(0, label.rowCount()):
-                    child = label.child(n, 0)
-                    child.set_icon()
+        row = self.label_select.currentIndex()
+        label = self.label_select.model().item(row, 0)
+        label.color = color
+        label.set_icon()
+        for i in range(0, label.rowCount()):
+            shape = label.child(i)
+            shape.set_icon()
 
         # Refresh label (for scene reticle etc.)
         self.label_select.setCurrentIndex(0)
@@ -263,10 +260,12 @@ class PangoToolBarWidget(QToolBar):
         def paintEvent(self, event):
             super().paintEvent(event)
             item = self.model().item(self.currentIndex())
-            if item is not None:
-                if item.color is not None:
-                    self.color_display.setStyleSheet(
-                        "QLabel { background-color : "+item.color.name()+"}")
+            if item is not None and item.color is not None:
+                self.color_display.setStyleSheet(
+                    "QLabel { background-color : "+item.color.name()+"}")
+            else:
+                self.color_display.setStyleSheet(
+                    "QLabel { background-color : rgba(255, 255, 255, 10)}")
 
         def edit_text_changed(self, text):
             row = self.currentIndex()
