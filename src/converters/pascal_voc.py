@@ -1,11 +1,20 @@
 import os
+from PyQt5.QtCore import QModelIndex
 from PyQt5.QtGui import QImage
 from lxml import etree
 
 from item import PangoBboxItem, PangoLabelItem, PangoPathItem, PangoPolyItem
 from utils import pango_get_icon, pango_get_palette
 
-def pascal_voc_write(interface, fpath, items):
+def pascal_voc_write(interface, fpath):
+    items = []
+    for k in interface.map.keys():
+        item = interface.model.itemFromIndex(QModelIndex(k))
+        if hasattr(item, "fpath") and item.fpath == fpath:
+            items.append(item)
+    if items == []:
+        return
+
     img = QImage(fpath)
     root = etree.Element("annotation")
 
@@ -63,23 +72,27 @@ def pascal_voc_read(interface, fpath):
 
     for object in root.iterfind("object"):
         name = object.find("name")
+        # Create shape
+        shape = PangoBboxItem()
+        shape.visible = True
+        shape.fpath = img_fpath
 
-        # Create Label if not present
-        if interface.find_in_tree("name", name.text, levels=1)==[]:
+        for k in interface.map.keys():
+            label = interface.model.itemFromIndex(QModelIndex(k))
+            if label.name == name.text:
+                label.appendRow(shape)
+                break
+
+        if shape.parent() is None: # Create Label if not found
             label = PangoLabelItem()
             interface.model.invisibleRootItem().appendRow(label)
 
             label.name = name.text
             label.visible = True
-            label.fpath = img_fpath
-            label.color = pango_get_palette(label.row()-1)
+            label.color = pango_get_palette(label.row())
             label.set_icon()
 
-        # Create shape
-        shape = PangoBboxItem()
-        interface.find_in_tree("name", name.text, levels=1)[0].appendRow(shape)
-        shape.visible = True
-        shape.fpath = img_fpath
+            label.appendRow(shape)
 
         bndbox = object.find("bndbox")
         shape.rect.setLeft(float(bndbox.findtext("xmin")))

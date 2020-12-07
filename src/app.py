@@ -163,8 +163,7 @@ class MainWindow(QMainWindow):
 
             if file_format == "PascalVOC (XML)":
                 for fpath in s_fpaths:
-                    if items_by_fpath[fpath] != []:
-                        pascal_voc_write(self.interface, fpath, items_by_fpath[fpath])
+                    pascal_voc_write(self.interface, fpath)
 
             elif file_format == "COCO (JSON)":
                 #export_fpath, _ = QFileDialog().getSaveFileName(
@@ -174,8 +173,7 @@ class MainWindow(QMainWindow):
 
             elif file_format == "YOLOv3 (TXT)":
                 for fpath in s_fpaths:
-                    if items_by_fpath[fpath] != []:
-                        yolo_write(self.interface, fpath, items_by_fpath[fpath])
+                    yolo_write(self.interface, fpath)
 
             elif file_format == "Image Mask (PNG)":
                 mask_folder = os.path.join(folder_path, "Masks")

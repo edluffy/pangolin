@@ -1,11 +1,19 @@
 import os
 
-from PyQt5.QtCore import QPointF
+from PyQt5.QtCore import QModelIndex, QPointF
 from src.utils import pango_get_palette
 from src.item import PangoLabelItem
 from item import PangoBboxItem, PangoPathItem, PangoPolyItem
 
-def yolo_write(interface, fpath, items):
+def yolo_write(interface, fpath):
+    items = []
+    for k in interface.map.keys():
+        item = interface.model.itemFromIndex(QModelIndex(k))
+        if hasattr(item, "fpath") and item.fpath == fpath:
+            items.append(item)
+    if items == []:
+        return
+
     pre, ext = os.path.splitext(fpath)
     with open(pre+".txt", 'w') as f:
         for item in items:
@@ -41,9 +49,9 @@ def yolo_read(interface, fpath):
 
                 label.name = "Unnamed Label "+str(label.row())
                 label.visible = True
-                label.fpath = img_fpath
-                label.color = pango_get_palette(label.row()-1)
+                label.color = pango_get_palette(label.row())
                 label.set_icon()
+                print("created label")
             
             # Create shape
             shape = PangoBboxItem()
