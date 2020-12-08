@@ -2,7 +2,7 @@
 Pangolin is a graphical image segmentation/annotation tool written in Python using Qt. Created to handle annotation tasks (both object detection and image segmentation) with large datasets of > 700 images.
 
 <p align="center">
-<img src="screenshots/sc2.png" alt="screenshot" width="500"/>
+<img src="screenshots/sc2.png" alt="screenshot" width="900"/>
 </p>
 
 ## Features
