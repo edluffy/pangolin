@@ -4,7 +4,7 @@ Currently a WIP project.
 TODO:
 - Move drawing commands into item classes
 
-![](screenshots/gf1.gif)
+![](screenshots/sc2.png)
 
 ## Installation
 
