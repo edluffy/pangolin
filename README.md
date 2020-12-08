@@ -4,7 +4,7 @@ Currently a WIP project.
 TODO:
 - Move drawing commands into item classes
 
-![Screenshot 1](screenshots/sc1.png?raw=true "Screenshot 1")
+![](screenshots/gf1.gif)
 
 ## Installation
 
