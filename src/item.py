@@ -105,7 +105,6 @@ class PangoGraphic(QAbstractGraphicsShapeItem):
         super().__init__(parent)
         self.setCacheMode(QGraphicsItem.DeviceCoordinateCache)
         self.setAcceptHoverEvents(True)
-        self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.force_opaque = False
 
         pen = QPen()
@@ -237,6 +236,7 @@ class PangoLabelGraphic(PangoGraphic):
 class PangoPathGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.fpath = None
         self.path = PainterPath()
 
@@ -260,6 +260,7 @@ class PangoPathGraphic(PangoGraphic):
 class PangoPolyGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.fpath = None
         self.poly = PolygonF()
 
@@ -288,7 +289,7 @@ class PangoPolyGraphic(PangoGraphic):
 
     def boundingRect(self):
         w = self.dw()
-        return self.shape().controlPointRect().adjusted(-w*2, -w*2, w*2, w*2)
+        return self.shape().controlPointRect().adjusted(-w, -w, w, w)
 
     def shape(self):
         path = QPainterPath()
@@ -298,6 +299,7 @@ class PangoPolyGraphic(PangoGraphic):
 class PangoBboxGraphic(PangoGraphic):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.fpath = None
         self.rect = QRectF()
 

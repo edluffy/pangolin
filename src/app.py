@@ -147,16 +147,13 @@ class MainWindow(QMainWindow):
                     self.interface.model.appendRow(item)
                 item.force_update()
 
+            self.interface.filter_tree(self.interface.scene.fpath, None)
+
     def export_project(self, action=None):
         folder_path = self.file_widget.file_model.rootPath()
 
         fpaths = self.interface.scene.change_stacks.keys()
-        items_by_fpath = {}
-        for fpath in fpaths:
-            items_by_fpath[fpath] = [item for item in self.interface.find_in_tree(
-                "fpath", fpath, 2)]
-
-        dialog = ExportSettingsDialog(self, items_by_fpath.keys())
+        dialog = ExportSettingsDialog(self, fpaths)
         if dialog.exec():
             s_fpaths = dialog.selected_fnames()
             file_format = dialog.file_format()
@@ -183,6 +180,8 @@ class MainWindow(QMainWindow):
                     idx = self.file_widget.file_model.index(fpath)
                     self.file_widget.file_view.setCurrentIndex(idx)
                     image_mask_write(self.interface, fpath, mask_folder)
+
+            self.interface.filter_tree(self.interface.scene.fpath, None)
 
     def import_project(self, action=None, folder=None):
         if folder is None:

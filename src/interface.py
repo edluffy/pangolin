@@ -46,25 +46,6 @@ class PangoModelSceneInterface(object):
                     if gfx.scene() is not None:
                         self.scene.removeItem(gfx)
 
-    def find_in_tree(self, prop, value, levels=2, inclusive=False):
-        matches = []
-        root = self.model.invisibleRootItem()
-        if levels > 0: # (Labels)
-            for i in range(0, root.rowCount()):
-                item = root.child(i)
-                if hasattr(item, prop) and getattr(item, prop) == value:
-                    matches.append(item)
-                    if inclusive:
-                        matches.extend(item.children())
-                if levels > 1: # (Shapes)
-                    for i in range(0, item.rowCount()):
-                        item_child = item.child(i)
-                        if hasattr(item, prop) and getattr(item_child, prop) == value:
-                            matches.append(item_child)
-                            if inclusive:
-                                matches.extend(item_child.children())
-        return matches
-
     def switch_label(self, row):
         item = self.model.item(row)
         if item is not None:

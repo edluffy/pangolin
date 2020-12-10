@@ -149,8 +149,7 @@ class PangoToolBarWidget(QToolBar):
         self.addWidget(self.coord_display)
 
         self.size_select.setEnabled(False)
-        self.label_select.setEnabled(False)
-        self.add_action.setEnabled(False)
+
         self.del_action.setEnabled(False)
         self.action_group.setEnabled(False)
         self.color_action.setEnabled(False)
@@ -177,10 +176,10 @@ class PangoToolBarWidget(QToolBar):
         self.label_select.color_display.update()
 
     def add(self):
-        if not self.label_select.isEnabled():
-            self.label_select.setEnabled(True)
+        self.del_action.setEnabled(True)
+        self.color_action.setEnabled(True)
+        if self.scene.fpath is not None:
             self.action_group.setEnabled(True)
-            self.color_action.setEnabled(True)
 
         item = PangoLabelItem()
         root = self.label_select.model().invisibleRootItem()
@@ -200,7 +199,7 @@ class PangoToolBarWidget(QToolBar):
         self.del_labels_signal.emit(self.label_select.currentIndex())
 
         if self.label_select.model().rowCount() == 0:
-            self.label_select.setEnabled(False)
+            self.del_action.setEnabled(False)
             self.action_group.setEnabled(False)
             self.color_action.setEnabled(False)
 
@@ -243,17 +242,12 @@ class PangoToolBarWidget(QToolBar):
         self.scene.clear_tool.connect(self.reset_tool)
         self.reset_tool()
 
-        if not self.add_action.isEnabled() or self.del_action.isEnabled():
-            self.add_action.setEnabled(True)
-            self.del_action.setEnabled(True)
-
     class LabelSelect(QComboBox):
         def __init__(self, color_display, parent=None):
             super().__init__(parent)
             self.color_display = color_display
             self.setFixedWidth(150)
             self.setEditable(True)
-            self.setEnabled(False)
 
             self.editTextChanged.connect(self.edit_text_changed)
 

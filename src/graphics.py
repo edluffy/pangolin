@@ -78,18 +78,13 @@ class PangoGraphicsScene(QGraphicsScene):
         super().event(event)
         if self.tool == "Lasso":
             self.select_handler(event)
-            return False
         elif self.tool == "Path":
             self.path_handler(event)
-            return False
         elif self.tool == "Poly":
             self.poly_handler(event)
-            return False
         elif self.tool == "Bbox":
             self.bbox_handler(event)
-            return False
-        else:
-            return False
+        return False
 
     def select_handler(self, event):
         if event.type() == QEvent.GraphicsSceneMousePress and event.buttons() & Qt.LeftButton:
