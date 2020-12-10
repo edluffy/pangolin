@@ -1,9 +1,8 @@
 import os
 
 from PyQt5.QtCore import QModelIndex, QPointF
-from src.utils import pango_get_palette
-from src.item import PangoLabelItem
-from item import PangoBboxItem, PangoPathItem, PangoPolyItem
+from utils import pango_get_palette
+from item import PangoLabelItem, PangoBboxItem, PangoPathItem, PangoPolyItem
 
 def yolo_write(interface, fpath):
     items = []

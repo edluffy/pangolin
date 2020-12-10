@@ -1,9 +1,6 @@
-from PyQt5.QtCore import QModelIndex, QPoint, QSize, Qt, pyqtSignal, QSortFilterProxyModel
-from PyQt5.QtGui import QColor, QFont, QIcon
-from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox,
-                             QLabel, QSizePolicy, QSpinBox, QStatusBar, QStyle, QStyleOptionComboBox, QToolBar, QWidget)
-from graphics import PangoGraphicsScene
-
+from PyQt5.QtCore import QPoint, QSize, Qt, pyqtSignal
+from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox, QLabel, QSizePolicy, QSpinBox, QStatusBar, QToolBar, QWidget)
 from item import PangoLabelItem
 from utils import pango_get_icon, pango_get_palette
 

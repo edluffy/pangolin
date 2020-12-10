@@ -4,7 +4,7 @@ from PyQt5.QtGui import QImage
 from lxml import etree
 
 from item import PangoBboxItem, PangoLabelItem, PangoPathItem, PangoPolyItem
-from utils import pango_get_icon, pango_get_palette
+from utils import pango_get_palette
 
 def pascal_voc_write(interface, fpath):
     items = []

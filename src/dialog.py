@@ -1,5 +1,4 @@
-
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QAbstractItemView, QComboBox, QDialog, QHBoxLayout, QLabel, QListWidget, QPushButton, QVBoxLayout
 
 

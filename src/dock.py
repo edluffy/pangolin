@@ -1,7 +1,6 @@
-from PyQt5.QtCore import QDir, QEvent, QPoint, QRect, QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QBrush, QColor, QIcon, QPixmap
-from PyQt5.QtWidgets import (QDockWidget, QFileDialog, QFileIconProvider,
-                             QFileSystemModel, QItemDelegate, QListView, QStyle, QStyleOptionViewItem, QStyledItemDelegate, QTreeView, QVBoxLayout, QWidget)
+from PyQt5.QtCore import QDir, Qt, QSize
+from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtWidgets import (QDockWidget, QFileIconProvider, QFileSystemModel, QListView, QTreeView, QVBoxLayout, QWidget)
 
 from utils import pango_get_icon
 

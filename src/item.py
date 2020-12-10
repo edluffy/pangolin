@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QPointF, Qt, QRectF, QPersistentModelIndex
-from PyQt5.QtGui import QBrush, QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF, QStandardItem, QTransform
+from PyQt5.QtGui import QBrush, QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF, QStandardItem
 from PyQt5.QtWidgets import QAbstractGraphicsShapeItem, QGraphicsItem, QStyle
 
 from utils import pango_get_icon

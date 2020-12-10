@@ -1,18 +1,16 @@
 import os, pickle
-from src.converters.image_mask import image_mask_write
-from PyQt5.QtCore import QModelIndex, QRectF, Qt
-from PyQt5.QtGui import QKeySequence, QPixmap
-from PyQt5.QtWidgets import (QApplication, QFileDialog, QMainWindow, QMessageBox, QShortcut, QTreeView, QUndoStack, QUndoView,
-                             QVBoxLayout, QWidget)
+from converters.image_mask import image_mask_write
+from PyQt5.QtCore import QModelIndex, Qt
+from PyQt5.QtGui import QKeySequence
+from PyQt5.QtWidgets import (QApplication, QFileDialog, QMainWindow, QMessageBox, QShortcut, QTreeView, QUndoStack, QUndoView, QVBoxLayout, QWidget)
 
-from src.bar import PangoMenuBarWidget, PangoToolBarWidget
-from src.converters.pascal_voc import pascal_voc_read, pascal_voc_write
-from src.converters.yolo import yolo_read, yolo_write
-from src.dock import PangoFileWidget, PangoLabelWidget, PangoUndoWidget
-from src.dialog import ExportSettingsDialog, ImportSettingsDialog
-from src.graphics import PangoGraphicsView
-from src.interface import PangoModelSceneInterface
-from src.item import PangoLabelItem
+from bar import PangoMenuBarWidget, PangoToolBarWidget
+from converters.pascal_voc import pascal_voc_read, pascal_voc_write
+from converters.yolo import yolo_read, yolo_write
+from dock import PangoFileWidget, PangoLabelWidget, PangoUndoWidget
+from dialog import ExportSettingsDialog, ImportSettingsDialog
+from graphics import PangoGraphicsView
+from interface import PangoModelSceneInterface
 
 app = QApplication([])
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)

@@ -1,10 +1,5 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QPixmap, QColor
-#from PyQt5.QtWidgets import
-
-from enum import Enum
-
-from PyQt5.QtWidgets import QGraphicsItem
 
 from resources import icons_rc
 

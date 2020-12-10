@@ -4,9 +4,7 @@ from PyQt5.QtWidgets import QGraphicsItem
 
 from bidict import bidict
 from graphics import PangoGraphicsScene
-
-from item import PainterPath, PangoGraphic, PangoItem, PangoLabelGraphic, PangoLabelItem, PangoPathGraphic, PangoPathItem, PangoPolyGraphic, PangoPolyItem, PangoBboxGraphic, PangoBboxItem, PolygonF
-from utils import pango_gfx_change_debug, pango_item_role_debug
+from item import PainterPath, PangoLabelGraphic, PangoLabelItem, PangoPathGraphic, PangoPathItem, PangoPolyGraphic, PangoPolyItem, PangoBboxGraphic, PangoBboxItem, PolygonF
 
 """ PangoModelSceneInterface promotes loose coupling by keeping model/view and 
    scene/view from referring to each other explicitly """
