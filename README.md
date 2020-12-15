@@ -18,6 +18,15 @@ Annotation:
 - Bounding box tool with class label.
 
 ## Installation
+#### Linux / macOS
+Install [Python3](https://www.python.org/downloads/) and [Git](https://git-scm.com/download/)
+```
+git clone https://github.com/edluffy/pangolin
+cd ~/pangolin
+pip3 install -r requirements.txt
+python3 src/app.py
+```
+
 #### Windows
 Install [Python3](https://www.python.org/downloads/windows/) and [Git](https://git-scm.com/download/win)
 
@@ -26,10 +35,6 @@ Clone the repository and open pangolin directory in command prompt:
 pip3 install -r requirements.txt
 python3 src/app.py
 ```
-
-#### Linux
-
-#### macOS
 
 ## Usage
 
