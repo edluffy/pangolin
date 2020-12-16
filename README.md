@@ -1,3 +1,7 @@
+![GitHub last commit](https://img.shields.io/github/last-commit/edluffy/pangolin)
+![PyPI](https://img.shields.io/pypi/v/pangolin-tool)
+![GitHub](https://img.shields.io/github/license/edluffy/pangolin)
+
 # Pangolin
 Pangolin is a graphical image segmentation/annotation tool written in Python using Qt. Created to handle annotation tasks (both object detection and image segmentation) with large datasets of > 700 images.
 
