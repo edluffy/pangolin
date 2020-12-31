@@ -75,7 +75,36 @@ class MainWindow(QMainWindow):
 
         # Shortcuts
         self.sh_reset_tool = QShortcut(QKeySequence('Esc'), self)
-        #self.sh_reset_tool.activated.connect(self.scene.reset_tool)
+        self.sh_reset_tool.activated.connect(self.tool_bar.reset_tool)
+
+        self.sh_inc_tool_size = QShortcut(QKeySequence(Qt.SHIFT+Qt.Key_Underscore), self)
+        self.sh_inc_tool_size.activated.connect(
+                lambda: self.tool_bar.set_tool_size(1, additive=True))
+
+        self.sh_dec_tool_size = QShortcut(QKeySequence(Qt.SHIFT+Qt.Key_Equal), self)
+        self.sh_dec_tool_size.activated.connect(
+                lambda: self.tool_bar.set_tool_size(-1, additive=True))
+
+        self.sh_select_next_image = QShortcut(QKeySequence(Qt.CTRL+Qt.Key_Down), self)
+        self.sh_select_next_image.activated.connect(self.file_widget.select_next_image)
+
+        self.sh_select_prev_image = QShortcut(QKeySequence(Qt.CTRL+Qt.Key_Up), self)
+        self.sh_select_prev_image.activated.connect(self.file_widget.select_prev_image)
+
+        self.sh_select_next_label = QShortcut(QKeySequence(Qt.CTRL+Qt.Key_Right), self)
+        self.sh_select_next_label.activated.connect(
+                self.tool_bar.label_select.select_next_label)
+
+        self.sh_select_prev_label = QShortcut(QKeySequence(Qt.CTRL+Qt.Key_Left), self)
+        self.sh_select_prev_label.activated.connect(
+                self.tool_bar.label_select.select_prev_label)
+        
+        self.sh_undo = QShortcut(QKeySequence(Qt.CTRL+Qt.Key_Z), self)
+        self.sh_undo.activated.connect(self.undo_widget.undo)
+
+        self.sh_redo = QShortcut(QKeySequence(Qt.CTRL+Qt.Key_Y), self)
+        self.sh_redo.activated.connect(self.undo_widget.redo)
+
 
     def switch_image(self, c_idx, p_idx):
         c_fpath = self.file_widget.file_model.filePath(c_idx)

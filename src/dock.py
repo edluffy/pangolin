@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QDir, Qt, QSize
 from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5.QtWidgets import (QDockWidget, QFileIconProvider, QFileSystemModel, QListView, QTreeView, QVBoxLayout, QWidget)
+from PyQt5.QtWidgets import (QDockWidget, QFileIconProvider, QFileSystemModel, QListView, QTreeView, QUndoStack, QVBoxLayout, QWidget)
 
 from utils import pango_get_icon
 
@@ -35,11 +35,20 @@ class PangoUndoWidget(PangoDockWidget):
         super().__init__(title, parent)
         self.setFixedWidth(250)
         self.undo_view = undo_view
+        self.undo_view.setStack(QUndoStack())
 
         self.undo_view.setCleanIcon(pango_get_icon("save"))
         self.undo_view.setEmptyLabel("Last save state")
 
         self.setWidget(self.undo_view)
+
+    def undo(self):
+        c_idx = self.undo_view.stack().index()
+        self.undo_view.stack().setIndex(c_idx-1)
+        
+    def redo(self):
+        c_idx = self.undo_view.stack().index()
+        self.undo_view.stack().setIndex(c_idx+1)
 
     #class IconDelegate(QItemDelegate):
     #    def __init__(self, parent):
@@ -84,6 +93,18 @@ class PangoFileWidget(PangoDockWidget):
         self.file_view.setIconSize(QSize(150, 150))
         
         self.setWidget(self.file_view)
+
+    def select_next_image(self):
+        c_idx = self.file_view.currentIndex()
+        idx = c_idx.siblingAtRow(c_idx.row()+1)
+        if idx.row() != -1:
+            self.file_view.setCurrentIndex(idx)
+
+    def select_prev_image(self):
+        c_idx = self.file_view.currentIndex()
+        idx = c_idx.siblingAtRow(c_idx.row()-1)
+        if idx.row() != -1:
+            self.file_view.setCurrentIndex(idx)
 
 class ThumbnailProvider(QFileIconProvider):
     def __init__(self):

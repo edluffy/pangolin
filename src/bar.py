@@ -218,18 +218,25 @@ class PangoToolBarWidget(QToolBar):
         self.lasso_action.setChecked(True)
         self.set_tool(self.lasso_action)
 
-    def set_tool_size(self, size):
+    def set_tool_size(self, size, additive=False):
         if self.scene is None:
             return
 
-        self.scene.tool_size = size
+        if additive:
+            self.scene.tool_size += size
+        else:
+            self.scene.tool_size = size
         self.scene.reset_com()
 
-        view = self.scene.views()[0]
-        x = self.size_select.geometry().center().x()
-        y = view.rect().top() + size/2
         self.scene.reticle.setRect(-size/2, -size/2, size, size)
-        self.scene.reticle.setPos(view.mapToScene(QPoint(x, y)))
+        if self.size_select.value() != self.scene.tool_size:
+            self.size_select.setValue(self.scene.tool_size)
+
+        if not self.scene.sceneRect().contains(self.scene.reticle.pos()):
+            view = self.scene.views()[0]
+            x = self.size_select.geometry().center().x()
+            y = view.rect().top() + size/2
+            self.scene.reticle.setPos(view.mapToScene(QPoint(x, y)))
 
     def set_scene(self, scene):
         if self.scene is not None:
@@ -261,6 +268,17 @@ class PangoToolBarWidget(QToolBar):
         def edit_text_changed(self, text):
             row = self.currentIndex()
             self.setItemData(row, text, Qt.DisplayRole)
+
+        def select_next_label(self):
+            idx = self.currentIndex()+1
+            if idx > -1 and idx < self.count():
+                self.setCurrentIndex(idx)
+
+        def select_prev_label(self):
+            idx = self.currentIndex()-1
+            if idx > -1 and idx < self.count():
+                self.setCurrentIndex(idx)
+
 
 class PangoStatusBarWidget(QStatusBar):
     def __init__(self, parent=None):
