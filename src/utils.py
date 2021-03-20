@@ -1,7 +1,7 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QPixmap, QColor
 
-from resources import icons_rc
+from .resources import icons_rc
 
 pango_palette = [QColor('#e6194b'), QColor('#3cb44b'), QColor('#ffe119'),
                  QColor('#4363d8'), QColor('#f58231'), QColor('#911eb4'),

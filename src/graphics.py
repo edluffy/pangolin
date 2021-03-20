@@ -2,8 +2,8 @@ from PyQt5.QtCore import QEvent, QLineF, QPointF, QRectF, Qt, pyqtSignal
 from PyQt5.QtGui import QPen, QPixmap, QTransform
 from PyQt5.QtWidgets import (QAction, QGraphicsEllipseItem, QGraphicsItem, QGraphicsScene, QGraphicsView, QMenu, QUndoCommand, QUndoCommand, QUndoStack)
 
-from item import PangoBboxGraphic, PangoGraphic, PangoPathGraphic, PangoPolyGraphic
-from utils import pango_get_icon
+from .item import PangoBboxGraphic, PangoGraphic, PangoPathGraphic, PangoPolyGraphic
+from .utils import pango_get_icon
 
 class PangoGraphicsScene(QGraphicsScene):
     gfx_changed = pyqtSignal(PangoGraphic, QGraphicsItem.GraphicsItemChange)

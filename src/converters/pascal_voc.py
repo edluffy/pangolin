@@ -3,8 +3,8 @@ from PyQt5.QtCore import QModelIndex
 from PyQt5.QtGui import QImage
 from lxml import etree
 
-from item import PangoBboxItem, PangoLabelItem, PangoPathItem, PangoPolyItem
-from utils import pango_get_palette
+from ..item import PangoBboxItem, PangoLabelItem, PangoPathItem, PangoPolyItem
+from ..utils import pango_get_palette
 
 def pascal_voc_write(interface, fpath):
     items = []

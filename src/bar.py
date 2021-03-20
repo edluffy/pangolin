@@ -1,8 +1,8 @@
 from PyQt5.QtCore import QPoint, QSize, Qt, pyqtSignal
 from PyQt5.QtGui import QColor, QFont
 from PyQt5.QtWidgets import (QAction, QActionGroup, QColorDialog, QComboBox, QLabel, QSizePolicy, QSpinBox, QStatusBar, QToolBar, QWidget)
-from item import PangoLabelItem
-from utils import pango_get_icon, pango_get_palette
+from .item import PangoLabelItem
+from .utils import pango_get_icon, pango_get_palette
 
 
 class PangoMenuBarWidget(QToolBar):

@@ -2,7 +2,7 @@ from PyQt5.QtCore import QDir, Qt, QSize
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtWidgets import (QDockWidget, QFileIconProvider, QFileSystemModel, QListView, QTreeView, QUndoStack, QVBoxLayout, QWidget)
 
-from utils import pango_get_icon
+from .utils import pango_get_icon
 
 
 class PangoDockWidget(QDockWidget):

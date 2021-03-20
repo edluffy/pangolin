@@ -1,5 +1,5 @@
 import os
-from item import PangoLabelGraphic
+from ..item import PangoLabelGraphic
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QImage, QPainter, QPixmap
 
