@@ -4,35 +4,23 @@ from pytestqt.qt_compat import qt_api
 from random import random
 from app import MainWindow
 
-@pytest.fixture
-def app(qtbot):
-    app = MainWindow()
-    qtbot.addWidget(app)
-    app.show()
-    app.load_images(fpath="tests/resources")
-    return app
-
-def test_basic(app, qtbot):
-    assert app.isVisible() == True
-    assert app.windowTitle() == "Pangolin"
-    assert app.file_widget.file_model.rootPath() == "tests/resources"
-
-def test_stack(app, qtbot, delay=25):
-    test_poly_tool(app, qtbot, delay=0)
-    for _ in range(0, 100):
-        app.interface.scene.stack.setIndex(int(random()*app.interface.scene.stack.count()-1))
-        qtbot.wait(delay)
-    assert app.interface.scene.stack.count() == 789
-
-    qtbot.wait(1000)
-
-    test_bbox_tool(app, qtbot, delay=0)
-    for _ in range(0, 100):
-        app.interface.scene.stack.setIndex(int(random()*app.interface.scene.stack.count()-1))
-        qtbot.wait(delay)
-    assert app.interface.scene.stack.count() == 16
-
-    qtbot.wait(1000)
+# TODO: Add this when project saves stack too
+# def test_stack(app, qtbot, delay=25):
+#     test_poly_tool(app, qtbot, delay=10)
+#     for _ in range(0, 100):
+#         app.interface.scene.stack.setIndex(int(random()*app.interface.scene.stack.count()-1))
+#         qtbot.wait(delay)
+#     assert app.interface.scene.stack.count() == 789
+# 
+#     qtbot.wait(1000)
+# 
+#     test_bbox_tool(app, qtbot, delay=25)
+#     for _ in range(0, 100):
+#         app.interface.scene.stack.setIndex(int(random()*app.interface.scene.stack.count()-1))
+#         qtbot.wait(delay)
+#     assert app.interface.scene.stack.count() == 16
+# 
+#     qtbot.wait(1000)
 
 def test_bbox_tool(app, qtbot, delay=25, n_drag_points=10):
     app.file_widget.file_view.setCurrentIndex(
@@ -93,7 +81,7 @@ def test_bbox_tool(app, qtbot, delay=25, n_drag_points=10):
     assert app.interface.scene.stack.count() == 16
     qtbot.wait(1000)
 
-def test_poly_tool(app, qtbot, delay=1):
+def test_poly_tool(app, qtbot, delay=10):
     app.file_widget.file_view.setCurrentIndex(
             app.file_widget.file_model.index("tests/resources/zoo.jpg"))
 
@@ -281,5 +269,5 @@ def test_poly_tool(app, qtbot, delay=1):
 
     app.tool_bar.lasso_action.trigger()
 
-    qtbot.wait(100000)
+    qtbot.wait(1000)
     assert app.interface.scene.stack.count() == 789

@@ -23,7 +23,6 @@ class PangoGraphicsScene(QGraphicsScene):
         self.tool_size = 10
 
         self.full_clear()
-        self.reticle.isVisible
 
     def full_clear(self):
         self.stack.clear()

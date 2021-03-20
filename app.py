@@ -162,11 +162,7 @@ class MainWindow(QMainWindow):
                     self.file_widget.file_model.rootPath(), "pangolin_project.p")
 
         if os.path.exists(project_path):
-
-            # Clear project
-            self.interface.map.clear()
-            self.interface.model.clear()
-            self.interface.scene.full_clear()
+            self.clear_project()
 
             unpickled_items = pickle.load(open(project_path, "rb"))
             for item in unpickled_items:
@@ -175,6 +171,11 @@ class MainWindow(QMainWindow):
                 item.force_update()
 
             self.interface.filter_tree(self.interface.scene.fpath, None)
+
+    def clear_project(self, action=None, show_dialog=True):
+        self.interface.map.clear()
+        self.interface.model.clear()
+        self.interface.scene.full_clear()
 
     def export_project(self, action=None):
         folder_path = self.file_widget.file_model.rootPath()
@@ -263,4 +264,5 @@ class MainWindow(QMainWindow):
 window = MainWindow()
 window.show()
 
-app.exec_()
+if __name__ == '__main__':
+    app.exec_()
