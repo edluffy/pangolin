@@ -179,8 +179,8 @@ class MainWindow(QMainWindow):
 
     def export_project(self, action=None):
         folder_path = self.file_widget.file_model.rootPath()
-
         fpaths = self.interface.scene.change_stacks.keys()
+
         dialog = ExportSettingsDialog(self, fpaths)
         if dialog.exec():
             s_fpaths = dialog.selected_fnames()
@@ -209,7 +209,7 @@ class MainWindow(QMainWindow):
                     self.file_widget.file_view.setCurrentIndex(idx)
                     image_mask_write(self.interface, fpath, mask_folder)
 
-            self.interface.filter_tree(self.interface.scene.fpath, None)
+        self.interface.filter_tree(self.interface.scene.fpath, None)
 
     def import_project(self, action=None, folder=None):
         if folder is None:
