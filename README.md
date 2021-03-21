@@ -37,7 +37,7 @@ Install [Python3](https://www.python.org/downloads/) and [Git](https://git-scm.c
 git clone https://github.com/edluffy/pangolin
 cd ~/pangolin
 pip3 install -r requirements.txt
-python3 src/app.py
+python3 app.py
 ```
 
 #### Windows
@@ -46,7 +46,7 @@ Install [Python3](https://www.python.org/downloads/windows/) and [Git](https://g
 Clone the repository and open pangolin directory in command prompt:
 ```
 pip3 install -r requirements.txt
-python3 src/app.py
+python3 app.py
 ```
 
 ## Usage
